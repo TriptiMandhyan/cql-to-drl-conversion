@@ -12,6 +12,7 @@ Define shared behavior for all slash agents in this repository.
 4. Update `state/pipeline-status.json` with new stage and timestamp.
 5. Preserve ticket id, source refs, and source file paths.
 6. If helper utilities are used, use them for fetch/IO only; keep policy decisions in agent instructions.
+7. Use `scripts/ado_fallback.py` only for intake-stage `cqlPaths` enrichment and `scripts/ado_extraction_fallback.py` only for extraction-stage commit-pinned raw CQL retrieval.
 
 ## Guardrails
 
@@ -20,4 +21,5 @@ Define shared behavior for all slash agents in this repository.
 - Never write secrets to artifacts.
 - Mark unresolved logic as assumptions or blockers.
 - Do not let helper scripts update stage transitions on behalf of the agent.
+- Do not use helper scripts for extraction parsing, conversion, or PR submission stages.
 - Conversion outputs must use reference-style fact modeling (platform domain facts and minimal marker/helper declares).

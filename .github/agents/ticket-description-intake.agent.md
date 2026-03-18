@@ -15,6 +15,7 @@ Use a single ticket URL placeholder as the local run input. Pull ticket descript
 - `state/run-input.json` with `ticketUrl`
 - ADO MCP connection config in `.vscode/mcp.json`
 - Fallback auth: `ADO_PAT` environment variable
+- Fallback helper: `scripts/ado_fallback.py` (`enrich-intake`)
 
 ## Runtime Config Guardrails
 
@@ -30,14 +31,14 @@ Use a single ticket URL placeholder as the local run input. Pull ticket descript
 0. Read `.github/orchestration/config.json` and enforce guardrails.
 1. Read `state/run-input.json`.
 2. Use ADO MCP connection first to fetch ticket details from `ticketUrl` work item.
-3. If MCP is unavailable, use HTTPS API fallback with PAT.
+3. If MCP is unavailable for ticket details or PR metadata, use direct PAT HTTPS fallback.
 4. Extract all PR links in ticket description.
 5. Extract direct CQL source references when present (for example ADO file links with path and branch/version parameters).
 6. Resolve source branch and source commit from PR metadata when PR links exist.
 7. When no PR links exist, resolve branch and optional commit from direct CQL source references; keep unresolved commit as an explicit assumption.
-8. Extract CQL file paths from either PR resolution or direct source references.
-7. Write `artifacts/intake/<ticket-id>.json`.
-8. Update `state/pipeline-status.json` with `intake-complete`.
+8. Write `artifacts/intake/<ticket-id>.json`.
+9. If `cqlPaths` is empty and `allowPatHttpsFallback=true`, run `scripts/ado_fallback.py enrich-intake` to enrich changed CQL paths from PR iteration changes.
+10. Update `state/pipeline-status.json` with `intake-complete`.
 
 ## Outputs
 
@@ -53,3 +54,5 @@ Use a single ticket URL placeholder as the local run input. Pull ticket descript
 - Do not ask user to run python/shell scripts; perform intake stage directly as agent work.
 - MCP is the preferred transport for ADO calls when available.
 - Any helper utility (if used) must only fetch remote data and must not decide stage transitions.
+- Keep helper usage scoped to intake-stage MCP gaps only.
+- Helper usage is for enriching `cqlPaths` from resolved PRs; it is not a replacement for ticket/PR metadata resolution.

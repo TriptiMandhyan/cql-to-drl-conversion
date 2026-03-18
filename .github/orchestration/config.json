@@ -19,6 +19,7 @@
       "slashOnlyExecution": true,
       "mcpPreferredForAdo": true,
       "allowPatHttpsFallback": true,
+      "patHttpsFallbackScope": "intake-cqlpaths-and-extraction-commit-content",
       "approvalRequiredBeforeConversion": true,
       "usePrSourceBranchOverMain": true,
       "ticketTraceabilityRequired": true,
@@ -49,7 +50,6 @@
     "plan": {
       "slash": "/plan-approval",
       "file": ".github/agents/plan-approval.agent.md",
-      "promptModule": ".github/agents/prompts/planning.md",
       "writes": [
         "artifacts/plan/<ticket-id>.md",
         "state/approval-status.json",
@@ -59,7 +59,6 @@
     "approval": {
       "slash": "/approvalRecorder",
       "file": ".github/agents/approval-recorder.agent.md",
-      "promptModule": ".github/agents/prompts/approval.md",
       "writes": [
         "state/approval-status.json",
         "state/pipeline-status.json"
@@ -68,7 +67,6 @@
     "conversion": {
       "slash": "/conversion",
       "file": ".github/agents/conversion.agent.md",
-      "promptModule": ".github/agents/prompts/conversion.md",
       "requires": [
         ".github/skills/cql-to-drl/SKILL.md",
         ".github/skills/cql-to-drl/cql-to-drl-guide.md"
@@ -82,7 +80,6 @@
     "pr": {
       "slash": "/pr-submission",
       "file": ".github/agents/pr-submission.agent.md",
-      "promptModule": ".github/agents/prompts/pr.md",
       "writes": [
         "artifacts/pr/<ticket-id>-pr.md",
         "state/pipeline-status.json"

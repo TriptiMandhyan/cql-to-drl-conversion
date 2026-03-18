@@ -1,5 +1,7 @@
 - Standard non-MCP fallback script: scripts/ado_fallback.py
-- Preferred invocation: python scripts/ado_fallback.py run-extraction --ticket-id <ticket-id>
-- Script uses proven ADO item retrieval mode with &$format=text for commit-path CQL fetch.
-- scripts/run_extractor.py is now a compatibility wrapper delegating to ado_fallback.py.
-- MCP remains first choice; fallback script is only for retrieval/extraction gaps.
+- Preferred invocation: python scripts/ado_fallback.py enrich-intake --ticket-id <ticket-id>
+- Helper scope is intake-stage MCP gaps only (latest PR iteration changed CQL paths).
+- Extraction helper script: scripts/ado_extraction_fallback.py
+- Preferred invocation: python scripts/ado_extraction_fallback.py fetch-raw-cql --ticket-id <ticket-id>
+- Extraction helper scope is commit-pinned raw CQL retrieval only; parsing and stage transitions remain agent-owned.
+- MCP remains first choice for ticket, PR, branch, and commit resolution.

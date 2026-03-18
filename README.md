@@ -24,8 +24,9 @@ This project scaffolds a local, VS Code based multi-agent pipeline to automate t
 ## MCP-First With Fallback
 
 - MCP remains the preferred integration path wherever applicable.
-- For non-MCP extraction retrieval gaps, use `python scripts/ado_fallback.py run-extraction --ticket-id <ticket-id>`.
-- Legacy `python scripts/run_extractor.py ...` commands are supported and now delegate to the same fallback utility.
+- For intake-stage non-MCP gaps (changed CQL paths from PR iteration changes), use `python scripts/ado_fallback.py enrich-intake --ticket-id <ticket-id>`.
+- For extraction-stage non-MCP gaps (commit-pinned raw CQL retrieval), use `python scripts/ado_extraction_fallback.py fetch-raw-cql --ticket-id <ticket-id>`.
+- Helper scripts are fetch-only utilities. Agents remain responsible for parsing, artifact generation, and stage transitions.
 
 ## Suggested Run Order
 

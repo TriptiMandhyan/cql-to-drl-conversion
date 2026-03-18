@@ -49,25 +49,28 @@ Run stages from Copilot chat using slash agents:
 5. `/conversion`
 6. `/pr-submission`
 
-## 4.1) Standard non-MCP fallback command
+## 4.1) Standard non-MCP helper commands
 
-When MCP is preferred but a step needs HTTPS fallback (for example PR iteration changed files and file-at-commit retrieval), use this single script instead of ad-hoc shell snippets:
+When MCP is preferred but a stage needs HTTPS fallback for capabilities not currently exposed in MCP, use these scoped helper scripts instead of ad-hoc shell snippets:
 
 ```bash
-python scripts/ado_fallback.py run-extraction --ticket-id <ticket-id>
+python scripts/ado_fallback.py enrich-intake --ticket-id <ticket-id>
+python scripts/ado_extraction_fallback.py fetch-raw-cql --ticket-id <ticket-id>
 ```
 
 Outputs:
 
-- `artifacts/extraction/<ticket-id>-fetched.json`
-- `artifacts/extraction/<ticket-id>.json`
-- `artifacts/extraction/raw/<ticket-id>/`
+- Updated `artifacts/intake/<ticket-id>.json` (`cqlPaths` enriched in place)
+- Raw CQL files under `artifacts/extraction/raw/<ticket-id>/...`
+- Fetch manifest at `artifacts/extraction/<ticket-id>-fetched.json`
 
 Notes:
 
 - `ADO_PAT` must be set in environment.
 - `artifacts/intake/<ticket-id>.json` must exist.
-- This script is fallback-only and does not replace MCP-first orchestration.
+- `scripts/ado_fallback.py` is intake-only and resolves changed `.cql` paths from PR iteration changes.
+- `scripts/ado_extraction_fallback.py` is extraction-only and fetches raw `.cql` file content at the resolved PR source commit.
+- Neither helper parses CQL or updates pipeline state.
 
 ## 5) Approval gate
 

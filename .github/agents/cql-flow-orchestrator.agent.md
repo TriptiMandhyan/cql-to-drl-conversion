@@ -29,6 +29,8 @@ Coordinate the end-to-end flow using slash-callable agents and state artifacts.
 
 - Read `state/pipeline-status.json` first and recommend only the next valid agent.
 - Enforce slash-only execution guidance; do not ask user to run python or shell scripts.
+- If intake finishes with empty `cqlPaths` and PAT fallback is enabled, require intake stage to run `scripts/ado_fallback.py enrich-intake` before extractor.
+- If extractor cannot read commit-pinned CQL content through MCP and PAT fallback is enabled, allow extraction stage to run `scripts/ado_extraction_fallback.py fetch-raw-cql` before parsing.
 - Block conversion unless approval is true.
 - Require conversion agent to reference `cql-to-drl-guide.md` sections in mapping output.
 - Ensure each stage writes its required artifact before moving to next stage.
