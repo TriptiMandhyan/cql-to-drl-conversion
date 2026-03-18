@@ -1,0 +1,2435 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+
+import accumulate com.ablehealth.functions.LatestClinicalActivityAccumulateFunction latestClinicalActivity;
+import accumulate com.ablehealth.functions.LatestDiagnosisAccumulateFunction latestDiagnosis;
+import accumulate com.ablehealth.functions.LatestClinicalActivityWithLowestResultAccumulateFunction latestClinicalActivityWithLowestResult;
+
+global PatientResults controlSet;
+
+import com.ablehealth.enums.extendedmeaures.*;
+
+declare Year2026Mips236LastBloodPressureDay
+    date: LocalDate
+end
+
+declare Year2026Mips236MostRecentDiastolicBloodPressure
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips236MostRecentDiastolicBloodPressureReading
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips236MostRecentSystolicBloodPressure
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips236MostRecentSystolicBloodPressureReading
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips236DenominatorOrgEMR
+end
+declare Year2026Mips236DenominatorGroupEMR
+end
+declare Year2026Mips236DenominatorProviderEMR
+end
+
+declare Year2026Mips047ExclusionGG9740FOrgEMR
+end
+declare Year2026Mips047ExclusionGG9740GroupEMR
+end
+declare Year2026Mips047ExclusionGG9740ProviderEMR
+end
+
+declare Year2026Mips047ExclusionG0031OrgEMR
+end
+declare Year2026Mips047ExclusionG0031GroupEMR
+end
+declare Year2026Mips047ExclusionG0031ProviderEMR
+end
+
+declare Year2026Mips236ExclusionG9231OrgEMR
+end
+declare Year2026Mips236ExclusionG9231GrouprEMR
+end
+declare Year2026Mips236ExclusionG9231ProviderEMR
+end
+
+declare Year2026Mips236ExclusionG9231
+end
+declare Year2026Mips236ExclusionG9231OrgEMR
+end
+declare Year2026Mips236ExclusionG9231GroupEMR
+end
+declare Year2026Mips236ExclusionG9231ProviderEMR
+end
+
+declare Year2026Mips236ExclusionLTI
+end
+
+declare Year2026Mips236G9910P1ExclusionEMR
+end
+declare Year2026Mips236G9910P1ExclusionOrgEMR
+end
+declare Year2026Mips236G9910P1ExclusionGroupEMR
+end
+declare Year2026Mips236G9910P1ExclusionProviderEMR
+end
+
+declare Year2026Mips236ExclusionFrailtyAndDementiaMedication
+end
+declare Year2026Mips236ExclusionG2115EvidenceOfFrailtyOrgEMR
+end
+declare Year2026Mips236ExclusionG2115EvidenceOfFrailtyGroupEMR
+end
+declare Year2026Mips236ExclusionG2115EvidenceOfFrailtyProviderEMR
+end
+
+declare Year2026Mips236ExclusionG2116EvidenceOfFrailtyOrgEMR
+end
+declare Year2026Mips236ExclusionG2116EvidenceOfFrailtyGroupEMR
+end
+declare Year2026Mips236ExclusionG2116EvidenceOfFrailtyProviderEMR
+end
+
+declare Year2026Mips236ExclusionFrailtyAndAdvancedIllness
+end
+declare Year2026Mips236ExclusionG2116AdvancedIllnessDiagnosisOrgEMR
+end
+declare Year2026Mips236ExclusionG2116AdvancedIllnessDiagnosisGroupEMR
+end
+declare Year2026Mips236ExclusionG2116AdvancedIllnessDiagnosisProviderEMR
+end
+
+declare Year2026Mips236ExclusionG2118FrailtyOrgEMR
+end
+declare Year2026Mips236ExclusionG2118FrailtyGroupEMR
+end
+declare Year2026Mips236ExclusionG2118FrailtyProviderEMR
+end
+
+declare Year2026Mips236EMRLastSBPSupplemental
+end
+declare Year2026Mips236EMRLastSBPClaims
+end
+
+declare Year2026Mips236EMRLastDBPReadingSupplemental
+end
+declare Year2026Mips236EMRLastDBPReadingClaims
+end
+
+declare Year2026Mips236EMRNumeratorSBPReadingOrg
+end
+declare Year2026Mips236EMRNumeratorSBPReadingGroup
+end
+declare Year2026Mips236EMRNumeratorSBPReadingProvider
+end
+
+declare Year2026Mips236EMRNumeratorSBPQualityCodeOrg
+end
+declare Year2026Mips236EMRNumeratorSBPQualityCodeGroup
+end
+declare Year2026Mips236EMRNumeratorSBPQualityCodeProvider
+end
+
+declare Year2026Mips236EMRNumeratorDBPQualityCodeOrg
+end
+declare Year2026Mips236EMRNumeratorDBPQualityCodeGroup
+end
+declare Year2026Mips236EMRNumeratorDBPQualityCodeProvider
+end
+/*
+define "Denominator":
+  exists(   "Denominator Encounter" Encounter
+            with ["Diagnosis": "MIPS; 236_HYPERTENSION"] Diagnosis
+    // diagnosis of essential hypertension starting before and continuing into, or starting during the first six months of the M.P.
+            such that   Interval[Hypertension.start_date, Hypertension.stop_date] overlaps Interval[start of "Measurement Period", end of "Measurement Period" - 6 months]
+                        and (   Hypertension.start_date during Interval[start of "Measurement Period" - 12 months, end of "Measurement Period" - 6 months]
+                                or Hypertension.author_date during Interval[start of "Measurement Period" - 12 months, end of "Measurement Period" - 6 months]  ) )
+  ,
+  from ("Denominator Encounter") Encounter
+    with ["Diagnosis": "MIPS; 236_HYPERTENSION"] Hypertension
+    such that Interval[Hypertension.start_date, Hypertension.stop_date] overlaps Interval[start of "Measurement Period", end of "Measurement Period" - 6 months]
+          and Hypertension.start_date during Interval[start of "Measurement Period" - 12 months, end of "Measurement Period" - 6 months]
+  return
+  ExtendedMeasureResultV2(
+      Encounter
+      , 'Denominator Encounter' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator
+      , option_id = all
+  )
+  and return
+  ExtendedMeasureResultV2(
+      Hypertension
+      , 'Hypertension Diagnosis' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator
+      , option_id = all
+  )
+
+define "Denominator Encounter":
+  ["Clinical Activity": "MIPS; 236_ENCOUNTER"] Encounter
+    where Encounter.start_date during "Measurement Period"
+      and AgeInYearsAt(Encounter.start_date) >= 18
+      and AgeInYearsAt(Encounter.start_date) < 85
+      and Encounter.provider_id.hasMeasureMembership = true
+*/
+rule 'Year2026.Mips236.Denominator'
+salience 40
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips236')
+    $encounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "236_ENCOUNTER"),
+        startsDuring($program.measurementPeriod)
+    )
+    exists (
+        Patient(
+            getAgeInYearsAt($encounter.startDate) >= 18 &&
+            getAgeInYearsAt($encounter.startDate) < 85
+        )
+        and Diagnosis(
+            withValueSet("MipsYear2026", "236_HYPERTENSION"),
+            overlaps($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(6)),
+            (startsDuring($program.measurementPeriod.start.minusMonths(12), $program.measurementPeriod.end.minusMonths(6)) ||
+            authoredDuring($program.measurementPeriod.start.minusMonths(12), $program.measurementPeriod.end.minusMonths(6)))
+        )
+    )
+then
+    insert(new EncounterDenominator($program, $encounter, 'Year2026.Mips236'));
+end
+
+rule 'Year2026.Mips236.Denominator.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    $diagnosis: Diagnosis() from accumulate (
+        $d:= Diagnosis(
+            withValueSet("MipsYear2026", "236_HYPERTENSION"),
+            overlaps($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(6)),
+            (startsDuring($program.measurementPeriod.start.minusMonths(12), $program.measurementPeriod.end.minusMonths(6)) ||
+            authoredDuring($program.measurementPeriod.start.minusMonths(12), $program.measurementPeriod.end.minusMonths(6)))
+        ),
+        latestDiagnosis($d)
+    )
+    and not (
+        exists Year2026Mips236DenominatorOrgEMR()
+    )
+then
+    insert(new Year2026Mips236DenominatorOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "G9740", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "G0031", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "G9231", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "G9910", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "G2115", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "G2116", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "G2118", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "G8752-G8754", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "G8753-G8754", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "G8752-G8755", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "G8753-G8755", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "G8756", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Hypertension Diagnosis", "G9740", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Hypertension Diagnosis", "G0031", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Hypertension Diagnosis", "G9231", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Hypertension Diagnosis", "G9910", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Hypertension Diagnosis", "G2115", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Hypertension Diagnosis", "G2116", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Hypertension Diagnosis", "G2118", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Hypertension Diagnosis", "G8752-G8754", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Hypertension Diagnosis", "G8753-G8754", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Hypertension Diagnosis", "G8752-G8755", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Hypertension Diagnosis", "G8753-G8755", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Hypertension Diagnosis", "G8756", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Denominator.Group.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+    $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    $diagnosis: Diagnosis() from accumulate (
+        $d:= Diagnosis(
+            withValueSet("MipsYear2026", "236_HYPERTENSION"),
+            overlaps($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(6)),
+            (startsDuring($program.measurementPeriod.start.minusMonths(12), $program.measurementPeriod.end.minusMonths(6)) ||
+            authoredDuring($program.measurementPeriod.start.minusMonths(12), $program.measurementPeriod.end.minusMonths(6)))
+        ),
+        latestDiagnosis($d)
+    )
+    and not (
+        exists Year2026Mips236DenominatorGroupEMR()
+    )
+then
+    insert(new Year2026Mips236DenominatorGroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Encounter", "G9740", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Encounter", "G0031", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Encounter", "G9231", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Encounter", "G9910", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Encounter", "G2115", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Encounter", "G2116", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Encounter", "G2118", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Encounter", "G8752-G8754", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Encounter", "G8753-G8754", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Encounter", "G8752-G8755", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Encounter", "G8753-G8755", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Encounter", "G8756", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Hypertension Diagnosis", "G9740", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Hypertension Diagnosis", "G0031", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Hypertension Diagnosis", "G9231", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Hypertension Diagnosis", "G9910", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Hypertension Diagnosis", "G2115", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Hypertension Diagnosis", "G2116", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Hypertension Diagnosis", "G2118", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Hypertension Diagnosis", "G8752-G8754", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Hypertension Diagnosis", "G8753-G8754", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Hypertension Diagnosis", "G8752-G8755", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Hypertension Diagnosis", "G8753-G8755", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Hypertension Diagnosis", "G8756", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips236.Denominator.Provider.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+    $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    $diagnosis: Diagnosis() from accumulate (
+        $d:= Diagnosis(
+            withValueSet("MipsYear2026", "236_HYPERTENSION"),
+            overlaps($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(6)),
+            (startsDuring($program.measurementPeriod.start.minusMonths(12), $program.measurementPeriod.end.minusMonths(6)) ||
+            authoredDuring($program.measurementPeriod.start.minusMonths(12), $program.measurementPeriod.end.minusMonths(6)))
+        ),
+        latestDiagnosis($d)
+    )
+    and not (
+        exists Year2026Mips236DenominatorProviderEMR()
+    )
+then
+    insert(new Year2026Mips236DenominatorProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter", "G9740", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter", "G0031", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter", "G9231", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter", "G9910", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter", "G2115", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter", "G2116", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter", "G2118", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter", "G8752-G8754", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter", "G8753-G8754", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter", "G8752-G8755", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter", "G8753-G8755", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter", "G8756", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Hypertension Diagnosis", "G9740", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Hypertension Diagnosis", "G0031", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Hypertension Diagnosis", "G9231", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Hypertension Diagnosis", "G9910", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Hypertension Diagnosis", "G2115", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Hypertension Diagnosis", "G2116", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Hypertension Diagnosis", "G2118", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Hypertension Diagnosis", "G8752-G8754", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Hypertension Diagnosis", "G8753-G8754", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Hypertension Diagnosis", "G8752-G8755", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Hypertension Diagnosis", "G8753-G8755", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Hypertension Diagnosis", "G8756", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion Hospice":
+   *
+   * Option ID: G9740
+   *
+   exists(Hospice."Has Hospice") HospiceEvidence
+   ,
+   ExtendedMeasureResultV2(
+       HospiceEvidence
+       , 'Evidence of Hospice' as name
+       , display_date = start_date
+       , calculated_record = false
+       , population = Exclusion
+       , option_id = G9740
+   )
+*/
+rule 'Year2026.Mips236.Exclusion.G9740_Hospice'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    exists queryYear2026MipsSharedHashospiceInMeasurementPeriod($program, $hospice;)
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, 'G9740');
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, 'G9740');
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.EXCLUSION, "G9740");
+end
+
+rule 'Year2026.Mips236.Exclusion.G9740_Hospice.Org.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    Year2026MipsSharedHasHospice($program==program, $hospice:hospice)
+    and not (
+        exists Year2026Mips047ExclusionGG9740FOrgEMR()
+    )
+then
+    insert (new Year2026Mips047ExclusionGG9740FOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Evidence of Hospice", "G9740", PopulationEnum.denominator_exclusion, $hospice, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $hospice.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.G9740_Hospice.Group.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    Year2026MipsSharedHasHospice($program==program, $hospice:hospice)
+    and not (
+        exists Year2026Mips047ExclusionGG9740GroupEMR()
+    )
+then
+    insert (new Year2026Mips047ExclusionGG9740GroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Evidence of Hospice", "G9740", PopulationEnum.denominator_exclusion, $hospice, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $hospice.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips236.Exclusion.G9740_Hospice.Provider.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    Year2026MipsSharedHasHospice($program==program, $hospice:hospice)
+    and not (
+        exists Year2026Mips047ExclusionGG9740ProviderEMR()
+    )
+then
+    insert (new Year2026Mips047ExclusionGG9740ProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Evidence of Hospice", "G9740", PopulationEnum.denominator_exclusion, $hospice, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $hospice.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion G0031 Palliative Care":
+   *
+   * Option ID: G0031
+   *
+  exists(PalliativeCare."Has Palliative Care") PalliativeCareEvidence
+  ,
+  ExtendedMeasureResultV2(
+      PalliativeCareEvidence
+      , 'Evidence of Palliative Care' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Exclusion
+      , option_id = G0031
+  )
+*/
+rule 'Year2026.Mips236.Exclusion.G0031_palliative_care'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    exists queryYear2026MipsSharedPalliativeCareInMeasurementPeriod($program, $palliative;)
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, 'G0031');
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, 'G0031');
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.EXCLUSION, "G0031");
+end
+
+rule 'Year2026.Mips236.Exclusion.G0031_palliative_care.Org.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    Year2026MipsSharedHasPalliativeCare($program == program, $palliative:palliative)
+    and not (
+        exists Year2026Mips047ExclusionG0031OrgEMR()
+    )
+    then
+    insert (new Year2026Mips047ExclusionG0031OrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Evidence of Palliative Care", "G0031", PopulationEnum.denominator, $palliative, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $palliative.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.G0031_palliative_care.Group.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+    $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    Year2026MipsSharedHasPalliativeCare($program == program, $palliative:palliative)
+    and not (
+        exists Year2026Mips047ExclusionG0031GroupEMR()
+    )
+then
+    insert (new Year2026Mips047ExclusionG0031GroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Evidence of Palliative Care", "G0031", PopulationEnum.denominator, $palliative, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $palliative.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips236.Exclusion.G0031_palliative_care.Provider.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+    $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    Year2026MipsSharedHasPalliativeCare($program == program, $palliative:palliative)
+    and not (
+        exists Year2026Mips047ExclusionG0031ProviderEMR()
+    )
+then
+    insert (new Year2026Mips047ExclusionG0031ProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Evidence of Palliative Care", "G0031", PopulationEnum.denominator, $palliative, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $palliative.startDate.toString());
+
+end
+
+/*
+define "Denominator Exclusion G9231 ESRD or Pregnancy":
+    *
+    * Option ID: G9231
+    *
+  exists(["Clinical Activity": "MIPS; 236_DENOMINATOR_EXCLUSION_G9231_ESRD_OR_PREGNANCY"] I
+    where I.start_date during "Measurement Period")
+  or exists("Excluded Diagnoses" Dx
+    where Interval[Dx.start_date, Dx.stop_date] overlaps "Measurement Period")
+  or exists("Excluded Procedures" P
+    where P.start_date on or before end of "Measurement Period")
+  or exists(["Diagnosis": "VSAC; Pregnancy"] Preg
+    where (Interval[Preg.start_date, Preg.stop_date] overlaps "Measurement Period"
+          and Preg.start_date during Interval[start of "Measurement Period" - 1 year, end of "Measurement Period"]))
+  ,
+  if exists (["Clinical Activity": "MIPS; 236_DENOMINATOR_EXCLUSION_G9231_ESRD_OR_PREGNANCY"] I
+    where I.start_date during "Measurement Period") ESRDPregnancyQC
+  then
+  return
+  ExtendedMeasureResultV2(
+      ESRDPregnancyQC
+      , 'ESRD or Pregnancy Quality Code' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Exclusion
+      , option_id = G9231
+  )
+  else if exists ("Excluded Diagnoses" Dx
+    where Interval[Dx.start_date, Dx.stop_date] overlaps "Measurement Period") ESRDDiagnosis
+  then
+  return
+  ExtendedMeasureResultV2(
+      ESRDDiagnosis
+      , 'ESRD Diagnosis' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Exclusion
+      , option_id = G9231
+  )
+  else if exists ("Excluded Procedures" P
+    where P.start_date on or before end of "Measurement Period") ESRDProcedure
+  then
+  return
+  ExtendedMeasureResultV2(
+      ESRDProcedure
+      , 'ESRD Procedure' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Exclusion
+      , option_id = G9231
+  )
+  else if exists (["Diagnosis": "VSAC; Pregnancy"] Preg
+    where (Interval[Preg.start_date, Preg.stop_date] overlaps "Measurement Period"
+          and Preg.start_date during Interval[start of "Measurement Period" - 1 year, end of "Measurement Period"])) PregnancyDiagnosis
+  then
+  return
+  ExtendedMeasureResultV2(
+      PregnancyDiagnosis
+      , 'Pregnancy Diagnosis' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Exclusion
+      , option_id = G9231
+  )
+
+define "Excluded Diagnoses":
+  ["Diagnosis": "VSAC; END_STAGE_RENAL_DISEASE"]
+  union ["Diagnosis": "VSAC; CHRONIC_KIDNEY_DISEASE_STAGE_5"]
+  union ["Diagnosis": "VSAC; KIDNEY_TRANSPLANT_RECIPIENT"]
+
+define "Excluded Procedures":
+["Clinical Activity": "VSAC; ESRD_MONTHLY_OUTPATIENT_SERVICES"]
+  union ["Clinical Activity": "VSAC; KIDNEY_TRANSPLANT"]
+  union ["Clinical Activity": "VSAC; DIALYSIS_SERVICES"]
+*/
+rule 'Year2026.Mips236.Exclusion.G9231_ESRD_or_Pregnancy'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    (
+        exists ClinicalActivity(
+            withValueSet("MipsYear2026", "236_DENOMINATOR_EXCLUSION_G9231_ESRD_OR_PREGNANCY"),
+            startsDuring($program.measurementPeriod)
+        ) 
+        or exists Diagnosis(
+            withValueSet("VsacYear2026", "END_STAGE_RENAL_DISEASE") || 
+            withValueSet("VsacYear2026", "CHRONIC_KIDNEY_DISEASE_STAGE_5") ||
+            withValueSet("VsacYear2026", "KIDNEY_TRANSPLANT_RECIPIENT"),
+            overlaps($program.measurementPeriod)
+        ) 
+        or exists ClinicalActivity(
+            withValueSet("VsacYear2026", "ESRD_MONTHLY_OUTPATIENT_SERVICES") ||
+            withValueSet("VsacYear2026", "KIDNEY_TRANSPLANT") ||
+            withValueSet("VsacYear2026", "DIALYSIS_SERVICES"),
+            startsOnOrBefore($program.measurementPeriod.end)
+        ) 
+        or exists Diagnosis(
+            withValueSet("VsacYear2026", "PREGNANCY"),
+            overlaps($program.measurementPeriod),
+            startsDuring($program.measurementPeriod.start.minusYears(1), $program.measurementPeriod.end)
+        )
+    )
+then
+    insert (new Year2026Mips236ExclusionG9231());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, 'G9231');
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, 'G9231');
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.EXCLUSION, "G9231");
+end
+
+rule 'Year2026.Mips236.Exclusion.G9231.ESRDOrPregnancyQualityCode.Org.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    exists Year2026Mips236ExclusionG9231()
+    $result: ClinicalActivity() from accumulate (
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "236_DENOMINATOR_EXCLUSION_G9231_ESRD_OR_PREGNANCY"),
+            startsDuring($program.measurementPeriod)
+        ),
+        latestClinicalActivity($c)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG9231OrgEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG9231OrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "ESRD or Pregnancy Quality Code", "G9231", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.G9231.ESRDOrPregnancyQualityCode.Group.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+    $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionG9231()
+    $result: ClinicalActivity() from accumulate (
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "236_DENOMINATOR_EXCLUSION_G9231_ESRD_OR_PREGNANCY"),
+            startsDuring($program.measurementPeriod)
+        ),
+        latestClinicalActivity($c)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG9231GroupEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG9231GroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "ESRD or Pregnancy Quality Code", "G9231", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips236.Exclusion.G9231.ESRDOrPregnancyQualityCode.Provider.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+    $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionG9231()
+    $result: ClinicalActivity() from accumulate (
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "236_DENOMINATOR_EXCLUSION_G9231_ESRD_OR_PREGNANCY"),
+            startsDuring($program.measurementPeriod)
+        ),
+        latestClinicalActivity($c)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG9231ProviderEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG9231ProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "ESRD or Pregnancy Quality Code", "G9231", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.G9231.ESRDDiagnosis.Org.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    exists Year2026Mips236ExclusionG9231()
+    $result: Diagnosis() from accumulate (
+        $d: Diagnosis(
+            withValueSet("VsacYear2026", "END_STAGE_RENAL_DISEASE") || 
+            withValueSet("VsacYear2026", "CHRONIC_KIDNEY_DISEASE_STAGE_5") ||
+            withValueSet("VsacYear2026", "KIDNEY_TRANSPLANT_RECIPIENT"),
+            overlaps($program.measurementPeriod)
+        ),
+        latestDiagnosis($d)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG9231OrgEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG9231OrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "ESRD Diagnosis", "G9231", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.G9231.ESRDDiagnosis.Group.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+    $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionG9231()
+    $result: Diagnosis() from accumulate (
+        $d: Diagnosis(
+            withValueSet("VsacYear2026", "END_STAGE_RENAL_DISEASE") || 
+            withValueSet("VsacYear2026", "CHRONIC_KIDNEY_DISEASE_STAGE_5") ||
+            withValueSet("VsacYear2026", "KIDNEY_TRANSPLANT_RECIPIENT"),
+            overlaps($program.measurementPeriod)
+        ),
+        latestDiagnosis($d)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG9231GroupEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG9231GroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "ESRD Diagnosis", "G9231", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips236.Exclusion.G9231.ESRDDiagnosis.Provider.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+    $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionG9231()
+    $result: Diagnosis() from accumulate (
+        $d: Diagnosis(
+            withValueSet("VsacYear2026", "END_STAGE_RENAL_DISEASE") || 
+            withValueSet("VsacYear2026", "CHRONIC_KIDNEY_DISEASE_STAGE_5") ||
+            withValueSet("VsacYear2026", "KIDNEY_TRANSPLANT_RECIPIENT"),
+            overlaps($program.measurementPeriod)
+        ),
+        latestDiagnosis($d)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG9231ProviderEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG9231ProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "ESRD Diagnosis", "G9231", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.G9231.ESRDProcedure.Org.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    exists Year2026Mips236ExclusionG9231()
+    $result: ClinicalActivity() from accumulate (
+        $c: ClinicalActivity(
+            withValueSet("VsacYear2026", "ESRD_MONTHLY_OUTPATIENT_SERVICES") ||
+            withValueSet("VsacYear2026", "KIDNEY_TRANSPLANT") ||
+            withValueSet("VsacYear2026", "DIALYSIS_SERVICES"),
+            startsOnOrBefore($program.measurementPeriod.end)
+        ),
+        latestClinicalActivity($c)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG9231OrgEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG9231OrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "ESRD Procedure", "G9231", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.G9231.ESRDProcedure.Group.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+    $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionG9231()
+    $result: ClinicalActivity() from accumulate (
+        $c: ClinicalActivity(
+            withValueSet("VsacYear2026", "ESRD_MONTHLY_OUTPATIENT_SERVICES") ||
+            withValueSet("VsacYear2026", "KIDNEY_TRANSPLANT") ||
+            withValueSet("VsacYear2026", "DIALYSIS_SERVICES"),
+            startsOnOrBefore($program.measurementPeriod.end)
+        ),
+        latestClinicalActivity($c)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG9231GroupEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG9231GroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "ESRD Procedure", "G9231", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips236.Exclusion.G9231.ESRDProcedure.Provider.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+    $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionG9231()
+    $result: ClinicalActivity() from accumulate (
+        $c: ClinicalActivity(
+            withValueSet("VsacYear2026", "ESRD_MONTHLY_OUTPATIENT_SERVICES") ||
+            withValueSet("VsacYear2026", "KIDNEY_TRANSPLANT") ||
+            withValueSet("VsacYear2026", "DIALYSIS_SERVICES"),
+            startsOnOrBefore($program.measurementPeriod.end)
+        ),
+        latestClinicalActivity($c)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG9231ProviderEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG9231ProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "ESRD Procedure", "G9231", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.G9231.PregnancyDiagnosis.Org.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    exists Year2026Mips236ExclusionG9231()
+    $result: Diagnosis() from accumulate (
+        $d: Diagnosis(
+             withValueSet("VsacYear2026", "PREGNANCY"),
+             overlaps($program.measurementPeriod),
+             startsDuring($program.measurementPeriod.start.minusYears(1), $program.measurementPeriod.end)
+        ),
+        latestDiagnosis($d)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG9231OrgEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG9231OrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Pregnancy Diagnosis", "G9231", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.G9231.PregnancyDiagnosis.Group.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+    $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionG9231()
+    $result: Diagnosis() from accumulate (
+        $d: Diagnosis(
+             withValueSet("VsacYear2026", "PREGNANCY"),
+             overlaps($program.measurementPeriod),
+             startsDuring($program.measurementPeriod.start.minusYears(1), $program.measurementPeriod.end)
+        ),
+        latestDiagnosis($d)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG9231GroupEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG9231GroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Pregnancy Diagnosis", "G9231", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips236.Exclusion.G9231.PregnancyDiagnosis.Provider.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+    $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionG9231()
+    $result: Diagnosis() from accumulate (
+        $d: Diagnosis(
+             withValueSet("VsacYear2026", "PREGNANCY"),
+             overlaps($program.measurementPeriod),
+             startsDuring($program.measurementPeriod.start.minusYears(1), $program.measurementPeriod.end)
+        ),
+        latestDiagnosis($d)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG9231ProviderEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG9231ProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Pregnancy Diagnosis", "G9231", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion G9910 Over 66 + Long Term Care":
+   *
+   * Option ID: G9910
+   *
+    exists(FrailtyLTI."Has Long Term Care with Age Anchor"(start of "Denominator Encounter")) LongTermCareEvidence
+    ,
+    if exists ( ["Clinical Activity": "MIPS; MIPS_LTI_QUALITY_CODES"] LTI
+            where LTI.start_date during "MeasurementPeriod" ) LTIPeriod
+    then
+    return
+    ExtendedMeasureResultV2(
+        LTIPeriod//return 1 record even if multiple exist
+        , 'Long Term Care Quality Code' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Exclusion
+        , option_id = 'G9910'
+    )
+    else 
+    if exists FrailtyLTI."Has Long Term Care Periods Longer Than 90 Consecutive Days"
+    from FrailtyLTI."Max Long Term Care Period Length" LTCDuration
+    return
+    ExtendedMeasureResultV2(
+        LTCDuration
+        , 'Long Term Care Period Duration' as name
+        , display_date = start_date
+        , calculated_record = true
+        , population = Exclusion
+        , option_id = 'G9910'
+    )
+*/
+rule 'Year2026.Mips236.Exclusion.G9910_Over66LongTermCare'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    exists queryYear2026MipsSharedHasLongTermCareWithAgeAnchor($program, $encounter.startDate;)
+then
+    insert (new Year2026Mips236ExclusionLTI());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, 'G9910');
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, 'G9910');
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.EXCLUSION, "G9910");
+end
+
+rule 'Year2026.Mips236.Exclusion.G9910.LongTermCarePeriodDuration.Org.EMR'
+when
+    EncounterDenominator($measure: measure, measure == "Year2026.Mips236", $program: program, $encounter: clinicalActivity)
+    $patient: Patient()
+    queryYear2026MipsSharedHasLongTermCarePeriodsLongerThan90ConsecutiveDays($program, $encounter.startDate, $consecutiveDays;)
+    exists Year2026Mips236ExclusionLTI()
+    and not(
+        exists Year2026Mips236G9910P1ExclusionOrgEMR()
+    )
+then
+    insert(new Year2026Mips236G9910P1ExclusionOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Long Term Care Period Duration", "G9910", PopulationEnum.denominator_exclusion, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), $consecutiveDays.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.G9910.LongTermCarePeriodDuration.Group.EMR'
+when
+    EncounterDenominator($measure: measure, measure == "Year2026.Mips236", $program: program, $encounter: clinicalActivity,
+    $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    queryYear2026MipsSharedHasLongTermCarePeriodsLongerThan90ConsecutiveDays($program, $encounter.startDate, $consecutiveDays;)
+    exists Year2026Mips236ExclusionLTI()
+    and not(
+        exists Year2026Mips236G9910P1ExclusionGroupEMR()
+    )
+then
+    insert(new Year2026Mips236G9910P1ExclusionGroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Long Term Care Period Duration", "G9910", PopulationEnum.denominator_exclusion, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), $consecutiveDays.toString());
+    }
+end
+
+rule 'Year2026.Mips236.Exclusion.G9910.LongTermCarePeriodDuration.Provider.EMR'
+when
+    EncounterDenominator($measure: measure, measure == "Year2026.Mips236", $program: program, $encounter: clinicalActivity,
+    $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    queryYear2026MipsSharedHasLongTermCarePeriodsLongerThan90ConsecutiveDays($program, $encounter.startDate, $consecutiveDays;)
+    exists Year2026Mips236ExclusionLTI()
+    and not(
+        exists Year2026Mips236G9910P1ExclusionProviderEMR()
+    )
+then
+    insert(new Year2026Mips236G9910P1ExclusionProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Long Term Care Period Duration", "G9910", PopulationEnum.denominator_exclusion, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), $consecutiveDays.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.G9910.EvidenceOfLongTermCare.Org.EMR'
+when
+    EncounterDenominator($measure: measure, measure == "Year2026.Mips236", $program: program, $encounter: clinicalActivity)
+    $patient: Patient(getAgeInYearsAt($encounter.startDate) >= 66)
+    Year2026MipsSharedFrailtyLtiQualityCodes(program == $program, $clinical: qualityCode)
+    exists Year2026Mips236ExclusionLTI()
+    and not(
+        exists Year2026Mips236G9910P1ExclusionEMR()
+    )
+then
+    insert(new Year2026Mips236G9910P1ExclusionEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Long Term Care Quality Code", "G9910", PopulationEnum.denominator_exclusion, $clinical, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $clinical.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.G9910.EvidenceOfLongTermCare.Group.EMR'
+when
+    EncounterDenominator($measure: measure, measure == "Year2026.Mips236", $program: program, $encounter: clinicalActivity
+    ,$encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient(getAgeInYearsAt($encounter.startDate) >= 66)
+    Year2026MipsSharedFrailtyLtiQualityCodes(program == $program, $clinical: qualityCode)
+    exists Year2026Mips236ExclusionLTI()
+    and not(
+        exists Year2026Mips236G9910P1ExclusionEMR()
+    )
+then
+    insert(new Year2026Mips236G9910P1ExclusionEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Long Term Care Quality Code", "G9910", PopulationEnum.denominator_exclusion, $clinical, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $clinical.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips236.Exclusion.G9910.EvidenceOfLongTermCare.Provider.EMR'
+when
+    EncounterDenominator($measure: measure, measure == "Year2026.Mips236", $program: program, $encounter: clinicalActivity,
+    $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient(getAgeInYearsAt($encounter.startDate) >= 66)
+    Year2026MipsSharedFrailtyLtiQualityCodes(program == $program, $clinical: qualityCode)
+    exists Year2026Mips236ExclusionLTI()
+    and not(
+        exists Year2026Mips236G9910P1ExclusionEMR()
+    )
+then
+    insert(new Year2026Mips236G9910P1ExclusionEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Long Term Care Quality Code", "G9910", PopulationEnum.denominator_exclusion, $clinical, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $clinical.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion G2115 66-80 + Frailty + Dementia Med":
+   *
+   * Option ID: G2115
+   *
+   exists(FrailtyLTI."Is 66 to 80 with Frailty and Dementia Meds with Age Anchor"(start of "Denominator Encounter"))
+   ,
+   from FrailtyLTI."Dementia Medications In Year Before or During Measurement Period" DementiaMed
+   return
+   ExtendedMeasureResultV2(
+       DementiaMed
+       , 'Dementia Medication' as name
+       , display_date = start_date
+       , calculated_record = false
+       , population = Exclusion
+       , option_id = G2115
+   )
+   and from FrailtyLTI."Frailty Exists During Measurement Period" FrailtyEvidence
+   return
+   ExtendedMeasureResultV2(
+       FrailtyEvidence
+       , 'Evidence of Frailty' as name
+       , display_date = start_date
+       , calculated_record = false
+       , population = Exclusion
+       , option_id = G2115
+   )
+*/
+rule 'Year2026.Mips236.Exclusion.G2115_66_80_FrailtyAndDementiaMed'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    exists queryYear2026MipsSharedFrailtyDementiaAge66To80WithAgeAnchor($program, $encounter.startDate;)
+then
+    insert (new Year2026Mips236ExclusionFrailtyAndDementiaMedication());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, 'G2115');
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, 'G2115');
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.EXCLUSION, "G2115");
+end
+
+rule 'Year2026.Mips236.Exclusion.G2115.EvidenceOfFrailty.Org.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    exists Year2026Mips236ExclusionFrailtyAndDementiaMedication()
+    queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyExists($program, $encounter.startDate, $result;)
+    and not (
+        exists Year2026Mips236ExclusionG2115EvidenceOfFrailtyOrgEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG2115EvidenceOfFrailtyOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Evidence of Frailty", "G2115", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026Mips236.Exclusion.G2115.EvidenceOfFrailty.Group.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionFrailtyAndDementiaMedication()
+    queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyExists($program, $encounter.startDate, $result;)
+    and not (
+        exists Year2026Mips236ExclusionG2115EvidenceOfFrailtyGroupEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG2115EvidenceOfFrailtyGroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Evidence of Frailty", "G2115", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    }
+end
+
+rule 'Year2026Mips236.Exclusion.G2115.EvidenceOfFrailty.Provider.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionFrailtyAndDementiaMedication()
+    queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyExists($program, $encounter.startDate, $result;)
+    and not (
+        exists Year2026Mips236ExclusionG2115EvidenceOfFrailtyProviderEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG2115EvidenceOfFrailtyProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Evidence of Frailty", "G2115", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.DementiaMedication.Org.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    exists Year2026Mips236ExclusionFrailtyAndDementiaMedication()
+    queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorDementiaMedications($program, $encounter.startDate, $result;)
+    and not (
+        exists Year2026Mips236ExclusionG2115EvidenceOfFrailtyOrgEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG2115EvidenceOfFrailtyOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Evidence of Frailty", "G2115", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.DementiaMedication.Group.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionFrailtyAndDementiaMedication()
+    queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorDementiaMedications($program, $encounter.startDate, $result;)
+    and not (
+        exists Year2026Mips236ExclusionG2115EvidenceOfFrailtyGroupEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG2115EvidenceOfFrailtyGroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Evidence of Frailty", "G2115", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips236.Exclusion.DementiaMedication.Provider.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionFrailtyAndDementiaMedication()
+    queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorDementiaMedications($program, $encounter.startDate, $result;)
+    and not (
+        exists Year2026Mips236ExclusionG2115EvidenceOfFrailtyProviderEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG2115EvidenceOfFrailtyProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Evidence of Frailty", "G2115", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion G2116 66-80 + Frailty + Advanced Illness":
+   *
+   * Option ID: G2116
+   *
+   exists(FrailtyLTI."Is 66 to 80 with Frailty and Advanced Illness with Age Anchor"(start of "Denominator Encounter"))
+   ,
+   from FrailtyLTI."Advanced Illness in Measurement Period or Year Prior" AdvancedIllness
+   return
+   ExtendedMeasureResultV2(
+       AdvancedIllness
+       , 'Advanced Illness' as name
+       , display_date = start_date
+       , calculated_record = false
+       , population = Exclusion
+       , option_id = G2116
+   )
+   and from FrailtyLTI."Frailty Exists During Measurement Period" FrailtyEvidence
+   return
+   ExtendedMeasureResultV2(
+       FrailtyEvidence
+       , 'Evidence of Frailty' as name
+       , display_date = start_date
+       , calculated_record = false
+       , population = Exclusion
+       , option_id = G2116
+   )
+
+*/
+rule 'Year2026.Mips236.Exclusion.G2116_66_80_FrailtyAndAdvancedIllness'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    exists queryYear2026MipsSharedFrailtyAdvancedIllnessAge66To80WithAgeAnchor($program, $encounter.startDate;)
+then
+    insert (new Year2026Mips236ExclusionFrailtyAndAdvancedIllness());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, 'G2116');
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, 'G2116');
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.EXCLUSION, "G2116");
+end
+/*
+rule 'Year2026.Mips236.Exclusion.G2116_66_80_FrailtyAndAdvancedIllness.QualityCode.Org.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    exists Year2026Mips236ExclusionFrailtyAndAdvancedIllness()
+    $result: Diagnosis() from accumulate(
+        queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyAndAdvancedIllnessQualityCodes($program, $encounter.startDate, $diag;),
+        latestDiagnosis($diag)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG2116QualityCodeOrgEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG2116QualityCodeOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Frailty and Advanced Illness Quality Code", "G2116", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.G2116_66_80_FrailtyAndAdvancedIllness.QualityCode.Group.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionFrailtyAndAdvancedIllness()
+    $result: Diagnosis() from accumulate(
+        queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyAndAdvancedIllnessQualityCodes($program, $encounter.startDate, $diag;),
+        latestDiagnosis($diag)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG2116QualityCodeGroupEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG2116QualityCodeGroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Frailty and Advanced Illness Quality Code", "G2116", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips236.Exclusion.G2116_66_80_FrailtyAndAdvancedIllness.QualityCode.Provider.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionFrailtyAndAdvancedIllness()
+    $result: Diagnosis() from accumulate(
+        queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyAndAdvancedIllnessQualityCodes($program, $encounter.startDate, $diag;),
+        latestDiagnosis($diag)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG2116QualityCodeProviderEMR()
+    )
+then
+    insert (new Year2026Mips236ExclusionG2116QualityCodeProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Frailty and Advanced Illness Quality Code", "G2116", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+*/
+
+//'Evidence of Frailty'
+rule 'Year2026.Mips236.Exclusion.G2116_66_80_FrailtyAndAdvancedIllness.EvidenceOfFrailty.Org.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    exists Year2026Mips236ExclusionFrailtyAndAdvancedIllness()
+    $result: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyExists($program, $encounter.startDate, $qdm;),
+        latestQdmDatatype($qdm)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG2116EvidenceOfFrailtyOrgEMR()
+    )
+then
+    insert(new Year2026Mips236ExclusionG2116EvidenceOfFrailtyOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Evidence of Frailty", "G2116", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.G2116_66_80_FrailtyAndAdvancedIllness.EvidenceOfFrailty.Group.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionFrailtyAndAdvancedIllness()
+    $result: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyExists($program, $encounter.startDate, $qdm;),
+        latestQdmDatatype($qdm)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG2116EvidenceOfFrailtyGroupEMR()
+    )
+then
+    insert(new Year2026Mips236ExclusionG2116EvidenceOfFrailtyGroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Evidence of Frailty", "G2116", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips236.Exclusion.G2116_66_80_FrailtyAndAdvancedIllness.EvidenceOfFrailty.Provider.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionFrailtyAndAdvancedIllness()
+    $result: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyExists($program, $encounter.startDate, $qdm;),
+        latestQdmDatatype($qdm)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG2116EvidenceOfFrailtyProviderEMR()
+    )
+then
+    insert(new Year2026Mips236ExclusionG2116EvidenceOfFrailtyProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Evidence of Frailty", "G2116", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+//'Advanced Illness Diagnosis'
+
+rule 'Year2026.Mips236.Exclusion.G2116_66_80_FrailtyAndAdvancedIllness.AdvancedIllnessDiagnosis.Org.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    exists Year2026Mips236ExclusionFrailtyAndAdvancedIllness()
+    $result: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorAdvancedIllness($program, $encounter.startDate, $qdm;),
+        latestQdmDatatype($qdm)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG2116AdvancedIllnessDiagnosisOrgEMR()
+    )
+then
+    insert(new Year2026Mips236ExclusionG2116AdvancedIllnessDiagnosisOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Advanced Illness Diagnosis", "G2116", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.G2116_66_80_FrailtyAndAdvancedIllness.AdvancedIllnessDiagnosis.Group.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionFrailtyAndAdvancedIllness()
+    $result: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorAdvancedIllness($program, $encounter.startDate, $qdm;),
+        latestQdmDatatype($qdm)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG2116AdvancedIllnessDiagnosisGroupEMR()
+    )
+then
+    insert(new Year2026Mips236ExclusionG2116AdvancedIllnessDiagnosisGroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Advanced Illness Diagnosis", "G2116", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips236.Exclusion.G2116_66_80_FrailtyAndAdvancedIllness.AdvancedIllnessDiagnosis.Provider.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    exists Year2026Mips236ExclusionFrailtyAndAdvancedIllness()
+    $result: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorAdvancedIllness($program, $encounter.startDate, $qdm;),
+        latestQdmDatatype($qdm)
+    )
+    and not (
+        exists Year2026Mips236ExclusionG2116AdvancedIllnessDiagnosisProviderEMR()
+    )
+then
+    insert(new Year2026Mips236ExclusionG2116AdvancedIllnessDiagnosisProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Advanced Illness Diagnosis", "G2116", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion G2118 81 and Older + Frailty"
+  *
+  * Option ID: G2118
+  *
+   exists( FrailtyLTI."Is 81 and Older with Frailty with Age Anchor"(start of "Denominator Encounter")) // the start of the denominator encounter is AgeInYearsAt anchor
+*/
+rule 'Year2026.Mips236.Exclusion.G2118_Over_80_Frailty'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    exists queryYear2026MipsSharedIs81AndOlderWithFrailtyWithAgeAnchor($program, $encounter.startDate, $result;)
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, 'G2118');
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, 'G2118');
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.EXCLUSION, "G2118");
+end
+
+rule 'Year2026.Mips236.Exclusion.G2118_Over_80_Frailty.Org.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    queryYear2026MipsSharedIs81AndOlderWithFrailtyWithAgeAnchor($program, $encounter.startDate, $result;)
+    and not (
+        exists Year2026Mips236ExclusionG2118FrailtyOrgEMR()
+    )
+then
+    insert(new Year2026Mips236ExclusionG2118FrailtyOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Evidence of Frailty", "G2118", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips236.Exclusion.G2118_Over_80_Frailty.Group.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    queryYear2026MipsSharedIs81AndOlderWithFrailtyWithAgeAnchor($program, $encounter.startDate, $result;)
+    and not (
+        exists Year2026Mips236ExclusionG2118FrailtyGroupEMR()
+    )
+then
+    insert(new Year2026Mips236ExclusionG2118FrailtyGroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Evidence of Frailty", "G2118", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    }
+end
+
+
+rule 'Year2026.Mips236.Exclusion.G2118_Over_80_Frailty.Provider.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    queryYear2026MipsSharedIs81AndOlderWithFrailtyWithAgeAnchor($program, $encounter.startDate, $result;)
+    and not (
+        exists Year2026Mips236ExclusionG2118FrailtyProviderEMR()
+    )
+then
+    insert(new Year2026Mips236ExclusionG2118FrailtyProviderEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Evidence of Frailty", "G2118", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    }
+end
+
+/*
+define "Numerator Performance Met G8752 and G8754":
+  *
+  * Option ID: G8752-G8754
+  *
+  "Normal Most Recent Systolic Blood Pressure Exists"
+  and "Normal Most Recent Diastolic Blood Pressure Exists"
+
+define "Normal Most Recent Systolic Blood Pressure Exists":
+  exists("Most Recent Systolic Blood Pressure Reading" BPReading
+    where BloodPressure.result_as_decimal < 140)
+  or exists("Most Recent Systolic Blood Pressure" BloodPressure
+    where BloodPressure.code_value in "MIPS; 236_PERFORMANCE_MET_G8752")
+
+define "Normal Most Recent Diastolic Blood Pressure Exists":
+  exists("Most Recent Diastolic Blood Pressure Reading" BPReading
+    where BPReading.result_as_decimal < 90)
+  or exists("Most Recent Diastolic Blood Pressure" BloodPressure
+    where BloodPressure.code_value in "MIPS; 236_PERFORMANCE_MET_G8754")
+*/
+rule 'Year2026.Mips236.Success.G8752-G8754'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    (
+        (
+            exists Year2026Mips236MostRecentSystolicBloodPressureReading(encounter.resultAsDecimal < 140)
+            or exists Year2026Mips236MostRecentSystolicBloodPressure(encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_MET_G8752"))
+        ) and (
+            exists Year2026Mips236MostRecentDiastolicBloodPressureReading(encounter.resultAsDecimal < 90)
+            or exists Year2026Mips236MostRecentDiastolicBloodPressure(encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_MET_G8754"))
+        )
+    )
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, 'G8752-G8754');
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, 'G8752-G8754');
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.SUCCESS, "G8752-G8754");
+end
+
+/*
+define "Numerator Performance Not Met G8753 and G8754":
+  *
+  * Option ID: G8753-G8754
+  *
+   "Abnormal Most Recent Systolic Blood Pressure Exists"
+   and "Normal Most Recent Diastolic Blood Pressure Exists"
+
+define "Abnormal Most Recent Systolic Blood Pressure Exists":
+  exists("Most Recent Systolic Blood Pressure Reading" BPReading
+    where BloodPressure.result_as_decimal >= 140)
+  or exists("Most Recent Systolic Blood Pressure" BloodPressure
+    where BloodPressure.code_value in "MIPS; 236_PERFORMANCE_NOT_MET_G8753")
+
+define "Normal Most Recent Diastolic Blood Pressure Exists":
+  exists("Most Recent Diastolic Blood Pressure Reading" BPReading
+    where BPReading.result_as_decimal < 90)
+  or exists("Most Recent Diastolic Blood Pressure" BloodPressure
+    where BloodPressure.code_value in "MIPS; 236_PERFORMANCE_MET_G8754")
+*/
+rule 'Year2026.Mips236.Gap.G8753-G8754'
+salience 10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    (
+        (
+            exists Year2026Mips236MostRecentSystolicBloodPressureReading(encounter.resultAsDecimal >= 140)
+            or exists Year2026Mips236MostRecentSystolicBloodPressure(encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_NOT_MET_G8753"))
+        ) and (
+            exists Year2026Mips236MostRecentDiastolicBloodPressureReading(encounter.resultAsDecimal < 90)
+            or exists Year2026Mips236MostRecentDiastolicBloodPressure(encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_MET_G8754"))
+        )
+    )
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.GAP, 'G8753-G8754');
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, 'G8753-G8754');
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.GAP, "G8753-G8754");
+end
+
+/*
+define "Numerator Performance Not Met G8752 and G8755":
+  *
+  * Option ID: G8752-G8755
+  *
+   "Normal Most Recent Systolic Blood Pressure Exists"
+   and "Abnormal Most Recent Diastolic Blood Pressure Exists"
+
+define "Normal Most Recent Systolic Blood Pressure Exists":
+  exists("Most Recent Systolic Blood Pressure Reading" BPReading
+    where BloodPressure.result_as_decimal < 140)
+  or exists("Most Recent Systolic Blood Pressure" BloodPressure
+    where BloodPressure.code_value in "MIPS; 236_PERFORMANCE_MET_G8752")
+
+define "Abnormal Most Recent Diastolic Blood Pressure Exists":
+  exists("Most Recent Diastolic Blood Pressure Reading" BPReading
+    where BPReading.result_as_decimal >= 90)
+  or exists("Most Recent Diastolic Blood Pressure" BloodPressure
+    where BloodPressure.code_value in "MIPS; 236_PERFORMANCE_NOT_MET_G8755")
+*/
+rule 'Year2026.Mips236.Gap.G8752-G8755'
+salience 10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    (
+      (
+          exists Year2026Mips236MostRecentSystolicBloodPressureReading(encounter.resultAsDecimal < 140)
+          or exists Year2026Mips236MostRecentSystolicBloodPressure(encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_MET_G8752"))
+      ) and (
+          exists Year2026Mips236MostRecentDiastolicBloodPressureReading(encounter.resultAsDecimal >= 90)
+          or exists Year2026Mips236MostRecentDiastolicBloodPressure(encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_NOT_MET_G8755"))
+      )
+    )
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.GAP, 'G8752-G8755');
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, 'G8752-G8755');
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.GAP, "G8752-G8755");
+end
+
+/*
+define "Numerator Performance Not Met G8753 and G8755":
+  /*
+   * Option ID: G8753-G8755
+   *
+   "Abnormal Most Recent Systolic Blood Pressure Exists"
+   and "Abnormal Most Recent Diastolic Blood Pressure Exists"
+
+define "Abnormal Most Recent Systolic Blood Pressure Exists":
+  exists("Most Recent Systolic Blood Pressure Reading" BPReading
+    where BloodPressure.result_as_decimal >= 140)
+  or exists("Most Recent Systolic Blood Pressure" BloodPressure
+    where BloodPressure.code_value in "MIPS; 236_PERFORMANCE_NOT_MET_G8753")
+
+define "Abnormal Most Recent Diastolic Blood Pressure Exists":
+  exists("Most Recent Diastolic Blood Pressure Reading" BPReading
+    where BPReading.result_as_decimal >= 90)
+  or exists("Most Recent Diastolic Blood Pressure" BloodPressure
+    where BloodPressure.code_value in "MIPS; 236_PERFORMANCE_NOT_MET_G8755")
+*/
+rule 'Year2026.Mips236.Gap.G8753-G8755'
+salience 10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    (
+        (
+            exists Year2026Mips236MostRecentSystolicBloodPressureReading(encounter.resultAsDecimal >= 140)
+            or exists Year2026Mips236MostRecentSystolicBloodPressure(encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_NOT_MET_G8753"))
+        ) and (
+            exists Year2026Mips236MostRecentDiastolicBloodPressureReading(encounter.resultAsDecimal >= 90)
+            or exists Year2026Mips236MostRecentDiastolicBloodPressure(encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_NOT_MET_G8755"))
+        )
+   )
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.GAP, 'G8753-G8755');
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, 'G8753-G8755');
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.GAP, "G8753-G8755");
+end
+
+/*
+define "Numerator Performance Not Met G8756":
+  *
+  * Option ID: G8756
+  *
+  not "Denominator Exclusion Hospice"
+  and not "Denominator Exclusion G0031 Palliative Care"
+  and not "Denominator Exclusion G9231 ESRD or Pregnancy"
+  and not "Denominator Exclusion G9910 Over 66 + Long Term Care"
+  and not "Denominator Exclusion G2115 66-80 + Frailty + Dementia Med"
+  and not "Denominator Exclusion G2116 66-80 + Frailty + Advanced Illness"
+  and not "Denominator Exclusion G2118 Over 80 + Frailty"
+  and not "Numerator Performance Met: G8752 and G8754"
+  and not "Numerator Performance Not Met: G8752 and G8755"
+  and not "Numerator Performance Not Met: G8753 and G8754"
+  and not "Numerator Performance Not Met: G8753 and G8755"
+*/
+rule 'Year2026.Mips236.Gap.G8756'
+salience -5
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.GAP, 'G8756');
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, 'G8756');
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.GAP, "G8756");
+end
+
+// 
+// Helping facts & queries 
+//
+
+/*
+define "Last Blood Pressure Day"     
+  last((("Qualifying Diastolic Blood Pressure" DBP
+          return DBP.start_date)
+        intersect
+        ("Qualifying Systolic Blood Pressure" SBP
+          return SBP.start_date)
+          )BP  )sort by BP.start_date asc
+          
+define "Qualifying Systolic Blood Pressure"
+  "Systolic Blood Pressure" BloodPressure
+        where BloodPressure.start_date during "Measurement Period"
+        and not exists (  "Inpatient Encounter or ED Visit" Encounter
+                          where (   (   BloodPressure.start_date during Interval[Encounter.start_date, Encounter.stop_date] 
+                                        and Encounter.stop_date is not null or empty    )   
+                                    or BloodPressure.start_date = Encounter.start_date  )
+                                    )  
+        and not exists ( ["Clinical Activity": "ABLE; PROCEDURE_REQUIRING_CHANGE_DIET_OR_MEDICATION"] Procedure
+                          where Procedure.start_date = BloodPressure.start_date)
+
+define "Qualifying Diastolic Blood Pressure"
+  "Diastolic Blood Pressure" BloodPressure
+        where BloodPressure.start_date during "Measurement Period"
+        and not exists (  "Inpatient Encounter or ED Visit" Encounter
+                          where (   (   BloodPressure.start_date during Interval[Encounter.start_date, Encounter.stop_date] 
+                                        and Encounter.stop_date is not null or empty    )   
+                                    or BloodPressure.start_date = Encounter.start_date  )
+                                    ) 
+        and not exists ( ["Clinical Activity": "ABLE; PROCEDURE_REQUIRING_CHANGE_DIET_OR_MEDICATION"] Procedure
+                          where Procedure.start_date = BloodPressure.start_date)          
+
+define "Systolic Blood Pressure":
+  ["Clinical Activity": "eCQM Direct Reference Codes; SYSTOLIC_BLOOD_PRESSURE"]
+  union ["Clinical Activity": "MIPS; 236_PERFORMANCE_MET_G8752"]
+  union ["Clinical Activity": "MIPS; 236_PERFORMANCE_NOT_MET_G8753"]
+
+define "Diastolic Blood Pressure":
+  ["Clinical Activity": "eCQM Direct Reference Codes; DIASTOLIC_BLOOD_PRESSURE"]
+  union ["Clinical Activity": "MIPS; 236_PERFORMANCE_MET_G8754"]
+  union ["Clinical Activity": "MIPS; 236_PERFORMANCE_NOT_MET_G8755"]
+
+define "Inpatient Encounter or ED Visit":
+  ["Clinical Activity": "VSAC; ENCOUNTER_INPATIENT"]
+  union ["Clinical Activity": "VSAC; EMERGENCY_DEPARTMENT_EVALUATION_AND_MANAGEMENT_VISIT"]
+  union ["Clinical Activity": "ABLE; ACUTE_INPATIENT_STAY"]
+*/
+// Note: This query is used to calculate the  the start dates where both the systolic and diastolic exist.
+// It returns the systolic, but it could be any.
+query queryYear2026Mips236BloodPressureDay(Program $program, ClinicalActivity $bloodPressureDay)
+    //"Systolic Blood Pressure"
+    $bloodPressureDay:= ClinicalActivity(
+        withValueSet("Ecqm_Direct_Reference_CodesYear2026", "SYSTOLIC_BLOOD_PRESSURE") ||
+        withValueSet("MipsYear2026", "236_PERFORMANCE_MET_G8752") ||
+        withValueSet("MipsYear2026", "236_PERFORMANCE_NOT_MET_G8753"),
+        startsDuring($program.measurementPeriod)
+    )
+    //"Diastolic Blood Pressure" (matches systolic blood pressure start date)
+    and exists ClinicalActivity(
+        withValueSet("Ecqm_Direct_Reference_CodesYear2026", "DIASTOLIC_BLOOD_PRESSURE") ||
+        withValueSet("MipsYear2026", "236_PERFORMANCE_MET_G8754") ||
+        withValueSet("MipsYear2026", "236_PERFORMANCE_NOT_MET_G8755"),
+        startsDuring($program.measurementPeriod),
+        $bloodPressureDay.startDate == startDate
+    )
+    //"Inpatient Encounter or ED Visit"
+    and not (
+        exists ClinicalActivity(
+            withValueSet("VsacYear2026", "ENCOUNTER_INPATIENT") ||
+            withValueSet("VsacYear2026", "EMERGENCY_DEPARTMENT_EVALUATION_AND_MANAGEMENT_VISIT") ||
+            withValueSet("AbleYear2026", "ACUTE_INPATIENT_STAY"),
+            (stopDate != null && $bloodPressureDay.startsDuring(this)) ||
+            startDate == $bloodPressureDay.startDate
+        )
+    )
+    and not(
+        exists ClinicalActivity(
+            withValueSet("AbleYear2026", "PROCEDURE_REQUIRING_CHANGE_DIET_OR_MEDICATION"),
+            startDate == $bloodPressureDay.startDate
+        )
+    )
+end
+
+rule 'Year2026.Mips236.LastBloodPressureDay'
+salience 30
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips236')
+    $lastBloodPressureDay: ClinicalActivity() from accumulate (
+        queryYear2026Mips236BloodPressureDay($program, $bloodPressureDay;),
+        latestClinicalActivity($bloodPressureDay)
+    )
+then
+    insert(new Year2026Mips236LastBloodPressureDay($lastBloodPressureDay.startDate));
+end
+
+/*
+define "Most Recent Systolic Blood Pressure"  
+   "Qualifying Systolic Blood Pressure" SBP
+        with "Last Blood Pressure Day" MostRecentBPDay
+        such that SBP.start date = MostRecentBPDay.start_date
+
+define "Qualifying Systolic Blood Pressure"
+  "Systolic Blood Pressure" BloodPressure
+        where BloodPressure.start_date during "Measurement Period"
+        and not exists (  "Inpatient Encounter or ED Visit" Encounter
+                          where (   (   BloodPressure.start_date during Interval[Encounter.start_date, Encounter.stop_date] 
+                                        and Encounter.stop_date is not null or empty    )   
+                                    or BloodPressure.start_date = Encounter.start_date  )
+                                    )  
+        and not exists ( ["Clinical Activity": "ABLE; PROCEDURE_REQUIRING_CHANGE_DIET_OR_MEDICATION"] Procedure
+                          where Procedure.start_date = BloodPressure.start_date)
+
+define "Systolic Blood Pressure":
+  ["Clinical Activity": "eCQM Direct Reference Codes; SYSTOLIC_BLOOD_PRESSURE"]
+  union ["Clinical Activity": "MIPS; 236_PERFORMANCE_MET_G8752"]
+  union ["Clinical Activity": "MIPS; 236_PERFORMANCE_NOT_MET_G8753"]
+
+define "Inpatient Encounter or ED Visit":
+  ["Clinical Activity": "VSAC; ENCOUNTER_INPATIENT"]
+  union ["Clinical Activity": "VSAC; EMERGENCY_DEPARTMENT_EVALUATION_AND_MANAGEMENT_VISIT"]
+  union ["Clinical Activity": "ABLE; ACUTE_INPATIENT_STAY"]
+*/
+rule 'Year2026.Mips236.MostRecentSystolicBloodPressure'
+salience 20
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips236')
+    //"Systolic Blood Pressure"
+    $systolicBloodPressure: ClinicalActivity(
+        withValueSet("Ecqm_Direct_Reference_CodesYear2026", "SYSTOLIC_BLOOD_PRESSURE") ||
+        withValueSet("MipsYear2026", "236_PERFORMANCE_MET_G8752") ||
+        withValueSet("MipsYear2026", "236_PERFORMANCE_NOT_MET_G8753"),
+        startsDuring($program.measurementPeriod)
+    )
+    and exists Year2026Mips236LastBloodPressureDay(date.equals($systolicBloodPressure.startDate))
+    //"Inpatient Encounter or ED Visit"
+    and not (
+        exists ClinicalActivity(
+            withValueSet("VsacYear2026", "ENCOUNTER_INPATIENT") ||
+            withValueSet("VsacYear2026", "EMERGENCY_DEPARTMENT_EVALUATION_AND_MANAGEMENT_VISIT") ||
+            withValueSet("AbleYear2026", "ACUTE_INPATIENT_STAY"),
+            (stopDate != null && $systolicBloodPressure.startsDuring(this)) ||
+            startDate == $systolicBloodPressure.startDate
+        )
+    )
+    and not(
+        exists ClinicalActivity(
+            withValueSet("AbleYear2026","PROCEDURE_REQUIRING_CHANGE_DIET_OR_MEDICATION"),
+            startDate == $systolicBloodPressure.startDate
+        )
+    )
+then
+    insert(new Year2026Mips236MostRecentSystolicBloodPressure($systolicBloodPressure));
+end
+
+/*
+define "Most Recent Systolic Blood Pressure Reading"  //use lowest DBP on last day
+  first(("Most Recent Systolic Blood Pressure" RecentSBP
+        where RecentSBP.code_value in"eCQM Direct Reference Codes; SYSTOLIC_BLOOD_PRESSURE" 
+              and RecentSBP.result is not null or empty) RecentSBPReading
+           ) sort by RecentSBPReading.result_as_decimal asc 
+*/
+rule 'Year2026.Mips236.MostRecentSystolicBloodPressureReading'
+salience 15
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips236')
+    $mostRecentSystolicReading: ClinicalActivity() from accumulate (
+        Year2026Mips236MostRecentSystolicBloodPressure(
+            $systolicBloodPressure: encounter,
+            encounter.resultAsDecimal != null,
+            encounter.withValueSet("Ecqm_Direct_Reference_CodesYear2026", "SYSTOLIC_BLOOD_PRESSURE")
+        ),
+        latestClinicalActivityWithLowestResult($systolicBloodPressure)
+    )
+then
+    insert(new Year2026Mips236MostRecentSystolicBloodPressureReading($mostRecentSystolicReading));
+end
+
+/*
+define "Most Recent Diastolic Blood Pressure" 
+  "Qualifying Diastolic Blood Pressure" DBP
+        with "Last Blood Pressure Day" MostRecentBPDay
+        such that DBP.start date = MostRecentBPDay.start_date
+
+define "Qualifying Diastolic Blood Pressure"
+  "Diastolic Blood Pressure" BloodPressure
+        where BloodPressure.start_date during "Measurement Period"
+        and not exists (  "Inpatient Encounter or ED Visit" Encounter
+                          where (   (   BloodPressure.start_date during Interval[Encounter.start_date, Encounter.stop_date] 
+                                        and Encounter.stop_date is not null or empty    )   
+                                    or BloodPressure.start_date = Encounter.start_date  )
+                                    ) 
+        and not exists ( ["Clinical Activity": "ABLE; PROCEDURE_REQUIRING_CHANGE_DIET_OR_MEDICATION"] Procedure
+                          where Procedure.start_date = BloodPressure.start_date)                        
+
+define "Diastolic Blood Pressure":
+  ["Clinical Activity": "eCQM Direct Reference Codes; DIASTOLIC_BLOOD_PRESSURE"]
+  union ["Clinical Activity": "MIPS; 236_PERFORMANCE_MET_G8754"]
+  union ["Clinical Activity": "MIPS; 236_PERFORMANCE_NOT_MET_G8755"]
+
+define "Inpatient Encounter or ED Visit":
+  ["Clinical Activity": "VSAC; ENCOUNTER_INPATIENT"]
+  union ["Clinical Activity": "VSAC; EMERGENCY_DEPARTMENT_EVALUATION_AND_MANAGEMENT_VISIT"]
+  union ["Clinical Activity": "ABLE; ACUTE_INPATIENT_STAY"]
+*/
+rule 'Year2026.Mips236.MostRecentDiastolicBloodPressure'
+salience 20
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips236')
+    //"Systolic Blood Pressure"
+    $diastolicBloodPressure: ClinicalActivity(
+        withValueSet("Ecqm_Direct_Reference_CodesYear2026", "DIASTOLIC_BLOOD_PRESSURE") ||
+        withValueSet("MipsYear2026", "236_PERFORMANCE_MET_G8754") ||
+        withValueSet("MipsYear2026", "236_PERFORMANCE_NOT_MET_G8755"),
+        startsDuring($program.measurementPeriod)
+    )
+    and exists Year2026Mips236LastBloodPressureDay(date.equals($diastolicBloodPressure.startDate))
+    //"Inpatient Encounter or ED Visit"
+    and not (
+        exists ClinicalActivity(
+            withValueSet("VsacYear2026","ENCOUNTER_INPATIENT") ||
+            withValueSet("VsacYear2026","EMERGENCY_DEPARTMENT_EVALUATION_AND_MANAGEMENT_VISIT") ||
+            withValueSet("AbleYear2026","ACUTE_INPATIENT_STAY"),
+            (stopDate != null && $diastolicBloodPressure.startsDuring(this)) ||
+            startDate == $diastolicBloodPressure.startDate
+        )
+    )
+    and not(
+        exists ClinicalActivity(
+            withValueSet("AbleYear2026","PROCEDURE_REQUIRING_CHANGE_DIET_OR_MEDICATION"),
+            startDate == $diastolicBloodPressure.startDate
+        )
+    )
+then
+    insert(new Year2026Mips236MostRecentDiastolicBloodPressure($diastolicBloodPressure));
+end
+
+/*
+define "Most Recent Diastolic Blood Pressure Reading"  //use lowest DBP on last day
+  first(("Most Recent Diastolic Blood Pressure" RecentDBP
+        where RecentDBP.code_value in"eCQM Direct Reference Codes; DIASTOLIC_BLOOD_PRESSURE" 
+              and RecentDBP.result is not null or empty) RecentDBPReading
+           ) sort by RecentDBPReading.result_as_decimal asc
+*/
+rule 'Year2026.Mips236.MostRecentDiastolicBloodPressureReading'
+salience 15
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips236')
+    $mostRecentDiastolicReading: ClinicalActivity() from accumulate (
+        Year2026Mips236MostRecentDiastolicBloodPressure(
+            $diastolicBloodPressure: encounter,
+            encounter.resultAsDecimal != null,
+            encounter.withValueSet("Ecqm_Direct_Reference_CodesYear2026", "DIASTOLIC_BLOOD_PRESSURE")
+        ),
+        latestClinicalActivityWithLowestResult($diastolicBloodPressure)
+    )
+then
+    insert(new Year2026Mips236MostRecentDiastolicBloodPressureReading($mostRecentDiastolicReading));
+end
+
+/*
+define "Extended Measure Result - Last SBP":
+    (("Most Recent Systolic Blood Pressure") SBP
+        where SBP.claim_id is null or empty) SBPSupplemental
+    where exists "Denominator"
+    ,
+    ExtendedMeasureResultV2(
+        SBPSupplemental
+        , 'Last Systolic BP (Supplemental)' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+    union
+    (("Most Recent Systolic Blood Pressure") SBP
+        where SBP.claim_id is not null) SBPClaims
+    where exists "Denominator"
+    ,
+    ExtendedMeasureResultV2(
+        SBPClaims
+        , 'Last Systolic BP (Claims)' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+*/
+rule 'Year2026.Mips236.EMR.LastSBP.Supplemental'
+salience -10
+when
+    EncounterDenominator($program: program, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    Year2026Mips236MostRecentSystolicBloodPressure($sbp: encounter, !encounter.isPresent(encounter.claimId))
+    and not (
+        exists Year2026Mips236EMRLastSBPSupplemental()
+    )
+then
+    insert(new Year2026Mips236EMRLastSBPSupplemental());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Supplemental)", "G9740", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Supplemental)", "G0031", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Supplemental)", "G9231", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Supplemental)", "G9910", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Supplemental)", "G2115", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Supplemental)", "G2116", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Supplemental)", "G2118", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Supplemental)", "G8752-G8754", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Supplemental)", "G8753-G8754", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Supplemental)", "G8752-G8755", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Supplemental)", "G8753-G8755", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Supplemental)", "G8756", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+end
+
+rule 'Year2026.Mips236.EMR.LastSBP.Claims'
+salience -20
+when
+    EncounterDenominator($program: program, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    and not (
+        exists Year2026Mips236EMRLastSBPSupplemental()
+    )
+    Year2026Mips236MostRecentSystolicBloodPressure($sbp: encounter, encounter.isPresent(encounter.claimId))
+    and not (
+        exists Year2026Mips236EMRLastSBPClaims()
+    )
+then
+    insert(new Year2026Mips236EMRLastSBPClaims());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Claims)", "G9740", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Claims)", "G0031", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Claims)", "G9231", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Claims)", "G9910", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Claims)", "G2115", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Claims)", "G2116", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Claims)", "G2118", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Claims)", "G8752-G8754", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Claims)", "G8753-G8754", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Claims)", "G8752-G8755", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Claims)", "G8753-G8755", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Systolic BP (Claims)", "G8756", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+end
+
+/*
+define "Extended Measure Result - Last DBP":
+    (("Most Recent Diastolic Blood Pressure") DBP
+        where DBP.claim_id is null or empty) DBPSupplemental
+    where exists "Denominator"
+    ,
+    ExtendedMeasureResultV2(
+        DBPSupplemental
+        , 'Last Diastolic BP (Supplemental)' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+    union
+    (("Most Recent Diastolic Blood Pressure") DBP
+        where DBP.claim_id is not null) DBPClaims
+    where exists "Denominator"
+    ,
+    ExtendedMeasureResultV2(
+        DBPClaims
+        , 'Last Diastolic BP (Claims)' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+*/
+rule 'Year2026.Mips236.EMR.LastDBPReading.Supplemental'
+salience -10
+when
+    EncounterDenominator($program: program, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    Year2026Mips236MostRecentDiastolicBloodPressureReading($dbp: encounter, !encounter.isPresent(encounter.claimId))
+    and not (
+        exists Year2026Mips236EMRLastDBPReadingSupplemental()
+    )
+then
+    insert(new Year2026Mips236EMRLastDBPReadingSupplemental());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G9740", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G0031", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G9231", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G9910", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G2115", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G2116", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G2118", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G8752-G8754", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G8753-G8754", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G8752-G8755", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G8753-G8755", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G8756", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+end
+
+rule 'Year2026.Mips236.EMR.LastDBPReading.Claims'
+salience -20
+when
+    EncounterDenominator($program: program, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    and not (
+        exists Year2026Mips236EMRLastDBPReadingSupplemental()
+    )
+    Year2026Mips236MostRecentDiastolicBloodPressureReading($dbp: encounter, encounter.isPresent(encounter.claimId))
+    and not (
+        exists Year2026Mips236EMRLastDBPReadingClaims()
+    )
+then
+    insert(new Year2026Mips236EMRLastDBPReadingClaims());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G9740", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G0031", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G9231", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G9910", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G2115", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G2116", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G2118", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G8752-G8754", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G8753-G8754", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G8752-G8755", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G8753-G8755", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Last Diastolic BP (Supplemental)", "G8756", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+end
+
+/*
+define "Extended Measure Result - Numerator SBP Reading":
+    ("Most Recent Systolic Blood Pressure Reading") SBPReading
+    where exists "Denominator"
+    ,
+    ExtendedMeasureResultV2(
+        SBPReading
+        , 'Systolic BP Used for Numerator Calculation' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+*/
+rule 'Year2026.Mips236.EMR.NumeratorSBPReading.Org'
+salience -10
+when
+    EncounterDenominator($program: program, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    Year2026Mips236MostRecentSystolicBloodPressureReading($sbp:encounter, encounter.resultAsDecimal < 140)
+    and not (
+        exists Year2026Mips236EMRNumeratorSBPReadingOrg()
+    )
+then
+    insert(new Year2026Mips236EMRNumeratorSBPReadingOrg());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Used for Numerator Calculation", "G9740", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Used for Numerator Calculation", "G0031", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Used for Numerator Calculation", "G9231", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Used for Numerator Calculation", "G9910", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Used for Numerator Calculation", "G2115", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Used for Numerator Calculation", "G2116", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Used for Numerator Calculation", "G2118", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Used for Numerator Calculation", "G8752-G8754", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Used for Numerator Calculation", "G8753-G8754", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Used for Numerator Calculation", "G8752-G8755", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Used for Numerator Calculation", "G8753-G8755", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Used for Numerator Calculation", "G8756", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+end
+
+rule 'Year2026.Mips236.EMR.NumeratorSBPReading.Group'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity,  $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    Year2026Mips236MostRecentSystolicBloodPressureReading($sbp:encounter, encounter.resultAsDecimal < 140)
+    and not (
+        exists Year2026Mips236EMRNumeratorSBPReadingGroup()
+    )
+then
+    insert(new Year2026Mips236EMRNumeratorSBPReadingGroup());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Used for Numerator Calculation", "G9740", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Used for Numerator Calculation", "G0031", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Used for Numerator Calculation", "G9231", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Used for Numerator Calculation", "G9910", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Used for Numerator Calculation", "G2115", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Used for Numerator Calculation", "G2116", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Used for Numerator Calculation", "G2118", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Used for Numerator Calculation", "G8752-G8754", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Used for Numerator Calculation", "G8753-G8754", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Used for Numerator Calculation", "G8752-G8755", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Used for Numerator Calculation", "G8753-G8755", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Used for Numerator Calculation", "G8756", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips236.EMR.NumeratorSBPReading.Provider'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    Year2026Mips236MostRecentSystolicBloodPressureReading($sbp:encounter, encounter.resultAsDecimal < 140)
+    and not (
+        exists Year2026Mips236EMRNumeratorSBPReadingProvider()
+    )
+then
+    insert(new Year2026Mips236EMRNumeratorSBPReadingProvider());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Used for Numerator Calculation", "G9740", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Used for Numerator Calculation", "G0031", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Used for Numerator Calculation", "G9231", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Used for Numerator Calculation", "G9910", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Used for Numerator Calculation", "G2115", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Used for Numerator Calculation", "G2116", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Used for Numerator Calculation", "G2118", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Used for Numerator Calculation", "G8752-G8754", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Used for Numerator Calculation", "G8753-G8754", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Used for Numerator Calculation", "G8752-G8755", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Used for Numerator Calculation", "G8753-G8755", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Used for Numerator Calculation", "G8756", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+end
+
+/*
+define "Extended Measure Result - Numerator DBP Reading":
+    ("Most Recent Diastolic Blood Pressure Reading") DBPReading
+    where exists "Denominator"
+    ,
+    ExtendedMeasureResultV2(
+        DBPReading
+        , 'Diastolic BP Used for Numerator Calculation' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+*/
+rule 'Year2026.Mips236.EMR.NumeratorDBPReading.Org'
+salience -10
+when
+    EncounterDenominator($program: program, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    Year2026Mips236MostRecentDiastolicBloodPressureReading($dbp:encounter, encounter.resultAsDecimal < 90)
+    and not (
+        exists Year2026Mips236EMRNumeratorSBPReadingOrg()
+    )
+then
+    insert(new Year2026Mips236EMRNumeratorSBPReadingOrg());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Used for Numerator Calculation", "G9740", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Used for Numerator Calculation", "G0031", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Used for Numerator Calculation", "G9231", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Used for Numerator Calculation", "G9910", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Used for Numerator Calculation", "G2115", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Used for Numerator Calculation", "G2116", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Used for Numerator Calculation", "G2118", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Used for Numerator Calculation", "G8752-G8754", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Used for Numerator Calculation", "G8753-G8754", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Used for Numerator Calculation", "G8752-G8755", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Used for Numerator Calculation", "G8753-G8755", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Used for Numerator Calculation", "G8756", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+end
+
+rule 'Year2026.Mips236.EMR.NumeratorDBPReading.Group'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    Year2026Mips236MostRecentDiastolicBloodPressureReading($dbp:encounter, encounter.resultAsDecimal < 90)
+    and not (
+        exists Year2026Mips236EMRNumeratorSBPReadingGroup()
+    )
+then
+    insert(new Year2026Mips236EMRNumeratorSBPReadingGroup());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Used for Numerator Calculation", "G9740", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Used for Numerator Calculation", "G0031", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Used for Numerator Calculation", "G9231", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Used for Numerator Calculation", "G9910", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Used for Numerator Calculation", "G2115", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Used for Numerator Calculation", "G2116", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Used for Numerator Calculation", "G2118", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Used for Numerator Calculation", "G8752-G8754", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Used for Numerator Calculation", "G8753-G8754", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Used for Numerator Calculation", "G8752-G8755", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Used for Numerator Calculation", "G8753-G8755", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Used for Numerator Calculation", "G8756", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips236.EMR.NumeratorDBPReading.Provider'
+salience -10
+when
+    EncounterDenominator($program: program,  $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    Year2026Mips236MostRecentDiastolicBloodPressureReading($dbp:encounter, encounter.resultAsDecimal < 90)
+    and not (
+        exists Year2026Mips236EMRNumeratorSBPReadingProvider()
+    )
+then
+    insert(new Year2026Mips236EMRNumeratorSBPReadingProvider());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Used for Numerator Calculation", "G9740", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Used for Numerator Calculation", "G0031", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Used for Numerator Calculation", "G9231", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Used for Numerator Calculation", "G9910", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Used for Numerator Calculation", "G2115", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Used for Numerator Calculation", "G2116", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Used for Numerator Calculation", "G2118", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Used for Numerator Calculation", "G8752-G8754", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Used for Numerator Calculation", "G8753-G8754", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Used for Numerator Calculation", "G8752-G8755", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Used for Numerator Calculation", "G8753-G8755", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Used for Numerator Calculation", "G8756", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+end
+
+/*
+define "Extended Measure Result - Numerator SBP Quality Code":
+    ("Most Recent Systolic Blood Pressure" SBP
+        where SBP.code_value in "MIPS; 236_PERFORMANCE_MET_G8752"
+           or SBP.code_value in "MIPS; 236_PERFORMANCE_NOT_MET_G8753") SBPGCode
+    where exists "Denominator"
+    ,
+    ExtendedMeasureResultV2(
+        SBPGCode
+        , 'Systolic BP Quality Code Used for Numerator Calculation' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+*/
+rule 'Year2026.Mips236.EMR.NumeratorSBPQualityCode.Org'
+salience -10
+when
+    EncounterDenominator($program: program, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    Year2026Mips236MostRecentSystolicBloodPressure(
+        $sbp: encounter, 
+        encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_MET_G8752") ||
+        encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_NOT_MET_G8753")
+    )
+    and not (
+        exists Year2026Mips236EMRNumeratorSBPQualityCodeOrg()
+    )
+then
+    insert(new Year2026Mips236EMRNumeratorSBPQualityCodeOrg());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Quality Code Used for Numerator Calculation", "G9740", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Quality Code Used for Numerator Calculation", "G0031", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Quality Code Used for Numerator Calculation", "G9231", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Quality Code Used for Numerator Calculation", "G9910", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Quality Code Used for Numerator Calculation", "G2115", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Quality Code Used for Numerator Calculation", "G2116", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Quality Code Used for Numerator Calculation", "G2118", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Quality Code Used for Numerator Calculation", "G8752-G8754", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Quality Code Used for Numerator Calculation", "G8753-G8754", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Quality Code Used for Numerator Calculation", "G8752-G8755", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Quality Code Used for Numerator Calculation", "G8753-G8755", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Systolic BP Quality Code Used for Numerator Calculation", "G8756", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+end
+
+rule 'Year2026.Mips236.EMR.NumeratorSBPQualityCode.Group'
+salience -10
+when
+    EncounterDenominator($program: program,  $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    Year2026Mips236MostRecentSystolicBloodPressure(
+        $sbp: encounter, 
+        encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_MET_G8752") ||
+        encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_NOT_MET_G8753")
+    )
+    and not (
+        exists Year2026Mips236EMRNumeratorSBPQualityCodeGroup()
+    )
+then
+    insert(new Year2026Mips236EMRNumeratorSBPQualityCodeGroup());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G9740", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G0031", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G9231", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G9910", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G2115", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G2116", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G2118", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G8752-G8754", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G8753-G8754", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G8752-G8755", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G8753-G8755", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G8756", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips236.EMR.NumeratorSBPQualityCode.Provider'
+salience -10
+when
+    EncounterDenominator($program: program,  $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    Year2026Mips236MostRecentSystolicBloodPressure(
+        $sbp: encounter, 
+        encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_MET_G8752") ||
+        encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_NOT_MET_G8753")
+    )
+    and not (
+        exists Year2026Mips236EMRNumeratorSBPQualityCodeProvider()
+    )
+then
+    insert(new Year2026Mips236EMRNumeratorSBPQualityCodeProvider());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G9740", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G0031", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G9231", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G9910", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G2115", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G2116", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G2118", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G8752-G8754", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G8753-G8754", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G8752-G8755", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G8753-G8755", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Systolic BP Quality Code Used for Numerator Calculation", "G8756", PopulationEnum.denominator, $sbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $sbp.startDate.toString());
+end
+
+/*
+define "Extended Measure Result - Numerator DBP Quality Code":
+    ("Most Recent Diastolic Blood Pressure" DBP
+        where DBP.code_value in "MIPS; 236_PERFORMANCE_MET_G8754"
+           or DBP.code_value in "MIPS; 236_PERFORMANCE_NOT_MET_G8755") DBPGCode
+    where exists "Denominator"
+    ,
+    ExtendedMeasureResultV2(
+        DBPGCode
+        , 'Diastolic BP Quality Code Used for Numerator Calculation' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+*/
+rule 'Year2026.Mips236.EMR.NumeratorDBPQualityCode.Org'
+salience -10
+when
+    EncounterDenominator($program: program, $measure: measure, measure == 'Year2026.Mips236')
+    $patient: Patient()
+    Year2026Mips236MostRecentDiastolicBloodPressure(
+        $dbp: encounter, 
+        encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_MET_G8754") ||
+        encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_NOT_MET_G8755")
+    )
+    and not (
+        exists Year2026Mips236EMRNumeratorDBPQualityCodeOrg()
+    )
+then
+    insert(new Year2026Mips236EMRNumeratorDBPQualityCodeOrg());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Quality Code Used for Numerator Calculation", "G9740", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Quality Code Used for Numerator Calculation", "G0031", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Quality Code Used for Numerator Calculation", "G9231", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Quality Code Used for Numerator Calculation", "G9910", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Quality Code Used for Numerator Calculation", "G2115", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Quality Code Used for Numerator Calculation", "G2116", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Quality Code Used for Numerator Calculation", "G2118", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Quality Code Used for Numerator Calculation", "G8752-G8754", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Quality Code Used for Numerator Calculation", "G8753-G8754", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Quality Code Used for Numerator Calculation", "G8752-G8755", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Quality Code Used for Numerator Calculation", "G8753-G8755", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Diastolic BP Quality Code Used for Numerator Calculation", "G8756", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+end
+
+rule 'Year2026.Mips236.EMR.NumeratorDBPQualityCode.Group'
+salience -10
+when
+    EncounterDenominator($program: program,  $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    Year2026Mips236MostRecentDiastolicBloodPressure(
+        $dbp: encounter, 
+        encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_MET_G8754") ||
+        encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_NOT_MET_G8755")
+    )
+    and not (
+        exists Year2026Mips236EMRNumeratorDBPQualityCodeGroup()
+    )
+then
+    insert(new Year2026Mips236EMRNumeratorDBPQualityCodeGroup());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G9740", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G0031", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G9231", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G9910", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G2115", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G2116", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G2118", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G8752-G8754", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G8753-G8754", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G8752-G8755", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G8753-G8755", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G8756", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips236.EMR.NumeratorDBPQualityCode.Provider'
+salience -10
+when
+    EncounterDenominator($program: program,  $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips236',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    Year2026Mips236MostRecentDiastolicBloodPressure(
+        $dbp: encounter, 
+        encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_MET_G8754") ||
+        encounter.withValueSet("MipsYear2026", "236_PERFORMANCE_NOT_MET_G8755")
+    )
+    and not (
+        exists Year2026Mips236EMRNumeratorDBPQualityCodeProvider()
+    )
+then
+    insert(new Year2026Mips236EMRNumeratorDBPQualityCodeProvider());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G9740", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G0031", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G9231", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G9910", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G2115", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G2116", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G2118", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G8752-G8754", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G8753-G8754", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G8752-G8755", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G8753-G8755", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Diastolic BP Quality Code Used for Numerator Calculation", "G8756", PopulationEnum.denominator, $dbp, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $dbp.startDate.toString());
+end

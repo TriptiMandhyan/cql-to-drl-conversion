@@ -1,0 +1,1081 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+import com.ablehealth.enums.extendedmeaures.*;
+
+global PatientResults controlSet;
+
+declare Year2026Mips400Rate2DenominatorEMROrg
+end
+declare Year2026Mips400Rate2DenominatorEMRGroup
+    groupId: String
+end
+declare Year2026Mips400Rate2DenominatorEMRProvider
+    providerId: String
+end
+declare Year2026Mips400Rate2SuccessM1234EMROrg
+end
+declare Year2026Mips400Rate2SuccessM1234EMRGroup
+    groupId: String
+end
+declare Year2026Mips400Rate2SuccessM1234EMRProvider
+    providerId: String
+end
+declare Year2026Mips400Rate2SuccessM1228EMROrg
+end
+declare Year2026Mips400Rate2SuccessM1228EMRGroup
+    groupId: String
+end
+declare Year2026Mips400Rate2SuccessM1228EMRProvider
+    providerId: String
+end
+declare Year2026Mips400Rate2SuccessM1229EMROrg
+end
+declare Year2026Mips400Rate2SuccessM1229EMRGroup
+    groupId: String
+end
+declare Year2026Mips400Rate2SuccessM1229EMRProvider
+    providerId: String
+end
+declare EncounterDenominatorGroup
+    groupId: String
+end
+/*
+define "Denominator".org:
+    (   exists("Denominator Preventive Encounter")
+        or exists ( "Denominator Encounter" E1
+                    with  "Denominator Encounter" E2
+                    such that E1.start_date != E2.start_date )
+  ) 
+  and   (   exists( ["Clinical Activity": "MIPS; 400_RATE1_PERFORMANCE_MET_M1232"] M1232
+                    where M1232.start_date on or before end of "Measurement Period")
+            or exists(  "Reactive HCV Antibody Test" ReactiveHCV
+                        where ReactiveHCV.start_date during Interval[start of "Measurement Period", end of "Measurement Period" - 3 months] )          
+         )PosTest
+  ,
+  if exists("Denominator.org")
+  return
+    ExtendedMeasureResultV2(
+          PosTest // return 1 record for each qualifying clinical activity or test, even if multiple records exist
+          , 'Positive HCV Antibody Test' as name
+          , display_date = start_date
+          , calculated_record = false
+          , population = Denominator
+          , option_id = all   
+      )
+  and( if exists ("Denominator Preventive Encounter") PrevEnc
+  return
+  ExtendedMeasureResultV2(
+        PrevEnc // return 1 record for each qualifying preventive encounter, even if multiple records exist
+        , 'Denominator Preventive Encounter' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all   
+    )
+  else from ( "Denominator Encounter" E1
+              with  "Denominator Encounter" E2
+              such that E1.start_date != E2.start_date )
+  return
+  ExtendedMeasureResultV2(
+        E1
+        , 'Denominator Encounter 1' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all   
+    )
+  and return
+  ExtendedMeasureResultV2(
+        E2
+        , 'Denominator Encounter 2' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all   
+    )      
+       
+)     
+
+define "Denominator Preventive Encounter":
+  ["Clinical Activity": "MIPS; 400_PREVENTIVE_ENCOUNTER"] Encounter
+  where Encounter.start_date during [start of  "Measurement Period", end of "Measurement Period" - 3 months]
+        and AgeInYearsAt(Encounter.start_date) >= 18
+        and Encounter.provider_id.hasMeasureMembership = true
+
+define "Denominator Encounter":
+  ["Clinical Activity": "MIPS; 400_ENCOUNTER"] Encounter
+  where Encounter.start_date during [start of  "Measurement Period", end of "Measurement Period" - 3 months]
+        and AgeInYearsAt(Encounter.start_date) >= 18
+        and Encounter.provider_id.hasMeasureMembership = true
+
+define "Reactive HCV Antibody Test"
+    (   ["Laboratory Test Performed": "VSAC; HEPATITIS_C_VIRUS_INFECTION_TESTS_FOR_HEPATITIS_C_VIRUS_ANTIBODY"]
+        union ["Laboratory Test Performed": "ABLE; HEPATITIS_C_ANTIBODY_TESTS_CPT"]
+        union ["Clinical Activity": "VSAC; HEPATITIS_C_VIRUS_INFECTION_TESTS_FOR_HEPATITIS_C_VIRUS_ANTIBODY"] 
+        union ["Clinical Activity": "ABLE; HEPATITIS_C_ANTIBODY_TESTS_CPT"] ) AntibodyTest
+    where  ( (AntibodyTest.result is not null or empty
+            and (AntibodyTest.result_code_value not in ["eCQM Direct Reference Codes; NOT_DETECTED_QUALIFIER_VALUE"]
+                  and AntibodyTest.result_code_type not in ["eCQM Direct Reference Codes; NOT_DETECTED_QUALIFIER_VALUE"] )
+            and AntibodyTest.result not in {'negative'}) //NOT case sensitive
+        or  (AntibodyTest.code_value is in ["ABLE; HCV_ANTIBODY_SIGNAL_CUTOFF"]
+             and AntibodyTest.result_as_decimal >= 1.00 ))
+*/
+rule 'Year2026.Mips400Rate2.Denominator.Org'
+salience 20
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips400Rate2')
+    (
+        (
+            $encounter: ClinicalActivity(
+                withValueSet("MipsYear2026", "400_PREVENTIVE_ENCOUNTER"),
+                startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3))
+            ) 
+        ) or (
+            $encounter: ClinicalActivity(
+                withValueSet("MipsYear2026", "400_ENCOUNTER"),
+                startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3))
+            )
+            and exists ClinicalActivity(
+                withValueSet("MipsYear2026", "400_ENCOUNTER"),
+                startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+                $encounter.startDate != startDate
+            )
+        )
+    )
+    and exists (
+        ClinicalActivity(
+            withValueSet("MipsYear2026", "400_RATE1_PERFORMANCE_MET_M1232"),
+            startsOnOrBefore($program.measurementPeriod.end)
+        ) 
+        or QdmResultDataType(
+            withValueSet("VsacYear2026", "HEPATITIS_C_VIRUS_INFECTION_TESTS_FOR_HEPATITIS_C_VIRUS_ANTIBODY") ||
+            withValueSet("AbleYear2026", "HEPATITIS_C_ANTIBODY_TESTS_CPT"),
+            startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+            (isPresent(result) && 
+            !withValueSetInResultCodeValue("Ecqm_Direct_Reference_CodesYear2026", "NOT_DETECTED_QUALIFIER_VALUE") &&
+            result.toLowerCase() != 'negative') ||
+            (withValueSet("AbleYear2026", "HCV_ANTIBODY_SIGNAL_CUTOFF") && resultAsDecimal != null && resultAsDecimal >= 1)
+        )
+    )
+    $patient: Patient(getAgeInYearsAt($encounter.startDate) >= 18)
+then
+    insert(new EncounterDenominator($program, $encounter, "Year2026.Mips400Rate2", EncounterDenominatorType.ORG));
+end
+
+rule 'Year2026.Mips400Rate2.Denominator.EMR.Org.PreventiveEncounter'
+salience -25
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.ORG)
+    $patient: Patient()
+    $preventive: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_PREVENTIVE_ENCOUNTER"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3))
+    )
+    not(
+        exists Year2026Mips400Rate2DenominatorEMROrg()
+    )
+then
+    insert(new Year2026Mips400Rate2DenominatorEMROrg());
+    String[] optionIds = new String[]{"M1229", "M1228", "M1234", "M1230"};
+    for (String optionId : optionIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Preventive Encounter", optionId, PopulationEnum.denominator, $preventive, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $preventive.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips400Rate2.Denominator.EMR.Org.EncounterPair'
+salience -25
+when
+    EncounterDenominator($program: program, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.ORG)
+    $patient: Patient()
+    $e1: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_ENCOUNTER"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3))
+    )
+    $e2: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_ENCOUNTER"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+        startDate != $e1.startDate
+    )
+    not(
+        exists Year2026Mips400Rate2DenominatorEMROrg()
+    )
+then
+    insert(new Year2026Mips400Rate2DenominatorEMROrg());
+    String[] optionIds = new String[]{"M1229", "M1228", "M1234", "M1230"};
+    for (String optionId : optionIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter 1", optionId, PopulationEnum.denominator, $e1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $e1.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter 2", optionId, PopulationEnum.denominator, $e2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $e2.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips400Rate2.Denominator.EMR.Org.PositiveHCVTest'
+salience -25
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.ORG)
+    $patient: Patient()
+    $positiveTest: QdmResultDataType(
+        withValueSet("VsacYear2026", "HEPATITIS_C_VIRUS_INFECTION_TESTS_FOR_HEPATITIS_C_VIRUS_ANTIBODY") ||
+        withValueSet("AbleYear2026", "HEPATITIS_C_ANTIBODY_TESTS_CPT"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+        (isPresent(result) && 
+        !withValueSetInResultCodeValue("Ecqm_Direct_Reference_CodesYear2026", "NOT_DETECTED_QUALIFIER_VALUE") &&
+        result.toLowerCase() != 'negative') ||
+        (withValueSet("AbleYear2026", "HCV_ANTIBODY_SIGNAL_CUTOFF") && resultAsDecimal != null && resultAsDecimal >= 1)
+    )
+    not(
+        exists Year2026Mips400Rate2DenominatorEMROrg()
+    )
+then
+    insert(new Year2026Mips400Rate2DenominatorEMROrg());
+    String[] optionIds = new String[]{"M1229", "M1228", "M1234", "M1230"};
+    for (String optionId : optionIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, "", "Positive HCV Antibody Test", optionId, PopulationEnum.denominator, $positiveTest, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $positiveTest.startDate.toString());
+    }
+end
+
+/*
+
+define "Denominator".group: 
+    (   exists "Denominator Preventive Encounter"
+        or exists ( "Denominator Encounter" E1
+                    with  "Denominator Encounter" E2
+                    such that   E1.start_date != E2.start_date 
+                                and E1.group_id = E2.group_id ) 
+    )
+    and (   exists( ["Clinical Activity": "MIPS; 400_RATE1_PERFORMANCE_MET_M1232"] M1232
+                    where M1232.start_date on or before end of "Measurement Period")
+            or exists(  "Reactive HCV Antibody Test" ReactiveHCV
+                        where ReactiveHCV.start_date during Interval[start of "Measurement Period", end of "Measurement Period" - 3 months] )       
+    )PosTest
+    ,
+  if exists("Denominator.group")
+  return
+    ExtendedMeasureResultV2(
+          PosTest // return 1 record for each qualifying clinical activity or test, even if multiple records exist
+          , 'Positive HCV Antibody Test' as name
+          , display_date = start_date
+          , calculated_record = false
+          , population = Denominator
+          , option_id = all   
+      )
+  and( if exists ("Denominator Preventive Encounter") PrevEncGroup
+  return
+  ExtendedMeasureResultV2(
+        PrevEncGroup // return 1 record for each qualifying preventive encounter, even if multiple records exist
+        , 'Denominator Preventive Encounter' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all   
+    )
+  else from ( "Denominator Encounter" E1
+              with  "Denominator Encounter" E2
+              such that E1.start_date != E2.start_date 
+              and E1.group_id = E2.group_id )
+  return
+  ExtendedMeasureResultV2(
+        E1
+        , 'Denominator Encounter 1' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all   
+    )
+  and return
+  ExtendedMeasureResultV2(
+        E2
+        , 'Denominator Encounter 2' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all   
+    )
+)
+*/
+rule 'Year2026.Mips400Rate2.Denominator.Group.PreventiveEncounter'
+salience 20
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips400Rate2')
+    $groupEncounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_PREVENTIVE_ENCOUNTER"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+        groupExternalIds != null
+    )
+    exists (
+        ClinicalActivity(
+            withValueSet("MipsYear2026", "400_RATE1_PERFORMANCE_MET_M1232"),
+            startsOnOrBefore($program.measurementPeriod.end)
+        ) 
+        or QdmResultDataType(
+            withValueSet("VsacYear2026", "HEPATITIS_C_VIRUS_INFECTION_TESTS_FOR_HEPATITIS_C_VIRUS_ANTIBODY") ||
+            withValueSet("AbleYear2026", "HEPATITIS_C_ANTIBODY_TESTS_CPT"),
+            startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+            (isPresent(result) && 
+            !withValueSetInResultCodeValue("Ecqm_Direct_Reference_CodesYear2026", "NOT_DETECTED_QUALIFIER_VALUE") &&
+            result.toLowerCase() != 'negative') ||
+            (withValueSet("AbleYear2026", "HCV_ANTIBODY_SIGNAL_CUTOFF") && resultAsDecimal != null && resultAsDecimal >= 1)
+        )
+    )
+    $patient: Patient(getAgeInYearsAt($groupEncounter.startDate) >= 18)
+then
+    insert(new EncounterDenominator($program, $groupEncounter, "Year2026.Mips400Rate2", EncounterDenominatorType.GROUP));
+end
+
+rule 'Year2026.Mips400Rate2.Denominator.Group.PreventiveEncounter.Marker'
+salience 19
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips400Rate2')
+    exists (
+        ClinicalActivity(
+            withValueSet("MipsYear2026", "400_RATE1_PERFORMANCE_MET_M1232"),
+            startsOnOrBefore($program.measurementPeriod.end)
+        ) 
+        or QdmResultDataType(
+            withValueSet("VsacYear2026", "HEPATITIS_C_VIRUS_INFECTION_TESTS_FOR_HEPATITIS_C_VIRUS_ANTIBODY") ||
+            withValueSet("AbleYear2026", "HEPATITIS_C_ANTIBODY_TESTS_CPT"),
+            startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+            (isPresent(result) && 
+            !withValueSetInResultCodeValue("Ecqm_Direct_Reference_CodesYear2026", "NOT_DETECTED_QUALIFIER_VALUE") &&
+            result.toLowerCase() != 'negative') ||
+            (withValueSet("AbleYear2026", "HCV_ANTIBODY_SIGNAL_CUTOFF") && resultAsDecimal != null && resultAsDecimal >= 1)
+        )
+    )
+    $groupEncounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_PREVENTIVE_ENCOUNTER"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+        groupExternalIds != null
+    )
+    $groupId: String() from $groupEncounter.getGroupExternalIds()
+    not (exists EncounterDenominatorGroup(groupId == $groupId))
+then
+    insert(new EncounterDenominatorGroup($groupId));
+end
+
+rule 'Year2026.Mips400Rate2.Denominator.Group.EncounterPair'
+salience 20
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips400Rate2')
+    $groupEncounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_ENCOUNTER"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+        groupExternalIds != null
+    )
+    $groupId: String() from $groupEncounter.getGroupExternalIds()
+    exists ClinicalActivity(
+        withValueSet("MipsYear2026", "400_ENCOUNTER"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+        $groupEncounter.startDate != startDate,
+        groupExternalIds != null, groupExternalIds.contains($groupId)
+    )
+    exists (
+        ClinicalActivity(
+            withValueSet("MipsYear2026", "400_RATE1_PERFORMANCE_MET_M1232"),
+            startsOnOrBefore($program.measurementPeriod.end)
+        ) 
+        or QdmResultDataType(
+            withValueSet("VsacYear2026", "HEPATITIS_C_VIRUS_INFECTION_TESTS_FOR_HEPATITIS_C_VIRUS_ANTIBODY") ||
+            withValueSet("AbleYear2026", "HEPATITIS_C_ANTIBODY_TESTS_CPT"),
+            startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+            (isPresent(result) && 
+            !withValueSetInResultCodeValue("Ecqm_Direct_Reference_CodesYear2026", "NOT_DETECTED_QUALIFIER_VALUE") &&
+            result.toLowerCase() != 'negative') ||
+            (withValueSet("AbleYear2026", "HCV_ANTIBODY_SIGNAL_CUTOFF") && resultAsDecimal != null && resultAsDecimal >= 1)
+        )
+    )
+    not (exists EncounterDenominator(clinicalActivity == $groupEncounter, type == EncounterDenominatorType.GROUP, measure == "Year2026.Mips400Rate2"))
+    $patient: Patient(getAgeInYearsAt($groupEncounter.startDate) >= 18)
+then
+    insert(new EncounterDenominator($program, $groupEncounter, "Year2026.Mips400Rate2", EncounterDenominatorType.GROUP));
+end
+
+rule 'Year2026.Mips400Rate2.Denominator.Group.EncounterPair.Marker'
+salience 19
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips400Rate2')
+    exists (
+        ClinicalActivity(
+            withValueSet("MipsYear2026", "400_RATE1_PERFORMANCE_MET_M1232"),
+            startsOnOrBefore($program.measurementPeriod.end)
+        ) 
+        or QdmResultDataType(
+            withValueSet("VsacYear2026", "HEPATITIS_C_VIRUS_INFECTION_TESTS_FOR_HEPATITIS_C_VIRUS_ANTIBODY") ||
+            withValueSet("AbleYear2026", "HEPATITIS_C_ANTIBODY_TESTS_CPT"),
+            startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+            (isPresent(result) && 
+            !withValueSetInResultCodeValue("Ecqm_Direct_Reference_CodesYear2026", "NOT_DETECTED_QUALIFIER_VALUE") &&
+            result.toLowerCase() != 'negative') ||
+            (withValueSet("AbleYear2026", "HCV_ANTIBODY_SIGNAL_CUTOFF") && resultAsDecimal != null && resultAsDecimal >= 1)
+        )
+    )
+    $enc1: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_ENCOUNTER"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+        groupExternalIds != null
+    )
+    $groupId: String() from $enc1.getGroupExternalIds()
+    not (exists EncounterDenominatorGroup(groupId == $groupId))
+    exists ClinicalActivity(
+        withValueSet("MipsYear2026", "400_ENCOUNTER"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+        startDate != $enc1.startDate,
+        groupExternalIds != null, groupExternalIds.contains($groupId)
+    )
+then
+    insert(new EncounterDenominatorGroup($groupId));
+end
+
+rule 'Year2026.Mips400Rate2.Denominator.EMR.Group.PreventiveEncounter'
+salience -25
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.GROUP, clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupId: String() from $encounter.getGroupExternalIds()
+    exists EncounterDenominatorGroup(groupId == $groupId)
+    $preventive: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_PREVENTIVE_ENCOUNTER"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+        groupExternalIds != null, groupExternalIds.contains($groupId)
+    )
+    not(
+        exists Year2026Mips400Rate2DenominatorEMRGroup(groupId == $groupId)
+    )
+then
+    insert(new Year2026Mips400Rate2DenominatorEMRGroup($groupId));
+    String[] optionIds = new String[]{"M1229", "M1228", "M1234", "M1230"};
+    for (String optionId : optionIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Denominator Preventive Encounter", optionId, PopulationEnum.denominator, $preventive, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $preventive.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips400Rate2.Denominator.EMR.Group.EncounterPair'
+salience -25
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.GROUP, clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupId: String() from $encounter.getGroupExternalIds()
+    exists EncounterDenominatorGroup(groupId == $groupId)
+    $e1: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_ENCOUNTER"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+        groupExternalIds != null, groupExternalIds.contains($groupId)
+    )
+    $e2: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_ENCOUNTER"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+        startDate != $e1.startDate, groupExternalIds != null, groupExternalIds.contains($groupId)
+    )
+    not(
+        exists Year2026Mips400Rate2DenominatorEMRGroup(groupId == $groupId)
+    )
+then
+    insert(new Year2026Mips400Rate2DenominatorEMRGroup($groupId));
+    String[] optionIds = new String[]{"M1229", "M1228", "M1234", "M1230"};
+    for (String optionId : optionIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Denominator Encounter 1", optionId, PopulationEnum.denominator, $e1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $e1.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Denominator Encounter 2", optionId, PopulationEnum.denominator, $e2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $e2.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips400Rate2.Denominator.EMR.Group.PositiveHCVTest'
+salience -25
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.GROUP, clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupId: String() from $encounter.getGroupExternalIds()
+    exists EncounterDenominatorGroup(groupId == $groupId)
+    $positiveTest: QdmResultDataType(
+        withValueSet("VsacYear2026", "HEPATITIS_C_VIRUS_INFECTION_TESTS_FOR_HEPATITIS_C_VIRUS_ANTIBODY") ||
+        withValueSet("AbleYear2026", "HEPATITIS_C_ANTIBODY_TESTS_CPT"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+        (isPresent(result) && 
+        !withValueSetInResultCodeValue("Ecqm_Direct_Reference_CodesYear2026", "NOT_DETECTED_QUALIFIER_VALUE") &&
+        result.toLowerCase() != 'negative') ||
+        (withValueSet("AbleYear2026", "HCV_ANTIBODY_SIGNAL_CUTOFF") && resultAsDecimal != null && resultAsDecimal >= 1)
+    )
+    not(
+        exists Year2026Mips400Rate2DenominatorEMRGroup(groupId == $groupId)
+    )
+then
+    insert(new Year2026Mips400Rate2DenominatorEMRGroup($groupId));
+    String[] optionIds = new String[]{"M1229", "M1228", "M1234", "M1230"};
+    for (String optionId : optionIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Positive HCV Antibody Test", optionId, PopulationEnum.denominator, $positiveTest, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $positiveTest.startDate.toString());
+    }
+end
+
+/*
+define "Denominator".provider: 
+    (   exists "Denominator Preventive Encounter"
+        or exists ( "Denominator Encounter" E1
+                    with  "Denominator Encounter" E2
+                    such that   E1.start_date != E2.start_date 
+                                and E1.provider_id = E2.provider_id )
+    ) 
+    and (   exists( ["Clinical Activity": "MIPS; 400_RATE1_PERFORMANCE_MET_M1232"] M1232
+                    where M1232.start_date on or before end of "Measurement Period")
+            or exists(  "Reactive HCV Antibody Test" ReactiveHCV
+                        where ReactiveHCV.start_date during Interval[start of "Measurement Period", end of "Measurement Period" - 3 months] )       
+    )PosTest
+    ,
+  if exists("Denominator.provider")
+  return
+    ExtendedMeasureResultV2(
+          PosTest // return 1 record for each qualifying clinical activity or test, even if multiple records exist
+          , 'Positive HCV Antibody Test' as name
+          , display_date = start_date
+          , calculated_record = false
+          , population = Denominator
+          , option_id = all   
+      )
+  and( if exists ("Denominator Preventive Encounter") PrevEncProvider
+  return
+        ExtendedMeasureResultV2(
+              PrevEncProvider // return 1 record for each qualifying preventive encounter, even if multiple records exist
+              , 'Denominator Preventive Encounter' as name
+              , display_date = start_date
+              , calculated_record = false
+              , population = Denominator
+              , option_id = all   
+          )
+  else from ( "Denominator Encounter" E1
+              with  "Denominator Encounter" E2
+              such that E1.start_date != E2.start_date 
+              and E1.provider_id = E2.provider_id )
+  return
+  ExtendedMeasureResultV2(
+        E1
+        , 'Denominator Encounter 1' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all   
+    )
+  and return
+  ExtendedMeasureResultV2(
+        E2
+        , 'Denominator Encounter 2' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all   
+    )
+)
+*/
+rule 'Year2026.Mips400Rate2.Denominator.Provider'
+salience 20
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips400Rate2')
+    (
+        (
+            $providerEncounter: ClinicalActivity(
+                withValueSet("MipsYear2026", "400_PREVENTIVE_ENCOUNTER"),
+                startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3))
+            ) 
+        ) or (
+            $providerEncounter: ClinicalActivity(
+                withValueSet("MipsYear2026", "400_ENCOUNTER"),
+                startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3))
+            )
+            and exists ClinicalActivity(
+                withValueSet("MipsYear2026", "400_ENCOUNTER"),
+                startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+                startDate != $providerEncounter.startDate,
+                providerExternalId == $providerEncounter.providerExternalId
+            )
+        )
+    )
+    and exists (
+        ClinicalActivity(
+            withValueSet("MipsYear2026", "400_RATE1_PERFORMANCE_MET_M1232"),
+            startsOnOrBefore($program.measurementPeriod.end)
+        ) 
+        or QdmResultDataType(
+            withValueSet("VsacYear2026", "HEPATITIS_C_VIRUS_INFECTION_TESTS_FOR_HEPATITIS_C_VIRUS_ANTIBODY") ||
+            withValueSet("AbleYear2026", "HEPATITIS_C_ANTIBODY_TESTS_CPT"),
+            startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+            (isPresent(result) && 
+            !withValueSetInResultCodeValue("Ecqm_Direct_Reference_CodesYear2026", "NOT_DETECTED_QUALIFIER_VALUE") &&
+            result.toLowerCase() != 'negative') ||
+            (withValueSet("AbleYear2026", "HCV_ANTIBODY_SIGNAL_CUTOFF") && resultAsDecimal != null && resultAsDecimal >= 1)
+        )
+    )
+    $patient: Patient(getAgeInYearsAt($providerEncounter.startDate) >= 18)
+then
+    insert(new EncounterDenominator($program, $providerEncounter, "Year2026.Mips400Rate2", EncounterDenominatorType.PROVIDER));
+end
+
+rule 'Year2026.Mips400Rate2.Denominator.EMR.Provider.PreventiveEncounter'
+salience -25
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.PROVIDER, clinicalActivity.isPresent(clinicalActivity.providerExternalId))
+    $patient: Patient()
+    $preventive: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_PREVENTIVE_ENCOUNTER"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+        providerExternalId == $encounter.providerExternalId
+    )
+    not(
+        exists Year2026Mips400Rate2DenominatorEMRProvider($encounter.providerExternalId == providerId)
+    )
+then
+    insert(new Year2026Mips400Rate2DenominatorEMRProvider($encounter.providerExternalId));
+    String[] optionIds = new String[]{"M1229", "M1228", "M1234", "M1230"};
+    for (String optionId : optionIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Preventive Encounter", optionId, PopulationEnum.denominator, $preventive, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $preventive.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips400Rate2.Denominator.EMR.Provider.EncounterPair'
+salience -25
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.PROVIDER, clinicalActivity.isPresent(clinicalActivity.providerExternalId))
+    $patient: Patient()
+    $e1: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_ENCOUNTER"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+        providerExternalId == $encounter.providerExternalId
+    )
+    $e2: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_ENCOUNTER"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+        startDate != $e1.startDate,
+        providerExternalId == $encounter.providerExternalId
+    )
+    not(
+        exists Year2026Mips400Rate2DenominatorEMRProvider($encounter.providerExternalId == providerId)
+    )
+then
+    insert(new Year2026Mips400Rate2DenominatorEMRProvider($encounter.providerExternalId));
+    String[] optionIds = new String[]{"M1229", "M1228", "M1234", "M1230"};
+    for (String optionId : optionIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter 1", optionId, PopulationEnum.denominator, $e1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $e1.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter 2", optionId, PopulationEnum.denominator, $e2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $e2.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips400Rate2.Denominator.EMR.Provider.PositiveHCVTest'
+salience -25
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.PROVIDER, clinicalActivity.isPresent(clinicalActivity.providerExternalId))
+    $patient: Patient()
+    $positiveTest: QdmResultDataType(
+        withValueSet("VsacYear2026", "HEPATITIS_C_VIRUS_INFECTION_TESTS_FOR_HEPATITIS_C_VIRUS_ANTIBODY") ||
+        withValueSet("AbleYear2026", "HEPATITIS_C_ANTIBODY_TESTS_CPT"),
+        startsDuring($program.measurementPeriod.start, $program.measurementPeriod.end.minusMonths(3)),
+        (isPresent(result) && 
+        !withValueSetInResultCodeValue("Ecqm_Direct_Reference_CodesYear2026", "NOT_DETECTED_QUALIFIER_VALUE") &&
+        result.toLowerCase() != 'negative') ||
+        (withValueSet("AbleYear2026", "HCV_ANTIBODY_SIGNAL_CUTOFF") && resultAsDecimal != null && resultAsDecimal >= 1)
+    )
+    not(
+        exists Year2026Mips400Rate2DenominatorEMRProvider($encounter.providerExternalId == providerId)
+    )
+then
+    insert(new Year2026Mips400Rate2DenominatorEMRProvider($encounter.providerExternalId));
+    String[] optionIds = new String[]{"M1229", "M1228", "M1234", "M1230"};
+    for (String optionId : optionIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Positive HCV Antibody Test", optionId, PopulationEnum.denominator, $positiveTest, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $positiveTest.startDate.toString());
+    }
+end
+
+/*
+define "Numerator Performance Met-M1229".org
+  /* Option ID: M1229 
+  (( ["Clinical Activity": "MIPS; 400_RATE2_PERFORMANCE_MET_M1229"] M1229
+              where M1229.start_date during Interval[start of "Measurement Period", end of "Measurement Period"])
+  and exists( "Denominator".org)) M1229Org
+  ,
+  return
+  ExtendedMeasureResultV2(
+        M1229Org
+        , 'Numerator Performance Met M1229' as name
+        , display_date = start_date
+        , calculated_record = false
+         , population = Numerator Performance Met 
+         , option_id = M1229   
+    )
+*/
+rule 'Year2026.Mips400Rate2.Success.M1229.Org.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.ORG)
+    $patient: Patient()
+    $result: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_RATE2_PERFORMANCE_MET_M1229"),
+        startsDuring($program.measurementPeriod)
+    )
+    not(
+        exists Year2026Mips400Rate2SuccessM1229EMROrg()
+    )
+then
+    insert(new Year2026Mips400Rate2SuccessM1229EMROrg());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "M1229");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Numerator Performance Met M1229", "M1229", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met-M1229".group
+  /* Option ID: M1229 
+  (( ["Clinical Activity": "MIPS; 400_RATE2_PERFORMANCE_MET_M1229"] M1229
+              where M1229.start_date during Interval[start of "Measurement Period", end of "Measurement Period"])
+  and exists( "Denominator".group)) M1229Group
+  ,
+  return
+  ExtendedMeasureResultV2(
+        M1229Group
+        , 'Numerator Performance Met M1229' as name
+        , display_date = start_date
+        , calculated_record = false
+         , population = Numerator Performance Met 
+         , option_id = M1229   
+    )
+*/
+rule 'Year2026.Mips400Rate2.Success.M1229.Group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.GROUP, clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupId: String() from $encounter.getGroupExternalIds()
+    exists EncounterDenominatorGroup(groupId == $groupId)
+    not (exists Year2026Mips400Rate2SuccessM1229EMRGroup(groupId == $groupId))
+    $result: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_RATE2_PERFORMANCE_MET_M1229"),
+        startsDuring($program.measurementPeriod)
+    )
+then
+    insert(new Year2026Mips400Rate2SuccessM1229EMRGroup($groupId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupId, $measure, MeasureStatusValue.SUCCESS, "M1229");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Numerator Performance Met M1229", "M1229", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met-M1229".provider
+  /* Option ID: M1229 
+  (( ["Clinical Activity": "MIPS; 400_RATE2_PERFORMANCE_MET_M1229"] M1229
+              where M1229.start_date during Interval[start of "Measurement Period", end of "Measurement Period"])
+  and exists( "Denominator".provider)) M1229Provider
+  ,
+  return
+  ExtendedMeasureResultV2(
+        M1229Provider
+        , 'Numerator Performance Met M1229' as name
+        , display_date = start_date
+        , calculated_record = false
+         , population = Numerator Performance Met 
+         , option_id = M1229   
+    )
+*/
+rule 'Year2026.Mips400Rate2.Success.M1229.Provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.PROVIDER, clinicalActivity.isPresent(clinicalActivity.providerExternalId))
+    $patient: Patient()
+    not (exists Year2026Mips400Rate2SuccessM1229EMRProvider(providerId == $encounter.providerExternalId))
+    $result: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_RATE2_PERFORMANCE_MET_M1229"),
+        startsDuring($program.measurementPeriod)
+    )
+then
+    insert(new Year2026Mips400Rate2SuccessM1229EMRProvider($encounter.providerExternalId));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "M1229");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Numerator Performance Met M1229", "M1229", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met-M1228".org
+  /* Option ID: M1228 
+  (( ["Clinical Activity": "MIPS; 400_RATE2_PERFORMANCE_MET_M1228"] M1228
+        where M1228.start_date during Interval[start of "Measurement Period", end of "Measurement Period"])
+  and exists( "Denominator".org)) M1228Org
+  ,
+  return
+  ExtendedMeasureResultV2(
+        M1228Org
+        , 'Numerator Performance Met M1228' as name
+        , display_date = start_date
+        , calculated_record = false
+         , population = Numerator Performance Met 
+         , option_id = M1228   
+    )
+*/
+rule 'Year2026.Mips400Rate2.Success.M1228.Org.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.ORG)
+    $patient: Patient()
+    $result: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_RATE2_PERFORMANCE_MET_M1228"),
+        startsDuring($program.measurementPeriod)
+    )
+    not(
+        exists Year2026Mips400Rate2SuccessM1228EMROrg()
+    )
+then
+    insert(new Year2026Mips400Rate2SuccessM1228EMROrg());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "M1228");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Numerator Performance Met M1228", "M1228", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met-M1228".group
+  /* Option ID: M1228 
+   (( ["Clinical Activity": "MIPS; 400_RATE2_PERFORMANCE_MET_M1228"] M1228
+        where M1228.start_date during Interval[start of "Measurement Period", end of "Measurement Period"])
+  and exists( "Denominator".group)) M1228Group
+  ,
+  return
+  ExtendedMeasureResultV2(
+        M1228Group
+        , 'Numerator Performance Met M1228' as name
+        , display_date = start_date
+        , calculated_record = false
+         , population = Numerator Performance Met 
+         , option_id = M1228   
+    )
+*/
+rule 'Year2026.Mips400Rate2.Success.M1228.Group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.GROUP, clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupId: String() from $encounter.getGroupExternalIds()
+    exists EncounterDenominatorGroup(groupId == $groupId)
+    not (exists Year2026Mips400Rate2SuccessM1228EMRGroup(groupId == $groupId))
+    $result: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_RATE2_PERFORMANCE_MET_M1228"),
+        startsDuring($program.measurementPeriod)
+    )
+then
+    insert(new Year2026Mips400Rate2SuccessM1228EMRGroup($groupId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupId, $measure, MeasureStatusValue.SUCCESS, "M1228");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Numerator Performance Met M1228", "M1228", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met-M1228".provider
+  /* Option ID: M1228 
+   (( ["Clinical Activity": "MIPS; 400_RATE2_PERFORMANCE_MET_M1228"] M1228
+        where M1228.start_date during Interval[start of "Measurement Period", end of "Measurement Period"])
+  and exists( "Denominator".provider)) M1228Provider
+  ,
+  return
+  ExtendedMeasureResultV2(
+        M1228Provider
+        , 'Numerator Performance Met M1228' as name
+        , display_date = start_date
+        , calculated_record = false
+         , population = Numerator Performance Met 
+         , option_id = M1228   
+    )
+*/
+rule 'Year2026.Mips400Rate2.Success.M1228.Provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.PROVIDER, clinicalActivity.isPresent(clinicalActivity.providerExternalId))
+    $patient: Patient()
+    not (exists Year2026Mips400Rate2SuccessM1228EMRProvider(providerId == $encounter.providerExternalId))
+    $result: ClinicalActivity(
+        withValueSet("MipsYear2026", "400_RATE2_PERFORMANCE_MET_M1228"),
+        startsDuring($program.measurementPeriod)
+    )
+then
+    insert(new Year2026Mips400Rate2SuccessM1228EMRProvider($encounter.providerExternalId));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "M1228");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Numerator Performance Met M1228", "M1228", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Negative HCV RNA Test"
+    (  ["Laboratory Test Performed": "ABLE; HEPATITIS_C_VIRAL_LOAD_TESTS_CPT"]
+        union ["Clinical Activity": "ABLE; HEPATITIS_C_VIRAL_LOAD_TESTS_CPT"]  ) HCVRNATest
+    where ( ( HCVRNATest.result_code_value in ["eCQM Direct Reference Codes; NOT_DETECTED_QUALIFIER_VALUE"]
+                  and AntibodyTest.result_code_type in ["eCQM Direct Reference Codes; NOT_DETECTED_QUALIFIER_VALUE"] )
+            or HCVRNATest.result in {'negative'}) //NOT case sensitive
+
+define "Reactive HCV Antibody Test"
+    (   ["Laboratory Test Performed": "VSAC; HEPATITIS_C_VIRUS_INFECTION_TESTS_FOR_HEPATITIS_C_VIRUS_ANTIBODY"]
+        union ["Laboratory Test Performed": "ABLE; HEPATITIS_C_ANTIBODY_TESTS_CPT"]
+        union ["Clinical Activity": "VSAC; HEPATITIS_C_VIRUS_INFECTION_TESTS_FOR_HEPATITIS_C_VIRUS_ANTIBODY"] 
+        union ["Clinical Activity": "ABLE; HEPATITIS_C_ANTIBODY_TESTS_CPT"] ) AntibodyTest
+    where  ( (AntibodyTest.result is not null or empty
+            and (AntibodyTest.result_code_value not in ["eCQM Direct Reference Codes; NOT_DETECTED_QUALIFIER_VALUE"]
+                  and AntibodyTest.result_code_type not in ["eCQM Direct Reference Codes; NOT_DETECTED_QUALIFIER_VALUE"] )
+            and AntibodyTest.result not in {'negative'}) //NOT case sensitive
+        or  (AntibodyTest.code_value is in ["ABLE; HCV_ANTIBODY_SIGNAL_CUTOFF"]
+             and AntibodyTest.result_as_decimal >= 1.00 ))
+
+define "Numerator Performance Met-M1234".org
+  /* Option ID: M1234 
+  ((( ["Clinical Activity": "MIPS; 400_RATE2_PERFORMANCE_MET_M1234"] M1234
+        where M1234.start_date on or before end of "Measurement Period" )    
+  union ("Negative HCV RNA Test" NegativeRNATest
+              with "Reactive HCV Antibody Test" ReactiveHCV 
+              such that NegativeRNATest.start_date start during Interval[ReactiveHCV.start_date, end of "Measurement Period"]     )
+        ) NegRNA 
+  and exists "Denominator".org) NegRNAOrg
+  ,
+  return
+  ExtendedMeasureResultV2(
+        NegRNAOrg
+        , 'Numerator Performance Met M1234 - Negative HCV RNA Test' as name
+        , display_date = start_date
+        , calculated_record = false
+         , population = Numerator Performance Met 
+         , option_id = M1234   
+    )
+*/
+rule 'Year2026.Mips400Rate2.Success.M1234.Org.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.ORG)
+    $patient: Patient()
+    queryYear2026Mips400Rate2SuccessM1234($program, $result;)
+    not(
+        exists Year2026Mips400Rate2SuccessM1234EMROrg()
+    )
+then
+    insert(new Year2026Mips400Rate2SuccessM1234EMROrg());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "M1234");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Numerator Performance Met M1234 - Negative HCV RNA Test", "M1234", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+query queryYear2026Mips400Rate2SuccessM1234(Program $program, QdmDatatype $result)
+    $result:= ClinicalActivity(
+        withValueSet("MipsYear2026", "400_RATE2_PERFORMANCE_MET_M1234"),
+        startsDuring($program.measurementPeriod)
+    )
+    or (
+        //"Negative HCV RNA Test"
+        $result:= QdmResultDataType(
+            withValueSet("AbleYear2026", "HEPATITIS_C_VIRAL_LOAD_TESTS_CPT"),
+            withValueSetInResultCodeValue("Ecqm_Direct_Reference_CodesYear2026", "NOT_DETECTED_QUALIFIER_VALUE") ||
+            result.toLowerCase() == 'negative'
+        )
+        //"Reactive HCV Antibody Test"
+        and exists (
+            QdmResultDataType(
+                withValueSet("VsacYear2026", "HEPATITIS_C_VIRUS_INFECTION_TESTS_FOR_HEPATITIS_C_VIRUS_ANTIBODY") ||
+                withValueSet("AbleYear2026", "HEPATITIS_C_ANTIBODY_TESTS_CPT"),
+                ((isPresent(result) &&
+                !withValueSetInResultCodeValue("Ecqm_Direct_Reference_CodesYear2026", "NOT_DETECTED_QUALIFIER_VALUE") &&
+                result.toLowerCase() != 'negative') ||
+                (withValueSet("AbleYear2026", "HCV_ANTIBODY_SIGNAL_CUTOFF") && resultAsDecimal != null && resultAsDecimal >= 1)),
+                $result.startsDuring(startDate, $program.measurementPeriod.end)
+            )
+        )
+    )
+end
+
+/*
+define "Numerator Performance Met-M1234".group
+  /* Option ID: M1234 
+  ((( ["Clinical Activity": "MIPS; 400_RATE2_PERFORMANCE_MET_M1234"] M1234
+        where M1234.start_date on or before end of "Measurement Period" )    
+  union ("Negative HCV RNA Test" NegativeRNATest
+              with "Reactive HCV Antibody Test" ReactiveHCV 
+              such that NegativeRNATest.start_date start during Interval[ReactiveHCV.start_date, end of "Measurement Period"]     )
+        ) NegRNA 
+  and exists "Denominator".group) NegRNAGroup
+  ,
+  return
+  ExtendedMeasureResultV2(
+        NegRNAGroup
+        , 'Numerator Performance Met M1234 - Negative HCV RNA Test' as name
+        , display_date = start_date
+        , calculated_record = false
+         , population = Numerator Performance Met 
+         , option_id = M1234   
+    )
+*/
+rule 'Year2026.Mips400Rate2.Success.M1234.Group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.GROUP, clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupId: String() from $encounter.getGroupExternalIds()
+    exists EncounterDenominatorGroup(groupId == $groupId)
+    not (exists Year2026Mips400Rate2SuccessM1234EMRGroup(groupId == $groupId))
+    queryYear2026Mips400Rate2SuccessM1234($program, $result;)
+then
+    insert(new Year2026Mips400Rate2SuccessM1234EMRGroup($groupId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupId, $measure, MeasureStatusValue.SUCCESS, "M1234");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Numerator Performance Met M1234 - Negative HCV RNA Test", "M1234", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met-M1234".provider
+  /* Option ID: M1234 
+ ((( ["Clinical Activity": "MIPS; 400_RATE2_PERFORMANCE_MET_M1234"] M1234
+        where M1234.start_date on or before end of "Measurement Period" )    
+  union ("Negative HCV RNA Test" NegativeRNATest
+              with "Reactive HCV Antibody Test" ReactiveHCV 
+              such that NegativeRNATest.start_date start during Interval[ReactiveHCV.start_date, end of "Measurement Period"]     )
+        ) NegRNA 
+  and exists "Denominator".provider) NegRNAProvider
+  ,
+  return
+  ExtendedMeasureResultV2(
+        NegRNAProvider
+        , 'Numerator Performance Met M1234 - Negative HCV RNA Test' as name
+        , display_date = start_date
+        , calculated_record = false
+         , population = Numerator Performance Met 
+         , option_id = M1234   
+    )        
+*/
+rule 'Year2026.Mips400Rate2.Success.M1234.Provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.PROVIDER, clinicalActivity.isPresent(clinicalActivity.providerExternalId))
+    $patient: Patient()
+    not (exists Year2026Mips400Rate2SuccessM1234EMRProvider(providerId == $encounter.providerExternalId))
+    queryYear2026Mips400Rate2SuccessM1234($program, $result;)
+then
+    insert(new Year2026Mips400Rate2SuccessM1234EMRProvider($encounter.providerExternalId));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "M1234");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Numerator Performance Met M1234 - Negative HCV RNA Test", "M1234", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Numerator Performance Not Met-M1230".org:
+* Option ID: M1230 *
+ "Denominator".org
+ and not "Numerator Performance Met-M1229".org
+ and not "Numerator Performance Met-M1228".org
+ and not "Numerator Performance Met-M1234".org
+*/
+rule 'Year2026.Mips400Rate2.Gap.M1230.Org'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.ORG)
+    $patient: Patient()
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.GAP, "M1230");
+end
+
+/*
+define "Numerator Performance Not Met-M1230".group:
+* Option ID: M1230 *
+ "Denominator".group
+ and not "Numerator Performance Met-M1229".group
+ and not "Numerator Performance Met-M1228".group
+ and not "Numerator Performance Met-M1234".group
+*/
+rule 'Year2026.Mips400Rate2.Gap.M1230.Group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.GROUP, clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupId: String() from $encounter.getGroupExternalIds()
+    exists EncounterDenominatorGroup(groupId == $groupId)
+then
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupId, $measure, MeasureStatusValue.GAP, "M1230");
+end
+
+/*
+define "Numerator Performance Not Met-M1230".provider:
+* Option ID: M1230 *
+ "Denominator".provider
+ and not "Numerator Performance Met-M1229".provider
+ and not "Numerator Performance Met-M1228".provider
+ and not "Numerator Performance Met-M1234".provider
+*/
+rule 'Year2026.Mips400Rate2.Gap.M1230.Provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips400Rate2', type == EncounterDenominatorType.PROVIDER)
+    $patient: Patient()
+then
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, 'M1230');
+end

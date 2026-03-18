@@ -1,0 +1,178 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+import com.ablehealth.enums.extendedmeaures.*;
+
+import accumulate com.ablehealth.functions.LatestClinicalActivityAccumulateFunction latestClinicalActivity;
+
+global PatientResults controlSet;
+
+/**
+define "Denominator":
+  "Denominator Procedure" Procedure
+  ,
+  if exists("Denominator")
+  then
+  return
+    ExtendedMeasureResultV2(
+        Procedure //return 1 record even if multiple exist
+        , 'Denominator Procedure' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+  and from ["Clinical Activity": "MIPS; 405_INCIDENTAL_FINDING"] IncidentalFinding
+      with "Denominator" Procedure
+      such that IncidentalFinding.start_date during Interval[Procedure.start_date, Procedure.stop_date]
+  return
+    ExtendedMeasureResultV2(
+        IncidentalFinding //return 1 record even if multiple exist
+        , 'Incidental Finding' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+
+define "Denominator Procedure":
+  ["Clinical Activity": "MIPS; 405_PROCEDURE"] Encounter
+      where Encounter.start_date during "Measurement Period"
+        and AgeInYearsAt(Encounter.start_date) >= 18
+        and Encounter.provider_id.hasMeasureMembership = true
+        and Encounter.code_modifier not in ('GQ', 'GT', '95')
+        and Encounter.place_of_service != ('02', '10')
+      with ["Clinical Activity": "MIPS; 405_INCIDENTAL_FINDING"] P
+      such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date]
+    return distinct(Encounter.start_date)
+*/
+rule 'Year2026.Mips405.Denominator'
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips405")
+    $patient: Patient()
+    $encounter: ClinicalActivity (
+        withValueSet("MipsYear2026", "405_PROCEDURE"),
+        startsDuring($program.measurementPeriod),
+        withCodeModifiersNotIn("GQ", "GT", "95"),
+        withPlaceOfServiceNotIn("02","10"),
+        $patient.getAgeInYearsAt(this.startDate) >= 18
+    )
+    and exists ClinicalActivity(
+        withValueSet("MipsYear2026", "405_INCIDENTAL_FINDING"),
+        startsDuring($encounter)
+    )
+    and not(
+        exists EncounterDenominator(
+            measure == "Year2026.Mips405",
+            clinicalActivity.startDate == $encounter.startDate
+        )
+    )
+then
+    insert(new EncounterDenominator($program, $encounter, "Year2026.Mips405"));
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips405", $encounter, "Denominator Procedure", "G9548", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips405", $encounter, "Denominator Procedure", "G9549", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips405", $encounter, "Denominator Procedure", "G9550", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end
+
+rule 'Year2026.Mips405.Denominator.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips405")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "405_INCIDENTAL_FINDING"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    controlSet.addEncounterEMR($program, $patient, $measure, $result, "Incidental Finding", "G9548", PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, $measure, $result, "Incidental Finding", "G9549", PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, $measure, $result, "Incidental Finding", "G9550", PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/**
+define "Numerator Performance Met G9548":
+   *
+   * Option ID: G9548
+   *
+  "Denominator Procedure" Encounter
+    with ["Clinical Activity": "MIPS; 405_PERFORMANCE_MET_G9548"] P1
+      such that P1.start_date during Interval[Encounter.start_date, Encounter.stop_date]
+  ,
+  ExtendedMeasureResultV2(
+      P1 //return 1 record even if multiple exist
+      , 'Performance Met G9548' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Numerator
+      , option_id = G9548
+  )
+*/
+rule 'Year2026.Mips405.Success.G9548'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips405")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "405_PERFORMANCE_MET_G9548"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.SUCCESS, "G9548");
+    controlSet.addEncounterEMR($program, $patient, $measure, $result, "Performance Met G9548", "G9548", PopulationEnum.numerator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/**
+define "Denominator Exception G9549":
+  /*
+   * Option ID: G9549
+   *
+  "Denominator Procedure" Encounter
+    with ["Clinical Activity": "MIPS; 405_DENOMINATOR_EXCEPTION_G9549"] P2
+      such that P2.start_date during Interval[Encounter.start_date, Encounter.stop_date]
+  ,
+  ExtendedMeasureResultV2(
+      P2 //return 1 record even if multiple exist
+      , 'Denominator Exception G9549' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator Exception
+      , option_id = G9549
+  )
+*/
+rule 'Year2026.Mips405.Exception.G9549'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips405")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "405_DENOMINATOR_EXCEPTION_G9549"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCEPTION, "G9549");
+    controlSet.addEncounterEMR($program, $patient, $measure, $result, "Denominator Exception G9549", "G9549", PopulationEnum.denominator_exception, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/**
+define "Numerator Performance Not Met G9550":
+   *
+   * Option ID: G9550
+   *
+not "Numerator Performance Met G9548"
+and not "Denominator Exception G9549"
+*/
+rule 'Year2026.Mips405.Gap.nodata'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips405")
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.GAP, "G9550");
+end

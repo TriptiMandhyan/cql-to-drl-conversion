@@ -1,0 +1,2047 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+import com.ablehealth.enums.extendedmeaures.*;
+
+import accumulate com.ablehealth.functions.LatestQdmDatatypeAccumulateFunction latestQdmDatatype;
+
+global PatientResults controlSet;
+
+declare Year2026Mips238Rate1TwoHighRiskMedicationAntiInfectivesOrgEvidence
+end
+
+declare Year2026Mips238Rate1TwoHighRiskMedicationHypnoticsOrgEvidence
+end
+
+declare Year2026Mips238Rate1TwoHighRiskMedicationAntiInfectivesGroupEvidence
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips238Rate1TwoHighRiskMedicationHypnoticsGroupEvidence
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips238Rate1TwoHighRiskMedicationAntiInfectivesProviderEvidence
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips238Rate1TwoHighRiskMedicationHypnoticsProviderEvidence
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips238Rate1MedicationListOrg
+    med1: Medication
+    med2: Medication
+end
+
+declare Year2026Mips238Rate1MedicationListGroup
+    encounter: ClinicalActivity
+    med1: Medication
+    med2: Medication
+end
+
+declare Year2026Mips238Rate1MedicationListProvider
+    encounter: ClinicalActivity
+    med1: Medication
+    med2: Medication
+end
+
+declare Year2026Mips238Rate1AverageDailyDoseDigoxinOrgEvidence
+    med1: Medication
+    med2: Medication
+    dose: Number
+end
+
+declare Year2026Mips238Rate1AverageDailyDoseDoxepinOrgEvidence
+    med1: Medication
+    med2: Medication
+    dose: Number
+end
+
+declare Year2026Mips238Rate1AverageDailyDoseDigoxinGroupEvidence
+    encounter: ClinicalActivity
+    med1: Medication
+    med2: Medication
+    dose: Number
+end
+
+declare Year2026Mips238Rate1AverageDailyDoseDoxepinGroupEvidence
+    encounter: ClinicalActivity
+    med1: Medication
+    med2: Medication
+    dose: Number
+end
+
+declare Year2026Mips238Rate1AverageDailyDoseDigoxinProviderEvidence
+    encounter: ClinicalActivity
+    med1: Medication
+    med2: Medication
+    dose: Number
+end
+
+declare Year2026Mips238Rate1AverageDailyDoseDoxepinProviderEvidence
+    encounter: ClinicalActivity
+    med1: Medication
+    med2: Medication
+    dose: Number
+end
+
+declare Year2026Mips238Rate1SuccessG9367GroupEMR
+    groupId: String
+end
+
+declare Year2026Mips238Rate1SuccessG9367ProviderEMR
+    providerId: String
+end
+
+declare Year2026Mips238Rate1SuccessG9367OrgEMR
+end
+
+declare Year2026Mips238Rate1ExclusionHospiceOrg
+end
+
+declare Year2026Mips238Rate1ExclusionHospiceGroup
+    groupExternalId: String
+end
+
+declare Year2026Mips238Rate1ExclusionHospiceProvider
+    providerExternalId: String
+end
+
+declare Year2026Mips238Rate1ExclusionPalliativeCareOrg
+end
+
+declare Year2026Mips238Rate1ExclusionPalliativeCareGroup
+    groupExternalId: String
+end
+
+declare Year2026Mips238Rate1ExclusionPalliativeCareProvider
+    providerExternalId: String
+end
+
+/*
+define "Denominator Exclusion G9741 Hospice".all:
+ Option ID: G9741 
+   "Denominator".all
+ 	and exists(sharedHospice."Has Hospice") HospiceEvidence
+  ,
+  if exists "Denominator Exclusion G9741 Hospice".all return
+  ExtendedMeasureResultV2(
+      HospiceEvidence
+      , 'Evidence of Hospice' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Exclusion
+      , option_id = G9741
+  )
+*/
+rule 'Year2026.Mips238Rate1.Exclusion.G9741_Hospice.Org.EMR'
+when
+    EncounterDenominator($program: program, measure == 'Year2026.Mips238Rate1')
+    $patient: Patient()
+    $hospice: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedHashospiceInMeasurementPeriod($program, $hospiceResult;),
+        latestQdmDatatype($hospiceResult)
+    )
+    not (exists Year2026Mips238Rate1ExclusionHospiceOrg())
+then
+    insert(new Year2026Mips238Rate1ExclusionHospiceOrg());
+    controlSet.addPatientMeasureStatus($program, $patient, 'Year2026.Mips238Rate1', MeasureStatusValue.EXCLUSION, "G9741");
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "Evidence of Hospice", "G9741", PopulationEnum.denominator_exclusion, $hospice, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $hospice.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate1.Exclusion.G9741_Hospice.Group.EMR'
+when
+    EncounterDenominator($program: program, $measure: measure, measure == "Year2026.Mips238Rate1", $encounter: clinicalActivity,
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.groupExternalIds
+    not (exists Year2026Mips238Rate1ExclusionHospiceGroup(groupExternalId == $groupExternalId))
+    $hospice: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedHashospiceInMeasurementPeriod($program, $hospiceResult;),
+        latestQdmDatatype($hospiceResult)
+    )
+then
+    insert(new Year2026Mips238Rate1ExclusionHospiceGroup($groupExternalId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupExternalId, $measure, MeasureStatusValue.EXCLUSION, "G9741");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Evidence of Hospice", "G9741", PopulationEnum.denominator_exclusion, $hospice, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $hospice.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate1.Exclusion.G9741_Hospice.Provider.EMR'
+when
+    EncounterDenominator($program: program, $measure: measure, measure == "Year2026.Mips238Rate1", $encounter: clinicalActivity,
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    $hospice: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedHashospiceInMeasurementPeriod($program, $hospiceResult;),
+        latestQdmDatatype($hospiceResult)
+    )
+    not (exists Year2026Mips238Rate1ExclusionHospiceProvider(providerExternalId == $encounter.providerExternalId))
+then
+    insert(new Year2026Mips238Rate1ExclusionHospiceProvider($encounter.providerExternalId));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, "G9741");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Evidence of Hospice", "G9741", PopulationEnum.denominator_exclusion, $hospice, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $hospice.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion G0034 Palliative Care".all:
+ Option ID: G0034 
+   "Denominator".all
+ 	and exists(sharedPalliativeCare."Has Palliative Care") PalliativeEvidence
+  ,
+  if exists "Denominator Exclusion G0034 Palliative Care".all return
+  ExtendedMeasureResultV2(
+      PalliativeEvidence
+      , 'Evidence of Palliative Care' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Exclusion
+      , option_id = G0034
+  )
+*/
+rule 'Year2026.Mips238Rate1.Exclusion.G0034_PalliativeCare.Org.EMR'
+when
+    EncounterDenominator($program: program, measure == 'Year2026.Mips238Rate1')
+    $patient: Patient()
+    $palliative: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedPalliativeCareInMeasurementPeriod($program, $palliativeResult;),
+        latestQdmDatatype($palliativeResult)
+    )
+    not (exists Year2026Mips238Rate1ExclusionPalliativeCareOrg())
+then
+    insert(new Year2026Mips238Rate1ExclusionPalliativeCareOrg());
+    controlSet.addPatientMeasureStatus($program, $patient, 'Year2026.Mips238Rate1', MeasureStatusValue.EXCLUSION, "G0034");
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "Evidence of Palliative Care", "G0034", PopulationEnum.denominator_exclusion, $palliative, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $palliative.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate1.Exclusion.G0034_PalliativeCare.Group.EMR'
+when
+    EncounterDenominator($program: program, $measure: measure, measure == "Year2026.Mips238Rate1", $encounter: clinicalActivity,
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.groupExternalIds
+    not (exists Year2026Mips238Rate1ExclusionPalliativeCareGroup(groupExternalId == $groupExternalId))
+    $palliative: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedPalliativeCareInMeasurementPeriod($program, $palliativeResult;),
+        latestQdmDatatype($palliativeResult)
+    )
+then
+    insert(new Year2026Mips238Rate1ExclusionPalliativeCareGroup($groupExternalId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupExternalId, $measure, MeasureStatusValue.EXCLUSION, "G0034");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Evidence of Palliative Care", "G0034", PopulationEnum.denominator_exclusion, $palliative, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $palliative.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate1.Exclusion.G0034_PalliativeCare.Provider.EMR'
+when
+    EncounterDenominator($program: program, $measure: measure, measure == "Year2026.Mips238Rate1", $encounter: clinicalActivity,
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    $palliative: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedPalliativeCareInMeasurementPeriod($program, $palliativeResult;),
+        latestQdmDatatype($palliativeResult)
+    )
+    not (exists Year2026Mips238Rate1ExclusionPalliativeCareProvider(providerExternalId == $encounter.providerExternalId))
+then
+    insert(new Year2026Mips238Rate1ExclusionPalliativeCareProvider($encounter.providerExternalId));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, "G0034");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Evidence of Palliative Care", "G0034", PopulationEnum.denominator_exclusion, $palliative, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $palliative.startDate.toString());
+end
+
+/*
+define function "Cumulative Medication Duration".org("Medication List"<"Medication">):
+    Sum((collapse(Medication.relevantPeriod)) CumulativeDosages)
+    return all duration in days of CumulativeDosages
+
+define "AntiInfectives During Measurement Period":
+    ["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC"] AntiInfectives
+    where AntiInfectives.Interval[start_date, end_date] during "Measurement Period"
+
+define "AntiInfectives".org:
+    exists("More Than One Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC"]))
+
+define "Two High Risk Medications With Prolonged Duration Anti-Infectives".org:
+    "Cumulative Medication Duration".org("AntiInfectives During Measurement Period") >= 90
+    and exists "AntiInfectives".org    
+*/
+rule 'Year2026.Mips238Rate1.HighRiskMedications.ORG.AntiInfectivesEvidence'
+when
+    EncounterDenominator($program: program, measure == 'Year2026.Mips238Rate1')
+    not Year2026Mips238Rate1TwoHighRiskMedicationAntiInfectivesOrgEvidence()
+    //"AntiInfectives".org
+    queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    //"Cumulative Medication Duration".org("AntiInfectives During Measurement Period")>= 90
+    and accumulate(
+        $m: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        );
+        $totalDays: sum($m.totalDaysSupplied($program.measurementPeriodEndDate));
+        $totalDays >= 90
+    )
+then
+    insert(new Year2026Mips238Rate1TwoHighRiskMedicationAntiInfectivesOrgEvidence());
+end
+
+/*
+define "Hypnotics During Measurement Period":
+    ["Medication": "ABLE; POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC"] Hypnotics
+    where Hypnotics.Interval[start_date, end_date] during "Measurement Period"
+
+define "Nonbenzodiazepine_Hypnotics".org:
+    exists("More Than One Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC"]))
+
+define "Two High Risk Medications With Prolonged Duration Hypnotics".org:
+    "Cumulative Medication Duration".org("Hypnotics During Measurement Period") >= 90
+    and exists "Nonbenzodiazepine_Hypnotics".org
+*/
+rule 'Year2026.Mips238Rate1.HighRiskMedications.ORG.HypnoticsEvidence'
+when
+    EncounterDenominator($program: program, measure == 'Year2026.Mips238Rate1')
+    not Year2026Mips238Rate1TwoHighRiskMedicationHypnoticsOrgEvidence()
+    //"Nonbenzodiazepine_Hypnotics".org
+    queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    //"Cumulative Medication Duration".org("Hypnotics During Measurement Period")>= 90
+    and accumulate(
+        $m: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        );
+        $totalDays: sum($m.totalDaysSupplied($program.measurementPeriodEndDate));
+        $totalDays >= 90
+    )
+then
+    insert(new Year2026Mips238Rate1TwoHighRiskMedicationHypnoticsOrgEvidence());
+end
+
+/*
+define "Two High Risk Medications With Prolonged Duration Anti-Infectives".group:
+        (   "Cumulative Medication Duration".group("AntiInfectives During Measurement Period") >= 90) Duration
+        and exists("AntiInfectives".group) AntiInfect
+        such that Duration.group_id = AntiInfect.group_id
+
+define function "Cumulative Medication Duration".group("Medication List"<"Medication">):
+	Sum((collapse(Medication.relevantPeriod)) CumulativeDosages
+			return all duration in days of CumulativeDosages, Medication.group_id
+	)
+
+define "AntiInfectives During Measurement Period":
+	["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC"] AntiInfectives
+		where AntiInfectives.Interval[start_date, end_date] during "Measurement Period"
+
+define "AntiInfectives".group:
+    exists("More Than One Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC"]))
+*/
+rule 'Year2026.Mips238Rate1.HighRiskMedications.group.AntiInfectivesEvidence'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, measure == 'Year2026.Mips238Rate1')
+    not Year2026Mips238Rate1TwoHighRiskMedicationAntiInfectivesGroupEvidence(
+        !Collections.disjoint(encounter.groupExternalIds, $encounter.groupExternalIds)
+    )
+    //"AntiInfectives".group
+    queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    //"Cumulative Medication Duration".group("AntiInfectives During Measurement Period")>= 90
+    and accumulate(
+        $m: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        );
+        $totalDays: sum($m.totalDaysSupplied($program.measurementPeriodEndDate));
+        $totalDays >= 90
+    )
+then
+    insert(new Year2026Mips238Rate1TwoHighRiskMedicationAntiInfectivesGroupEvidence($encounter));
+end
+
+/*
+define "Hypnotics During Measurement Period":
+	["Medication": "ABLE; POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC"] Hypnotics
+		where Hypnotics.Interval[start_date, end_date] during "Measurement Period"
+
+define "Nonbenzodiazepine_Hypnotics".group:
+	//Nonbenzodiazepine hypnotics
+	exists ( "More Than One Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC"]))
+
+define "Two High Risk Medications With Prolonged Duration Hypnotics".group:
+        (   "Cumulative Medication Duration".group("Hypnotics During Measurement Period") >= 90) Duration
+        and exists("Nonbenzodiazepine_Hypnotics".group) nonbenz
+        such that Duration.group_id = nonbenz.group_id    
+*/
+
+rule 'Year2026.Mips238Rate1.HighRiskMedications.group.HypnoticsEvidence'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, measure == 'Year2026.Mips238Rate1')
+    not Year2026Mips238Rate1TwoHighRiskMedicationHypnoticsGroupEvidence(
+        !Collections.disjoint(encounter.groupExternalIds, $encounter.groupExternalIds)
+    )
+    //"Nonbenzodiazepine_Hypnotics".group
+    queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    //"Cumulative Medication Duration".group("Hypnotics During Measurement Period")>= 90
+    and accumulate(
+        $m: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        );
+        $totalDays: sum($m.totalDaysSupplied($program.measurementPeriodEndDate));
+        $totalDays >= 90
+    )
+then
+    insert(new Year2026Mips238Rate1TwoHighRiskMedicationHypnoticsGroupEvidence($encounter));
+end
+
+/*
+define "Two High Risk Medications With Prolonged Duration Anti-Infectives".provider:
+        (   "Cumulative Medication Duration".provider("AntiInfectives During Measurement Period") >= 90) Duration
+        and exists("AntiInfectives".provider) AntiInfect
+        such that Duration.provider_id = AntiInfect.provider_id
+
+define function "Cumulative Medication Duration".provider("Medication List"<"Medication">):
+	Sum((collapse(Medication.relevantPeriod)) CumulativeDosages
+			return all duration in days of CumulativeDosages, Medication.provider_id
+	)
+
+define "AntiInfectives During Measurement Period":
+	["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC"] AntiInfectives
+		where AntiInfectives.Interval[start_date, end_date] during "Measurement Period"
+
+define "AntiInfectives".provider:
+    exists("More Than One Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC"]))
+*/
+rule 'Year2026.Mips238Rate1.HighRiskMedications.provider.AntiInfectivesEvidence'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, measure == 'Year2026.Mips238Rate1')
+    not Year2026Mips238Rate1TwoHighRiskMedicationAntiInfectivesProviderEvidence(
+        encounter.providerExternalId == $encounter.providerExternalId
+    )
+    //"AntiInfectives".provider
+    queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    //"Cumulative Medication Duration".provider("AntiInfectives During Measurement Period")>= 90
+    and accumulate(
+        $m: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        );
+        $totalDays: sum($m.totalDaysSupplied($program.measurementPeriodEndDate));
+        $totalDays >= 90
+    )
+then
+    insert(new Year2026Mips238Rate1TwoHighRiskMedicationAntiInfectivesProviderEvidence($encounter));
+end
+
+/*
+define "Two High Risk Medications With Prolonged Duration Hypnotics".provider:
+    (   "Cumulative Medication Duration".provider("Hypnotics During Measurement Period") >= 90) Duration
+    and exists("Nonbenzodiazepine_Hypnotics".provider) nonbenz
+    such that Duration.provider_id = nonbenz.provider_id
+
+define "Hypnotics During Measurement Period":
+	["Medication": "ABLE; POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC"] Hypnotics
+		where Hypnotics.Interval[start_date, end_date] during "Measurement Period"
+
+define "Nonbenzodiazepine_Hypnotics".provider:
+	//Nonbenzodiazepine hypnotics
+	exists ( "More Than One Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC"]))
+
+*/
+
+rule 'Year2026.Mips238Rate1.HighRiskMedications.provider.HypnoticsEvidence'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, measure == 'Year2026.Mips238Rate1')
+    not Year2026Mips238Rate1TwoHighRiskMedicationHypnoticsProviderEvidence(
+        encounter.providerExternalId == $encounter.providerExternalId
+    )
+    //"Nonbenzodiazepine_Hypnotics".provider
+    queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    //"Cumulative Medication Duration".provider("Hypnotics During Measurement Period")>= 90
+    and accumulate(
+        $m: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        );
+        $totalDays: sum($m.totalDaysSupplied($program.measurementPeriodEndDate));
+        $totalDays >= 90
+    )
+then
+    insert(new Year2026Mips238Rate1TwoHighRiskMedicationHypnoticsProviderEvidence($encounter));
+end
+
+/*
+define function "More Than One Order".org("Medication List"<"Medication">): 
+    "Medication" MedOrder_1
+    with "Medication" MedOrder_2
+    such that ( MedOrder_1.start_date 1 day or more after MedOrder_2.start_date
+                and MedOrder_1.start_date during "Measurement Period"
+                and MedOrder_2.start_date during "Measurement Period"   )
+    return { med1: MedOrder_1, med2: MedOrder_2 }
+    
+define "Same High Risk Medications Ordered on Different Days".org:
+    "More Than One Order"(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIHISTAMINES_FOR_OLDER_ADULTS_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIPARKINSONIAN_AGENTS_FOR_OLDER_ADULTS_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_GASTROINTESTINAL_ANTISPASMODICS_FOR_OLDER_ADULTS_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; DIPYRIDAMOLE_MEDICATIONS_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; NIFEDIPINE_MEDICATIONS_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIDEPRESSANTS_FOR_OLDER_ADULTS_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_BARBITURATES_FOR_OLDER_ADULTS_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; ERGOLOID_MESYLATES_USP_1_MG_ORAL_TABLET_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; MEPROBAMATE_MEDICATIONS_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_ESTROGENS_FOR_OLDER_ADULTS_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_SULFONYLUREAS_FOR_OLDER_ADULTS_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; DESICCATED_THYROID_MEDICATIONS_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_SKELETAL_MUSCLE_RELAXANTS_FOR_OLDER_ADULTS_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_PAIN_MEDICATIONS_FOR_OLDER_ADULTS_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; GUANFACINE_MEDICATIONS_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; MEGESTROL_MEDICATIONS_MAP_NDC"])
+    union "More Than One Order".org(["Medication": "ABLE; MEPERIDINE_MEDICATIONS_MAP_NDC"])
+*/
+query queryYear2026Mips238Rate1OrgMedicationListEvidenceCandidate(Program $program, Medication $pairMed1, Medication $pairMed2)
+    queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "POTENTIALLY_HARMFUL_ANTIHISTAMINES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPARKINSONIAN_AGENTS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "POTENTIALLY_HARMFUL_GASTROINTESTINAL_ANTISPASMODICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "DIPYRIDAMOLE_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "NIFEDIPINE_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "POTENTIALLY_HARMFUL_ANTIDEPRESSANTS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "POTENTIALLY_HARMFUL_BARBITURATES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "ERGOLOID_MESYLATES_USP_1_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "MEPROBAMATE_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "POTENTIALLY_HARMFUL_ESTROGENS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "POTENTIALLY_HARMFUL_SULFONYLUREAS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "DESICCATED_THYROID_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "POTENTIALLY_HARMFUL_SKELETAL_MUSCLE_RELAXANTS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "POTENTIALLY_HARMFUL_PAIN_MEDICATIONS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "GUANFACINE_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "MEGESTROL_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "MEPERIDINE_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+end
+
+query queryYear2026Mips238Rate1GroupMedicationListEvidenceCandidate(Program $program, ClinicalActivity $encounter, Medication $pairMed1, Medication $pairMed2)
+    queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIHISTAMINES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPARKINSONIAN_AGENTS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_GASTROINTESTINAL_ANTISPASMODICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "DIPYRIDAMOLE_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "NIFEDIPINE_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIDEPRESSANTS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_BARBITURATES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "ERGOLOID_MESYLATES_USP_1_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "MEPROBAMATE_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ESTROGENS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_SULFONYLUREAS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "DESICCATED_THYROID_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_SKELETAL_MUSCLE_RELAXANTS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_PAIN_MEDICATIONS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "GUANFACINE_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "MEGESTROL_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "MEPERIDINE_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+end
+
+query queryYear2026Mips238Rate1ProviderMedicationListEvidenceCandidate(Program $program, ClinicalActivity $encounter, Medication $pairMed1, Medication $pairMed2)
+    queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIHISTAMINES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPARKINSONIAN_AGENTS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_GASTROINTESTINAL_ANTISPASMODICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "DIPYRIDAMOLE_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "NIFEDIPINE_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIDEPRESSANTS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_BARBITURATES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "ERGOLOID_MESYLATES_USP_1_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "MEPROBAMATE_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ESTROGENS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_SULFONYLUREAS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "DESICCATED_THYROID_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_SKELETAL_MUSCLE_RELAXANTS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_PAIN_MEDICATIONS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "GUANFACINE_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "MEGESTROL_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+    or queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "MEPERIDINE_MEDICATIONS_MAP_NDC", $pairMed1, $pairMed2;)
+end
+
+rule 'Year2026.Mips238Rate1.SameHighRiskMedicationsOrderedOnDifferentDays.ORG'
+when
+    EncounterDenominator($program: program, measure == 'Year2026.Mips238Rate1')
+    not Year2026Mips238Rate1MedicationListOrg()
+    queryYear2026Mips238Rate1OrgMedicationListEvidenceCandidate($program, $pairMed1, $pairMed2;)
+then
+    insert(new Year2026Mips238Rate1MedicationListOrg($pairMed1, $pairMed2));
+end
+
+/*
+define function "More Than One Order".group("Medication List"<"Medication">):
+    "Medication" MedOrder_1
+    with "Medication" MedOrder_2
+    such that ( MedOrder_1.start_date 1 day or more after MedOrder_2.start_date
+                and MedOrder_1.start_date during "Measurement Period"
+                and MedOrder_2.start_date during "Measurement Period"
+                and MedOrder_1.group_id = MedOrder_2.group_id   )
+    return { med1: MedOrder_1, med2: MedOrder_2 }
+
+define "Same High Risk Medications Ordered on Different Days".group:
+    (   "More Than One Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIHISTAMINES_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIPARKINSONIAN_AGENTS_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_GASTROINTESTINAL_ANTISPASMODICS_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; DIPYRIDAMOLE_MEDICATIONS_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; NIFEDIPINE_MEDICATIONS_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIDEPRESSANTS_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_BARBITURATES_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; ERGOLOID_MESYLATES_USP_1_MG_ORAL_TABLET_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; MEPROBAMATE_MEDICATIONS_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_ESTROGENS_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_SULFONYLUREAS_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; DESICCATED_THYROID_MEDICATIONS_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_SKELETAL_MUSCLE_RELAXANTS_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_PAIN_MEDICATIONS_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; GUANFACINE_MEDICATIONS_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; MEGESTROL_MEDICATIONS_MAP_NDC"])
+        union "More Than One Order".group(["Medication": "ABLE; MEPERIDINE_MEDICATIONS_MAP_NDC"]) 
+    )
+*/
+rule 'Year2026.Mips238Rate1.SameHighRiskMedicationsOrderedOnDifferentDays.GROUP'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, measure == 'Year2026.Mips238Rate1')
+    queryYear2026Mips238Rate1GroupMedicationListEvidenceCandidate($program, $encounter, $pairMed1, $pairMed2;)
+    and not (
+        exists Year2026Mips238Rate1MedicationListGroup(
+            !Collections.disjoint(encounter.groupExternalIds, $encounter.groupExternalIds)
+        )
+    )
+then
+    insert(new Year2026Mips238Rate1MedicationListGroup($encounter, $pairMed1, $pairMed2));
+end
+
+/*
+define function "More Than One Order".provider("Medication List"<"Medication">):
+    "Medication" MedOrder_1
+    with "Medication" MedOrder_2
+    such that ( MedOrder_1.start_date 1 day or more after MedOrder_2.start_date
+                and MedOrder_1.start_date during "Measurement Period"
+                and MedOrder_2.start_date during "Measurement Period"
+                and MedOrder_1.provider_id = MedOrder_2.provider_id )
+    return { med1: MedOrder_1, med2: MedOrder_2 }
+
+define "Same High Risk Medications Ordered on Different Days".provider:
+    (   "More Than One Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIHISTAMINES_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIPARKINSONIAN_AGENTS_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_GASTROINTESTINAL_ANTISPASMODICS_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; DIPYRIDAMOLE_MEDICATIONS_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; NIFEDIPINE_MEDICATIONS_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIDEPRESSANTS_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_BARBITURATES_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; ERGOLOID_MESYLATES_USP_1_MG_ORAL_TABLET_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; MEPROBAMATE_MEDICATIONS_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_ESTROGENS_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_SULFONYLUREAS_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; DESICCATED_THYROID_MEDICATIONS_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_SKELETAL_MUSCLE_RELAXANTS_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_PAIN_MEDICATIONS_FOR_OLDER_ADULTS_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; GUANFACINE_MEDICATIONS_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; MEGESTROL_MEDICATIONS_MAP_NDC"])
+        union "More Than One Order".provider(["Medication": "ABLE; MEPERIDINE_MEDICATIONS_MAP_NDC"]) 
+    )
+*/
+rule 'Year2026.Mips238Rate1.SameHighRiskMedicationsOrderedOnDifferentDays.PROVIDER'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, measure == 'Year2026.Mips238Rate1')
+    queryYear2026Mips238Rate1ProviderMedicationListEvidenceCandidate($program, $encounter, $pairMed1, $pairMed2;)
+    and not (
+        exists Year2026Mips238Rate1MedicationListProvider(
+            encounter.providerExternalId == $encounter.providerExternalId
+        )
+    )
+then
+    insert(new Year2026Mips238Rate1MedicationListProvider($encounter, $pairMed1, $pairMed2));
+end
+
+
+/*
+case
+    when code_value in valueset "ABLE; DIGOXIN_0_05_MG_ML_ORAL_SOLUTION_MAP_NDC" then 0.05 'mg/mL'
+    when code_value in valueset "ABLE; DIGOXIN_0_0625_MG_ORAL_TABLET_MAP_NDC" then 0.0625 'mg'
+    when code_value in valueset "ABLE; 1_ML_DIGOXIN_0_1_MG_ML_INJECTION_MAP_NDC" then 0.1 'mg/mL'
+    when code_value in valueset "ABLE; DIGOXIN_0_125_MG_ORAL_TABLET_MAP_NDC" then 0.125 'mg'
+    when code_value in valueset "ABLE; DIGOXIN_0_1875_MG_ORAL_TABLET_MAP_NDC" then 0.1875 'mg'
+    when code_value in valueset "ABLE; DIGOXIN_0_25_MG_ORAL_TABLET_MAP_NDC" then 0.25 'mg'
+    when code_value in valueset "ABLE; 2_ML_DIGOXIN_0_25_MG_ML_INJECTION_MAP_NDC" then 0.25 'mg/mL' 
+    else null 
+end
+*/
+/*
+New Numerator Definition
+The goal of the following functions is to calculate the average daily dose for each prescription event. 
+To calculate average daily dose, multiply the quantity of pills prescribed by the dose of each pill 
+and divide by the days supply. For example, a prescription for the 30-days supply of digoxin containing 15 pills,
+0.25 mg each pill, has an average daily dose of 0.125 mg. To calculate average daily dose for elixirs
+and concentrates, multiply the volume prescribed by daily dose and divide by the days supply. Do not round 
+when calculating average daily dose.
+
+define "Digoxin Ordered":
+    ["Medication": "ABLE; DIGOXIN_MEDICATIONS_MAP_NDC"] DigoxinOrdered
+    where DigoxinOrdered.start_date during "Measurement Period"
+
+define "Doxepin Ordered":
+    ["Medication": "ABLE; DOXEPIN_MEDICATIONS_MAP_NDC"] DoxepinOrdered
+    where DoxepinOrdered.start_date during "Measurement Period"
+
+define "High Risk Medications with Average Daily Dose Criteria Digoxin".org:
+    "More Than One Order".org( "Digoxin Ordered" ) pair
+    with "Digoxin Ordered" DigoxinOrder
+        such that "Average Daily Dose"(DigoxinOrder) > 0.125 'mg/d'
+    return { med1: pair.med1, med2: pair.med2, dose: Max("Average Daily Dose"(DigoxinOrder)) }
+
+define "High Risk Medications with Average Daily Dose Criteria Doxepin".org:
+    "More Than One Order".org( "Doxepin Ordered" ) pair
+    with "Doxepin Ordered" DoxepinOrder
+        such that "Average Daily Dose"(DoxepinOrder) > 6 'mg/d'
+    return { med1: pair.med1, med2: pair.med2, dose: Max("Doxepin Ordered" DoxepinOrder return "Average Daily Dose"(DoxepinOrder)) } 
+
+define function Average Daily Dose(Medication "Medication"):
+MedicationOrder Order
+  let MedicationStrength: "MedicationStrengthPerUnit"(Medication.code_description),
+  return coalesce( ( Medication.days_supplied * MedicationStrength ) / Medication.quantity ) 
+
+define function MedicationStrengthPerUnit(code_description):
+    case
+        when code_value in valueset "ABLE; DIGOXIN_0_05_MG_ML_ORAL_SOLUTION_MAP_NDC" then 0.05 'mg/mL'
+        when code_value in valueset "ABLE; DIGOXIN_0_0625_MG_ORAL_TABLET_MAP_NDC" then 0.0625 'mg'
+        when code_value in valueset "ABLE; 1_ML_DIGOXIN_0_1_MG_ML_INJECTION_MAP_NDC" then 0.1 'mg/mL'
+        when code_value in valueset "ABLE; DIGOXIN_0_125_MG_ORAL_TABLET_MAP_NDC" then 0.125 'mg'
+        when code_value in valueset "ABLE; DIGOXIN_0_1875_MG_ORAL_TABLET_MAP_NDC" then 0.1875 'mg'
+        when code_value in valueset "ABLE; DIGOXIN_0_25_MG_ORAL_TABLET_MAP_NDC" then 0.25 'mg'
+        when code_value in valueset "ABLE; 2_ML_DIGOXIN_0_25_MG_ML_INJECTION_MAP_NDC" then 0.25 'mg/mL'
+        when code_value in valueset "ABLE; DOXEPIN_3_MG_ORAL_TABLET_MAP_NDC" then 3 'mg'
+        when code_value in valueset "ABLE; DOXEPIN_6_MG_ORAL_TABLET_MAP_NDC" then 6 'mg'
+        when code_value in valueset "ABLE; DOXEPIN_10_MG_ORAL_CAPSULE_MAP_NDC" then 10 'mg'
+        when code_value in valueset "ABLE; DOXEPIN_10_MG_ML_ORAL_SOLUTION_MAP_NDC" then 10 'mg/mL'
+        when code_value in valueset "ABLE; DOXEPIN_25_MG_ORAL_CAPSULE_MAP_NDC" then 25 'mg'
+        when code_value in valueset "ABLE; DOXEPIN_50_MG_ORAL_CAPSULE_MAP_NDC" then 50 'mg'
+        when code_value in valueset "ABLE; DOXEPIN_75_MG_ORAL_CAPSULE_MAP_NDC" then 75 'mg'
+        when code_value in valueset "ABLE; DOXEPIN_100_MG_ORAL_CAPSULE_MAP_NDC" then 100 'mg'
+        when code_value in valueset "ABLE; DOXEPIN_150_MG_ORAL_CAPSULE_MAP_NDC" then 150 'mg' 
+        else null 
+    end
+*/
+query queryYear2026Mips238Rate1OrgDigoxinEvidenceCandidate(Program $program, Medication $pairMed1, Medication $pairMed2, Medication $medResult, Number $doseResult)
+    ( queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "DIGOXIN_0_05_MG_ML_ORAL_SOLUTION_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseOrg($program, "DIGOXIN_0_05_MG_ML_ORAL_SOLUTION_MAP_NDC", 0.05, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "DIGOXIN_0_0625_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseOrg($program, "DIGOXIN_0_0625_MG_ORAL_TABLET_MAP_NDC", 0.0625, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "1_ML_DIGOXIN_0_1_MG_ML_INJECTION_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseOrg($program, "1_ML_DIGOXIN_0_1_MG_ML_INJECTION_MAP_NDC", 0.1, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "DIGOXIN_0_125_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseOrg($program, "DIGOXIN_0_125_MG_ORAL_TABLET_MAP_NDC", 0.125, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "DIGOXIN_0_1875_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseOrg($program, "DIGOXIN_0_1875_MG_ORAL_TABLET_MAP_NDC", 0.1875, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "DIGOXIN_0_25_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseOrg($program, "DIGOXIN_0_25_MG_ORAL_TABLET_MAP_NDC", 0.25, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "2_ML_DIGOXIN_0_25_MG_ML_INJECTION_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseOrg($program, "2_ML_DIGOXIN_0_25_MG_ML_INJECTION_MAP_NDC", 0.25, 0.125, $medResult, $doseResult;) )
+end
+
+query queryYear2026Mips238Rate1OrgDoxepinEvidenceCandidate(Program $program, Medication $pairMed1, Medication $pairMed2, Medication $medResult, Number $doseResult)
+    ( queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "DOXEPIN_3_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseOrg($program, "DOXEPIN_3_MG_ORAL_TABLET_MAP_NDC", 3, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "DOXEPIN_6_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseOrg($program, "DOXEPIN_6_MG_ORAL_TABLET_MAP_NDC", 6, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "DOXEPIN_10_MG_ORAL_CAPSULE_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseOrg($program, "DOXEPIN_10_MG_ORAL_CAPSULE_MAP_NDC", 10, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "DOXEPIN_10_MG_ML_ORAL_SOLUTION_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseOrg($program, "DOXEPIN_10_MG_ML_ORAL_SOLUTION_MAP_NDC", 10, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "DOXEPIN_25_MG_ORAL_CAPSULE_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseOrg($program, "DOXEPIN_25_MG_ORAL_CAPSULE_MAP_NDC", 25, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "DOXEPIN_50_MG_ORAL_CAPSULE_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseOrg($program, "DOXEPIN_50_MG_ORAL_CAPSULE_MAP_NDC", 50, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "DOXEPIN_75_MG_ORAL_CAPSULE_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseOrg($program, "DOXEPIN_75_MG_ORAL_CAPSULE_MAP_NDC", 75, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "DOXEPIN_100_MG_ORAL_CAPSULE_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseOrg($program, "DOXEPIN_100_MG_ORAL_CAPSULE_MAP_NDC", 100, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "DOXEPIN_150_MG_ORAL_CAPSULE_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseOrg($program, "DOXEPIN_150_MG_ORAL_CAPSULE_MAP_NDC", 150, 6, $medResult, $doseResult;) )
+end
+
+rule 'Year2026.Mips238Rate1.AverageDailyDose.Org.DigoxinEvidence'
+when
+    EncounterDenominator($program: program, measure == 'Year2026.Mips238Rate1')
+    not Year2026Mips238Rate1AverageDailyDoseDigoxinOrgEvidence()
+    queryYear2026Mips238Rate1OrgDigoxinEvidenceCandidate($program, $med1, $med2, $medResult, $dose;)
+then
+    insert(new Year2026Mips238Rate1AverageDailyDoseDigoxinOrgEvidence($med1, $med2, $dose));
+end
+
+rule 'Year2026.Mips238Rate1.AverageDailyDose.Org.DoxepinEvidence'
+when
+    EncounterDenominator($program: program, measure == 'Year2026.Mips238Rate1')
+    not Year2026Mips238Rate1AverageDailyDoseDoxepinOrgEvidence()
+    queryYear2026Mips238Rate1OrgDoxepinEvidenceCandidate($program, $med1, $med2, $medResult, $dose;)
+then
+    insert(new Year2026Mips238Rate1AverageDailyDoseDoxepinOrgEvidence($med1, $med2, $dose));
+end
+
+/*
+define "Digoxin Ordered":
+    ["Medication": "ABLE; DIGOXIN_MEDICATIONS_MAP_NDC"] DigoxinOrdered
+    where DigoxinOrdered.start_date during "Measurement Period"
+
+define "High Risk Medications with Average Daily Dose Criteria Digoxin".group:
+    "More Than One Order".group( "Digoxin Ordered" ) pair
+    with (  "Digoxin Ordered" DigoxinOrder
+            where DigoxinOrder.group_id = pair.med1.group_id )  DigoxinOrderSameGroup
+    such that "Average Daily Dose"(DigoxinOrderSameGroup) > 0.125 'mg/d'
+    return { med1: pair.med1, med2: pair.med2, dose: Max("Average Daily Dose"(DigoxinOrderSameGroup)) }
+*/
+query queryYear2026Mips238Rate1GroupDigoxinEvidenceCandidate(Program $program, ClinicalActivity $encounter, String $groupExternalId, Medication $pairMed1, Medication $pairMed2, Medication $medResult, Number $doseResult)
+    ( queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "DIGOXIN_0_05_MG_ML_ORAL_SOLUTION_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseGroup($program, $groupExternalId, "DIGOXIN_0_05_MG_ML_ORAL_SOLUTION_MAP_NDC", 0.05, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "DIGOXIN_0_0625_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseGroup($program, $groupExternalId, "DIGOXIN_0_0625_MG_ORAL_TABLET_MAP_NDC", 0.0625, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "1_ML_DIGOXIN_0_1_MG_ML_INJECTION_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseGroup($program, $groupExternalId, "1_ML_DIGOXIN_0_1_MG_ML_INJECTION_MAP_NDC", 0.1, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "DIGOXIN_0_125_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseGroup($program, $groupExternalId, "DIGOXIN_0_125_MG_ORAL_TABLET_MAP_NDC", 0.125, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "DIGOXIN_0_1875_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseGroup($program, $groupExternalId, "DIGOXIN_0_1875_MG_ORAL_TABLET_MAP_NDC", 0.1875, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "DIGOXIN_0_25_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseGroup($program, $groupExternalId, "DIGOXIN_0_25_MG_ORAL_TABLET_MAP_NDC", 0.25, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "2_ML_DIGOXIN_0_25_MG_ML_INJECTION_MAP_NDC",$pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseGroup($program, $groupExternalId, "2_ML_DIGOXIN_0_25_MG_ML_INJECTION_MAP_NDC", 0.25, 0.125, $medResult, $doseResult;) )
+end
+
+rule 'Year2026.Mips238Rate1.AverageDailyDose.Group.DigoxinEvidence'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, measure == 'Year2026.Mips238Rate1')
+    not Year2026Mips238Rate1AverageDailyDoseDigoxinGroupEvidence(!Collections.disjoint(encounter.groupExternalIds, $encounter.groupExternalIds))
+    $groupExternalId: String() from $encounter.groupExternalIds
+    queryYear2026Mips238Rate1GroupDigoxinEvidenceCandidate($program, $encounter, $groupExternalId, $med1, $med2, $medResult, $dose;)
+then
+    insert(new Year2026Mips238Rate1AverageDailyDoseDigoxinGroupEvidence($encounter, $med1, $med2, $dose));
+end
+
+/*
+define "Doxepin Ordered":
+    ["Medication": "ABLE; DOXEPIN_MEDICATIONS_MAP_NDC"] DoxepinOrdered
+    where DoxepinOrdered.start_date during "Measurement Period"
+
+define "High Risk Medications with Average Daily Dose Criteria Doxepin".group:
+    "More Than One Order".group( "Doxepin Ordered" ) pair
+    with (  "Doxepin Ordered" DoxepinOrder
+            where DoxepinOrder.group_id = pair.med1.group_id )  DoxepinOrderSameGroup
+    such that "Average Daily Dose"(DoxepinOrderSameGroup) > 6 'mg/d'
+    return { med1: pair.med1, med2: pair.med2, dose: Max("Average Daily Dose"(DoxepinOrderSameGroup)) }
+*/
+query queryYear2026Mips238Rate1GroupDoxepinEvidenceCandidate(Program $program, ClinicalActivity $encounter, String $groupExternalId, Medication $pairMed1, Medication $pairMed2, Medication $medResult, Number $doseResult)
+    ( queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "DOXEPIN_3_MG_ORAL_TABLET_MAP_NDC",$pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseGroup($program, $groupExternalId, "DOXEPIN_3_MG_ORAL_TABLET_MAP_NDC", 3, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "DOXEPIN_6_MG_ORAL_TABLET_MAP_NDC",$pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseGroup($program, $groupExternalId, "DOXEPIN_6_MG_ORAL_TABLET_MAP_NDC", 6, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "DOXEPIN_10_MG_ORAL_CAPSULE_MAP_NDC",$pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseGroup($program, $groupExternalId, "DOXEPIN_10_MG_ORAL_CAPSULE_MAP_NDC", 10, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "DOXEPIN_10_MG_ML_ORAL_SOLUTION_MAP_NDC",$pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseGroup($program, $groupExternalId, "DOXEPIN_10_MG_ML_ORAL_SOLUTION_MAP_NDC", 10, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "DOXEPIN_25_MG_ORAL_CAPSULE_MAP_NDC",$pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseGroup($program, $groupExternalId, "DOXEPIN_25_MG_ORAL_CAPSULE_MAP_NDC", 25, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "DOXEPIN_50_MG_ORAL_CAPSULE_MAP_NDC",$pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseGroup($program, $groupExternalId, "DOXEPIN_50_MG_ORAL_CAPSULE_MAP_NDC", 50, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "DOXEPIN_75_MG_ORAL_CAPSULE_MAP_NDC",$pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseGroup($program, $groupExternalId, "DOXEPIN_75_MG_ORAL_CAPSULE_MAP_NDC", 75, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "DOXEPIN_100_MG_ORAL_CAPSULE_MAP_NDC",$pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseGroup($program, $groupExternalId, "DOXEPIN_100_MG_ORAL_CAPSULE_MAP_NDC", 100, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "DOXEPIN_150_MG_ORAL_CAPSULE_MAP_NDC",$pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseGroup($program, $groupExternalId, "DOXEPIN_150_MG_ORAL_CAPSULE_MAP_NDC", 150, 6, $medResult, $doseResult;) )
+end
+
+rule 'Year2026.Mips238Rate1.AverageDailyDose.Group.DoxepinEvidence'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, measure == 'Year2026.Mips238Rate1')
+    not Year2026Mips238Rate1AverageDailyDoseDoxepinGroupEvidence(!Collections.disjoint(encounter.groupExternalIds, $encounter.groupExternalIds))
+    $groupExternalId: String() from $encounter.groupExternalIds
+    queryYear2026Mips238Rate1GroupDoxepinEvidenceCandidate($program, $encounter, $groupExternalId, $med1, $med2, $medResult, $dose;)
+then
+    insert(new Year2026Mips238Rate1AverageDailyDoseDoxepinGroupEvidence($encounter, $med1, $med2, $dose));
+end
+
+/*
+define "Digoxin Ordered":
+    ["Medication": "ABLE; DIGOXIN_MEDICATIONS_MAP_NDC"] DigoxinOrdered
+    where DigoxinOrdered.start_date during "Measurement Period"
+
+define "High Risk Medications with Average Daily Dose Criteria Digoxin".provider:
+    "More Than One Order".provider( "Digoxin Ordered" ) pair
+    with (  "Digoxin Ordered" DigoxinOrder
+            where DigoxinOrder.provider_id = pair.med1.provider_id )  DigoxinOrderSameProvider
+    such that "Average Daily Dose"(DigoxinOrderSameProvider) > 0.125 'mg/d'
+    return { med1: pair.med1, med2: pair.med2, dose: Max("Average Daily Dose"(DigoxinOrderSameProvider)) } */
+
+query queryYear2026Mips238Rate1ProviderDigoxinEvidenceCandidate(Program $program, ClinicalActivity $encounter, Medication $pairMed1, Medication $pairMed2, Medication $medResult, Number $doseResult)
+    ( queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "DIGOXIN_0_05_MG_ML_ORAL_SOLUTION_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseProvider($program, $encounter, "DIGOXIN_0_05_MG_ML_ORAL_SOLUTION_MAP_NDC", 0.05, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "DIGOXIN_0_0625_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseProvider($program, $encounter, "DIGOXIN_0_0625_MG_ORAL_TABLET_MAP_NDC", 0.0625, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "1_ML_DIGOXIN_0_1_MG_ML_INJECTION_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseProvider($program, $encounter, "1_ML_DIGOXIN_0_1_MG_ML_INJECTION_MAP_NDC", 0.1, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "DIGOXIN_0_125_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseProvider($program, $encounter, "DIGOXIN_0_125_MG_ORAL_TABLET_MAP_NDC", 0.125, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "DIGOXIN_0_1875_MG_ORAL_TABLET_MAP_NDC",$pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseProvider($program, $encounter, "DIGOXIN_0_1875_MG_ORAL_TABLET_MAP_NDC", 0.1875, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "DIGOXIN_0_25_MG_ORAL_TABLET_MAP_NDC",$pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseProvider($program, $encounter, "DIGOXIN_0_25_MG_ORAL_TABLET_MAP_NDC", 0.25, 0.125, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "2_ML_DIGOXIN_0_25_MG_ML_INJECTION_MAP_NDC",$pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseProvider($program, $encounter, "2_ML_DIGOXIN_0_25_MG_ML_INJECTION_MAP_NDC", 0.25, 0.125, $medResult, $doseResult;) )
+end
+
+rule 'Year2026.Mips238Rate1.AverageDailyDose.Provider.DigoxinEvidence'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, measure == 'Year2026.Mips238Rate1')
+    not Year2026Mips238Rate1AverageDailyDoseDigoxinProviderEvidence(encounter.providerExternalId == $encounter.providerExternalId)
+    queryYear2026Mips238Rate1ProviderDigoxinEvidenceCandidate($program, $encounter, $med1, $med2, $medResult, $dose;)
+then
+    insert(new Year2026Mips238Rate1AverageDailyDoseDigoxinProviderEvidence($encounter, $med1, $med2, $dose));
+end
+
+/*
+define "Doxepin Ordered":
+    ["Medication": "ABLE; DOXEPIN_MEDICATIONS_MAP_NDC"] DoxepinOrdered
+    where DoxepinOrdered.start_date during "Measurement Period"
+
+define "High Risk Medications with Average Daily Dose Criteria Doxepin".provider:
+    "More Than One Order".provider( "Doxepin Ordered" ) pair
+    with (  "Doxepin Ordered" DoxepinOrder
+            where DoxepinOrder.provider_id = pair.med1.provider_id )  DoxepinOrderSameProvider
+    such that "Average Daily Dose"(DoxepinOrderSameProvider) > 6 'mg/d'
+    return { med1: pair.med1, med2: pair.med2, dose: Max("Average Daily Dose"(DoxepinOrderSameProvider)) } 
+*/
+query queryYear2026Mips238Rate1ProviderDoxepinEvidenceCandidate(Program $program, ClinicalActivity $encounter, Medication $pairMed1, Medication $pairMed2, Medication $medResult, Number $doseResult)
+    ( queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "DOXEPIN_3_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseProvider($program, $encounter, "DOXEPIN_3_MG_ORAL_TABLET_MAP_NDC", 3, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "DOXEPIN_6_MG_ORAL_TABLET_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseProvider($program, $encounter, "DOXEPIN_6_MG_ORAL_TABLET_MAP_NDC", 6, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "DOXEPIN_10_MG_ORAL_CAPSULE_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseProvider($program, $encounter, "DOXEPIN_10_MG_ORAL_CAPSULE_MAP_NDC", 10, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "DOXEPIN_10_MG_ML_ORAL_SOLUTION_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseProvider($program, $encounter, "DOXEPIN_10_MG_ML_ORAL_SOLUTION_MAP_NDC", 10, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "DOXEPIN_25_MG_ORAL_CAPSULE_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseProvider($program, $encounter, "DOXEPIN_25_MG_ORAL_CAPSULE_MAP_NDC", 25, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "DOXEPIN_50_MG_ORAL_CAPSULE_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseProvider($program, $encounter, "DOXEPIN_50_MG_ORAL_CAPSULE_MAP_NDC", 50, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "DOXEPIN_75_MG_ORAL_CAPSULE_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseProvider($program, $encounter, "DOXEPIN_75_MG_ORAL_CAPSULE_MAP_NDC", 75, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "DOXEPIN_100_MG_ORAL_CAPSULE_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseProvider($program, $encounter, "DOXEPIN_100_MG_ORAL_CAPSULE_MAP_NDC", 100, 6, $medResult, $doseResult;) )
+    or ( queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "DOXEPIN_150_MG_ORAL_CAPSULE_MAP_NDC", $pairMed1, $pairMed2;) and queryYear2026Mips238Rate1AverageDailyDoseProvider($program, $encounter, "DOXEPIN_150_MG_ORAL_CAPSULE_MAP_NDC", 150, 6, $medResult, $doseResult;) )
+end
+
+rule 'Year2026.Mips238Rate1.AverageDailyDose.Provider.DoxepinEvidence'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, measure == 'Year2026.Mips238Rate1')
+    not Year2026Mips238Rate1AverageDailyDoseDoxepinProviderEvidence(encounter.providerExternalId == $encounter.providerExternalId)
+    queryYear2026Mips238Rate1ProviderDoxepinEvidenceCandidate($program, $encounter, $med1, $med2, $medResult, $dose;)
+then
+    insert(new Year2026Mips238Rate1AverageDailyDoseDoxepinProviderEvidence($encounter, $med1, $med2, $dose));
+end
+
+/*
+define function Average Daily Dose(Medication "Medication"):
+    MedicationOrder Order
+    let MedicationStrength: "MedicationStrengthPerUnit"(Medication.code_description),
+    return ( ( Medication.quantity * MedicationStrength ) / Medication.days_supplied    ) 
+*/
+query queryYear2026Mips238Rate1AverageDailyDoseOrg(Program $program, String $valueSet, Number $multiplier, Number $limitOfMgPerDay, Medication $medResult, Number $doseResult)
+    $medResult := Medication(
+        withValueSet("AbleYear2026", $valueSet),
+        startsDuring($program.measurementPeriod),
+        stopDate != null,
+        quantityAsInteger != null,
+        dispensed == true
+    )
+    and $doseResult := Number() from ((($medResult.quantityAsInteger *
+        $multiplier.doubleValue()
+    ) / ($medResult.daysSupplied != null ? $medResult.daysSupplied.doubleValue() : ($medResult.totalDaysSupplied($program.measurementPeriodEndDate).doubleValue() + ($medResult.stopDate.isAfter($program.measurementPeriodEndDate) ? 0.0 : 1.0)))))
+    and eval($doseResult.doubleValue() > $limitOfMgPerDay.doubleValue())
+end
+
+query queryYear2026Mips238Rate1AverageDailyDoseProvider(Program $program, ClinicalActivity $encounter, String $valueSet, Number $multiplier, Number $limitOfMgPerDay, Medication $medResult, Number $doseResult)
+    $medResult := Medication(
+        withValueSet("AbleYear2026", $valueSet),
+        startsDuring($program.measurementPeriod),
+        stopDate != null,
+        quantityAsInteger != null,
+        dispensed == true,
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    )
+    and $doseResult := Number() from ((($medResult.quantityAsInteger *
+        $multiplier.doubleValue()
+    ) / ($medResult.daysSupplied != null ? $medResult.daysSupplied.doubleValue() : ($medResult.totalDaysSupplied($program.measurementPeriodEndDate).doubleValue() + ($medResult.stopDate.isAfter($program.measurementPeriodEndDate) ? 0.0 : 1.0)))))
+    and eval($doseResult.doubleValue() > $limitOfMgPerDay.doubleValue())
+end
+
+query queryYear2026Mips238Rate1AverageDailyDoseGroup(Program $program, String $groupExternalId, String $valueSet, Number $multiplier, Number $limitOfMgPerDay, Medication $medResult, Number $doseResult)
+    $medResult := Medication(
+        withValueSet("AbleYear2026", $valueSet),
+        startsDuring($program.measurementPeriod),
+        stopDate != null,
+        quantityAsInteger != null,
+        dispensed == true,
+        groupExternalIds contains $groupExternalId
+    )
+    and $doseResult := Number() from ((($medResult.quantityAsInteger *
+        $multiplier.doubleValue()
+    ) / ($medResult.daysSupplied != null ? $medResult.daysSupplied.doubleValue() : ($medResult.totalDaysSupplied($program.measurementPeriodEndDate).doubleValue() + ($medResult.stopDate.isAfter($program.measurementPeriodEndDate) ? 0.0 : 1.0)))))
+    and eval($doseResult.doubleValue() > $limitOfMgPerDay.doubleValue())
+end
+
+/*
+define "Numerator Performance Met G9367".org:
+ Option ID: G9367 
+	"Denominator Encounter".all
+	and (   exists( "Same High Risk Medications Ordered on Different Days".org ) medlist
+	        or "Two High Risk Medications With Prolonged Duration Anti-Infectives".org
+	        or "Two High Risk Medications With Prolonged Duration Hypnotics".org
+	        or "High Risk Medications with Average Daily Dose Criteria Digoxin".org
+	        or "High Risk Medications with Average Daily Dose Criteria Doxepin".org
+  	        or exists(	["Clinical Activity": "MIPS; 238_PERFORMANCE_MET_G9367"] P
+    		        	where P.start_date during "Measurement Period"  )   )
+  ,
+  if exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_MET_G9367"] P
+              where P.start_date during "Measurement Period"  ) QualityCode
+  return
+  ExtendedMeasureResultV2(
+      QualityCode
+      , 'Performance Met Quality Code' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if exists ( "Same High Risk Medications Ordered on Different Days".org ) medlist
+  return
+  ExtendedMeasureResultV2(
+      medlist.med1
+      , 'High Risk Medication Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      medlist.med2
+      , 'High Risk Medication Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if "Two High Risk Medications With Prolonged Duration Anti-Infectives".org
+  from (  first("AntiInfectives During Measurement Period" sort by start_date asc) Med1
+          , last("AntiInfectives During Measurement Period" sort by start_date asc) Med2
+          , "Cumulative Medication Duration".org("AntiInfectives During Measurement Period") Duration  )
+  return
+  ExtendedMeasureResultV2(
+      Med1
+      , 'Anti-Infective Medication 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      Med2
+      , 'Anti-Infective Medication 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      Duration
+      , 'Anti-Infective Cumulative Medication Duration' as name
+      , calculated_record = true
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if "Two High Risk Medications With Prolonged Duration Hypnotics".org
+  from (  first("Hypnotics During Measurement Period" sort by start_date asc) Med1
+          , last("Hypnotics During Measurement Period" sort by start_date asc) Med2
+          , "Cumulative Medication Duration".org("Hypnotics During Measurement Period") Duration  )
+  return
+  ExtendedMeasureResultV2(
+      Med1
+      , 'Nonbenzodiazepine Hypnotic 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      Med2
+      , 'Nonbenzodiazepine Hypnotic 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      Duration
+      , 'Nonbenzodiazepine Hypnotic Cumulative Medication Duration' as name
+      , calculated_record = true
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if exists ( "High Risk Medications with Average Daily Dose Criteria Digoxin".org ) DigoxinCriteria
+  return
+  ExtendedMeasureResultV2(
+      DigoxinCriteria.med1
+      , 'Digoxin Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      DigoxinCriteria.med2
+      , 'Digoxin Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      DigoxinCriteria.dose
+      , 'Digoxin Average Daily Dose' as name
+      , calculated_record = true
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if exists ( "High Risk Medications with Average Daily Dose Criteria Doxepin".org ) DoxepinCriteria
+  return
+  ExtendedMeasureResultV2(
+      DoxepinCriteria.med1
+      , 'Doxepin Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      DoxepinCriteria.med2
+      , 'Doxepin Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      DoxepinCriteria.dose
+      , 'Doxepin Average Daily Dose' as name
+      , calculated_record = true
+      , population = Performance Met
+      , option_id = G9367
+  )
+*/
+rule 'Year2026.Mips238Rate1.Success.G9367.org'
+when
+    $patient: Patient()
+    EncounterDenominator($program: program, $encounter: clinicalActivity, measure == 'Year2026.Mips238Rate1')
+    and exists (
+        exists ClinicalActivity(
+            withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+            startsDuring($program.measurementPeriod)
+        )
+        or exists(
+            //"Medication List".org
+            Year2026Mips238Rate1MedicationListOrg()
+        )
+        or exists(
+            //"Two High Risk Medications With Prolonged Duration Anti-Infectives".org
+            Year2026Mips238Rate1TwoHighRiskMedicationAntiInfectivesOrgEvidence()
+        )
+        or exists(
+            //"Two High Risk Medications With Prolonged Duration Hypnotics".org
+            Year2026Mips238Rate1TwoHighRiskMedicationHypnoticsOrgEvidence()
+        )
+        or exists(
+            //"High Risk Medications with Average Daily Dose Criteria Digoxin".org
+            Year2026Mips238Rate1AverageDailyDoseDigoxinOrgEvidence()
+        )
+        or exists(
+            //"High Risk Medications with Average Daily Dose Criteria Doxepin".org
+            Year2026Mips238Rate1AverageDailyDoseDoxepinOrgEvidence()
+        )
+    )
+then
+    controlSet.addPatientMeasureStatus($program, $patient, 'Year2026.Mips238Rate1', MeasureStatusValue.SUCCESS, "G9367");
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Org.EMR.QualityCode'
+salience -10
+when
+    $patient: Patient()
+    EncounterDenominator($program: program, measure == 'Year2026.Mips238Rate1')
+    $qualityCode: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod)
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367OrgEMR())
+then
+    insert(new Year2026Mips238Rate1SuccessG9367OrgEMR());
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "Performance Met Quality Code", "G9367", PopulationEnum.numerator_performance_met, $qualityCode, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qualityCode.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Org.EMR.MedicationList'
+salience -11
+when
+    $patient: Patient()
+    EncounterDenominator($program: program, $encounter: clinicalActivity, measure == 'Year2026.Mips238Rate1')
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod)
+    ))
+    Year2026Mips238Rate1MedicationListOrg($med1: med1, $med2: med2)
+    and not (exists Year2026Mips238Rate1SuccessG9367OrgEMR())
+then
+    insert(new Year2026Mips238Rate1SuccessG9367OrgEMR());
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "High Risk Medication Order 1", "G9367", PopulationEnum.numerator_performance_met, $med1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med1.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "High Risk Medication Order 2", "G9367", PopulationEnum.numerator_performance_met, $med2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med2.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Org.EMR.AntiInfectives'
+salience -12
+when
+    $patient: Patient()
+    EncounterDenominator($program: program, measure == 'Year2026.Mips238Rate1')
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod)
+    ))
+    exists Year2026Mips238Rate1TwoHighRiskMedicationAntiInfectivesOrgEvidence()
+    queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    $durationDays: Number() from accumulate(
+        $m: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        );
+        sum($m.totalDaysSupplied($program.measurementPeriodEndDate))
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367OrgEMR())
+then
+    insert(new Year2026Mips238Rate1SuccessG9367OrgEMR());
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "Anti-Infective Medication 1", "G9367", PopulationEnum.numerator_performance_met, $pairMed1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $pairMed1.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "Anti-Infective Medication 2", "G9367", PopulationEnum.numerator_performance_met, $pairMed2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $pairMed2.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "Anti-Infective Cumulative Medication Duration", "G9367", PopulationEnum.numerator_performance_met, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), String.valueOf($durationDays.longValue()), SupplementalInfoEnum.CALCULATED_VALUE_TYPE.displayName(), ElementValueType.LONG.displayName());
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Org.EMR.Hypnotics'
+salience -13
+when
+    $patient: Patient()
+    EncounterDenominator($program: program, measure == 'Year2026.Mips238Rate1')
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod)
+    ))
+    exists Year2026Mips238Rate1TwoHighRiskMedicationHypnoticsOrgEvidence()
+    queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    $durationDays: Number() from accumulate(
+        $m: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        );
+        sum($m.totalDaysSupplied($program.measurementPeriodEndDate))
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367OrgEMR())
+then
+    insert(new Year2026Mips238Rate1SuccessG9367OrgEMR());
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "Nonbenzodiazepine Hypnotic 1", "G9367", PopulationEnum.numerator_performance_met, $pairMed1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $pairMed1.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "Nonbenzodiazepine Hypnotic 2", "G9367", PopulationEnum.numerator_performance_met, $pairMed2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $pairMed2.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "Nonbenzodiazepine Hypnotic Cumulative Medication Duration", "G9367", PopulationEnum.numerator_performance_met, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), String.valueOf($durationDays.longValue()), SupplementalInfoEnum.CALCULATED_VALUE_TYPE.displayName(), ElementValueType.LONG.displayName());
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Org.EMR.Digoxin'
+salience -14
+when
+    $patient: Patient()
+    EncounterDenominator($program: program, measure == 'Year2026.Mips238Rate1')
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod)
+    ))
+    $doseEvidence: Year2026Mips238Rate1AverageDailyDoseDigoxinOrgEvidence(
+        $med1: med1,
+        $med2: med2,
+        $dose: dose
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367OrgEMR())
+then
+    insert(new Year2026Mips238Rate1SuccessG9367OrgEMR());
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "Digoxin Order 1", "G9367", PopulationEnum.numerator_performance_met, $med1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med1.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "Digoxin Order 2", "G9367", PopulationEnum.numerator_performance_met, $med2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med2.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "Digoxin Average Daily Dose", "G9367", PopulationEnum.numerator_performance_met, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), String.valueOf($dose.doubleValue()), SupplementalInfoEnum.CALCULATED_VALUE_TYPE.displayName(), ElementValueType.DECIMAL.displayName());
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Org.EMR.Doxepin'
+salience -15
+when
+    $patient: Patient()
+    EncounterDenominator($program: program, measure == 'Year2026.Mips238Rate1')
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod)
+    ))
+    $doseEvidence: Year2026Mips238Rate1AverageDailyDoseDoxepinOrgEvidence(
+        $med1: med1,
+        $med2: med2,
+        $dose: dose
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367OrgEMR())
+then
+    insert(new Year2026Mips238Rate1SuccessG9367OrgEMR());
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "Doxepin Order 1", "G9367", PopulationEnum.numerator_performance_met, $med1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med1.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "Doxepin Order 2", "G9367", PopulationEnum.numerator_performance_met, $med2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med2.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, 'Year2026.Mips238Rate1', "", "Doxepin Average Daily Dose", "G9367", PopulationEnum.numerator_performance_met, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), String.valueOf($dose.doubleValue()), SupplementalInfoEnum.CALCULATED_VALUE_TYPE.displayName(), ElementValueType.DECIMAL.displayName());
+end
+
+/*
+define "Numerator Performance Met G9367".group: 
+ Option ID: G9367 
+    (   "Denominator Encounter".all Encounter
+	    and exists "Same High Risk Medications Ordered on Different Days".group medlist
+		    such that Encounter.group_id = medlist.group_id )
+    or  (   "Denominator Encounter".all Encounter
+	        and exists "Two High Risk Medications With Prolonged Duration Anti-Infectives".group Med
+		        such that Encounter.group_id = Med.group_id )
+    or  (   "Denominator Encounter".all Encounter
+	        and exists "Two High Risk Medications With Prolonged Duration Hypnotics".group Med
+		        such that Encounter.group_id = Med.group_id )
+    or  (   "Denominator Encounter".all Encounter
+    	    and exists "High Risk Medications with Average Daily Dose Criteria Digoxin".group Dose
+		        such that Encounter.group_id = Dose.med1.group_id  )
+    or  (   "Denominator Encounter".all Encounter
+    	    and exists "High Risk Medications with Average Daily Dose Criteria Doxepin".group Dose
+		        such that Encounter.group_id = Dose.med1.group_id  )
+    or  (   "Denominator Encounter".all Encounter
+  	        and exists( (   ["Clinical Activity": "MIPS; 238_PERFORMANCE_MET_G9367"] P
+    			            where P.start_date during "Measurement Period"  )
+				such that Encounter.group_id = P.group_id	)   )
+  ,
+  if exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_MET_G9367"] P
+              where P.start_date during "Measurement Period"  ) QualityCode
+  return
+  ExtendedMeasureResultV2(
+      QualityCode
+      , 'Performance Met Quality Code' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if exists ( "Same High Risk Medications Ordered on Different Days".group ) medlist
+  return
+  ExtendedMeasureResultV2(
+      medlist.med1
+      , 'High Risk Medication Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      medlist.med2
+      , 'High Risk Medication Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if "Two High Risk Medications With Prolonged Duration Anti-Infectives".group
+  from (  first("AntiInfectives During Measurement Period" sort by start_date asc) Med1
+          , last("AntiInfectives During Measurement Period" sort by start_date asc) Med2
+          , "Cumulative Medication Duration".group("AntiInfectives During Measurement Period") Duration  )
+  return
+  ExtendedMeasureResultV2(
+      Med1
+      , 'Anti-Infective Medication 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      Med2
+      , 'Anti-Infective Medication 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      Duration
+      , 'Anti-Infective Cumulative Medication Duration' as name
+      , calculated_record = true
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if "Two High Risk Medications With Prolonged Duration Hypnotics".group
+  from (  first("Hypnotics During Measurement Period" sort by start_date asc) Med1
+          , last("Hypnotics During Measurement Period" sort by start_date asc) Med2
+          , "Cumulative Medication Duration".group("Hypnotics During Measurement Period") Duration  )
+  return
+  ExtendedMeasureResultV2(
+      Med1
+      , 'Nonbenzodiazepine Hypnotic 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      Med2
+      , 'Nonbenzodiazepine Hypnotic 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      Duration
+      , 'Nonbenzodiazepine Hypnotic Cumulative Medication Duration' as name
+      , calculated_record = true
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if exists ( "High Risk Medications with Average Daily Dose Criteria Digoxin".group ) DigoxinCriteria
+  return
+  ExtendedMeasureResultV2(
+      DigoxinCriteria.med1
+      , 'Digoxin Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      DigoxinCriteria.med2
+      , 'Digoxin Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      DigoxinCriteria.dose
+      , 'Digoxin Average Daily Dose' as name
+      , calculated_record = true
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if exists ( "High Risk Medications with Average Daily Dose Criteria Doxepin".group ) DoxepinCriteria
+  return
+  ExtendedMeasureResultV2(
+      DoxepinCriteria.med1
+      , 'Doxepin Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      DoxepinCriteria.med2
+      , 'Doxepin Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      DoxepinCriteria.dose
+      , 'Doxepin Average Daily Dose' as name
+      , calculated_record = true
+      , population = Performance Met
+      , option_id = G9367
+  )
+*/
+rule 'Year2026.Mips238Rate1.Success.G9367.group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate1')
+    $patient: Patient()
+    exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    )
+    or exists(
+        // "Same High Risk Medications Ordered on Different Days".group
+        Year2026Mips238Rate1MedicationListGroup(
+            !Collections.disjoint(encounter.groupExternalIds, $encounter.groupExternalIds)
+        )
+    )
+    or exists(
+        //"Two High Risk Medications With Prolonged Duration Anti-Infectives".group
+        Year2026Mips238Rate1TwoHighRiskMedicationAntiInfectivesGroupEvidence(
+            !Collections.disjoint(encounter.groupExternalIds, $encounter.groupExternalIds)
+        )
+    )
+    or exists(
+        //"Two High Risk Medications With Prolonged Duration Hypnotics".group
+        Year2026Mips238Rate1TwoHighRiskMedicationHypnoticsGroupEvidence(
+            !Collections.disjoint(encounter.groupExternalIds, $encounter.groupExternalIds)
+        )
+    )
+    or exists(
+        //"High Risk Medications with Average Daily Dose Criteria Digoxin".group
+        Year2026Mips238Rate1AverageDailyDoseDigoxinGroupEvidence(
+            !Collections.disjoint(encounter.groupExternalIds, $encounter.groupExternalIds)
+        )
+    )
+    or exists(
+        //"High Risk Medications with Average Daily Dose Criteria Doxepin".group
+        Year2026Mips238Rate1AverageDailyDoseDoxepinGroupEvidence(
+            !Collections.disjoint(encounter.groupExternalIds, $encounter.groupExternalIds)
+        )
+    )
+then
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.SUCCESS, "G9367");
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Group.EMR.QualityCode'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate1')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    $qualityCode: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367GroupEMR(groupId == $groupId))
+then
+    insert(new Year2026Mips238Rate1SuccessG9367GroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Performance Met Quality Code", "G9367", PopulationEnum.numerator_performance_met, $qualityCode, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qualityCode.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Group.EMR.MedicationList'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate1')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    Year2026Mips238Rate1MedicationListGroup(
+        !Collections.disjoint(encounter.groupExternalIds, $encounter.groupExternalIds),
+        $med1: med1,
+        $med2: med2
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367GroupEMR(groupId == $groupId))
+then
+    insert(new Year2026Mips238Rate1SuccessG9367GroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "High Risk Medication Order 1", "G9367", PopulationEnum.numerator_performance_met, $med1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med1.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "High Risk Medication Order 2", "G9367", PopulationEnum.numerator_performance_met, $med2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med2.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Group.EMR.AntiInfectives'
+salience -12
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate1')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    exists Year2026Mips238Rate1TwoHighRiskMedicationAntiInfectivesGroupEvidence(
+        !Collections.disjoint(encounter.groupExternalIds, $encounter.groupExternalIds)
+    )
+    queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    $durationDays: Number() from accumulate(
+        $m: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            groupExternalIds contains $groupId
+        );
+        sum($m.totalDaysSupplied($program.measurementPeriodEndDate))
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367GroupEMR(groupId == $groupId))
+then
+    insert(new Year2026Mips238Rate1SuccessG9367GroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Anti-Infective Medication 1", "G9367", PopulationEnum.numerator_performance_met, $pairMed1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $pairMed1.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Anti-Infective Medication 2", "G9367", PopulationEnum.numerator_performance_met, $pairMed2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $pairMed2.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Anti-Infective Cumulative Medication Duration", "G9367", PopulationEnum.numerator_performance_met, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), String.valueOf($durationDays.longValue()), SupplementalInfoEnum.CALCULATED_VALUE_TYPE.displayName(), ElementValueType.LONG.displayName());
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Group.EMR.Hypnotics'
+salience -13
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate1')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    exists Year2026Mips238Rate1TwoHighRiskMedicationHypnoticsGroupEvidence(
+        !Collections.disjoint(encounter.groupExternalIds, $encounter.groupExternalIds)
+    )
+    queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    $durationDays: Number() from accumulate(
+        $m: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            groupExternalIds contains $groupId
+        );
+        sum($m.totalDaysSupplied($program.measurementPeriodEndDate))
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367GroupEMR(groupId == $groupId))
+then
+    insert(new Year2026Mips238Rate1SuccessG9367GroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Nonbenzodiazepine Hypnotic 1", "G9367", PopulationEnum.numerator_performance_met, $pairMed1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $pairMed1.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Nonbenzodiazepine Hypnotic 2", "G9367", PopulationEnum.numerator_performance_met, $pairMed2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $pairMed2.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Nonbenzodiazepine Hypnotic Cumulative Medication Duration", "G9367", PopulationEnum.numerator_performance_met, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), String.valueOf($durationDays.longValue()), SupplementalInfoEnum.CALCULATED_VALUE_TYPE.displayName(), ElementValueType.LONG.displayName());
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Group.EMR.Digoxin'
+salience -14
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate1')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    $doseEvidence: Year2026Mips238Rate1AverageDailyDoseDigoxinGroupEvidence(
+        !Collections.disjoint(encounter.groupExternalIds, $encounter.groupExternalIds),
+        $med1: med1,
+        $med2: med2,
+        $dose: dose
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367GroupEMR(groupId == $groupId))
+then
+    insert(new Year2026Mips238Rate1SuccessG9367GroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Digoxin Order 1", "G9367", PopulationEnum.numerator_performance_met, $med1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med1.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Digoxin Order 2", "G9367", PopulationEnum.numerator_performance_met, $med2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med2.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Digoxin Average Daily Dose", "G9367", PopulationEnum.numerator_performance_met, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), String.valueOf($dose.doubleValue()), SupplementalInfoEnum.CALCULATED_VALUE_TYPE.displayName(), ElementValueType.DECIMAL.displayName());
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Group.EMR.Doxepin'
+salience -15
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate1')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    $doseEvidence: Year2026Mips238Rate1AverageDailyDoseDoxepinGroupEvidence(
+        !Collections.disjoint(encounter.groupExternalIds, $encounter.groupExternalIds),
+        $med1: med1,
+        $med2: med2,
+        $dose: dose
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367GroupEMR(groupId == $groupId))
+then
+    insert(new Year2026Mips238Rate1SuccessG9367GroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Doxepin Order 1", "G9367", PopulationEnum.numerator_performance_met, $med1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med1.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Doxepin Order 2", "G9367", PopulationEnum.numerator_performance_met, $med2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med2.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Doxepin Average Daily Dose", "G9367", PopulationEnum.numerator_performance_met, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), String.valueOf($dose.doubleValue()), SupplementalInfoEnum.CALCULATED_VALUE_TYPE.displayName(), ElementValueType.DECIMAL.displayName());
+end
+
+/*define "Numerator Performance Met G9367".provider:
+ Option ID: G9367 
+    (   "Denominator Encounter".all Encounter
+	    and exists "Same High Risk Medications Ordered on Different Days".provider medlist
+		    such that Encounter.provider_id = medlist.provider_id )
+    or  (   "Denominator Encounter".all Encounter
+	        and exists "Two High Risk Medications With Prolonged Duration Anti-Infectives".provider Med
+		        such that Encounter.provider_id = Med.provider_id )
+    or  (   "Denominator Encounter".all Encounter
+	        and exists "Two High Risk Medications With Prolonged Duration Hypnotics".provider Med
+		        such that Encounter.provider_id = Med.provider_id )
+    or  (   "Denominator Encounter".all Encounter
+    	    and exists "High Risk Medications with Average Daily Dose Criteria Digoxin".provider Dose
+		        such that Encounter.provider_id = Dose.med1.provider_id  )
+    or  (   "Denominator Encounter".all Encounter
+    	    and exists "High Risk Medications with Average Daily Dose Criteria Doxepin".provider Dose
+		        such that Encounter.provider_id = Dose.med1.provider_id  )
+    or  (   "Denominator Encounter".all Encounter
+  	        and exists( (   ["Clinical Activity": "MIPS; 238_PERFORMANCE_MET_G9367"] P
+    			            where P.start_date during "Measurement Period"  )
+				such that Encounter.provider_id = P.provider_id	)   )
+  ,
+  if exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_MET_G9367"] P
+              where P.start_date during "Measurement Period"  ) QualityCode
+  return
+  ExtendedMeasureResultV2(
+      QualityCode
+      , 'Performance Met Quality Code' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if exists ( "Same High Risk Medications Ordered on Different Days".provider ) medlist
+  return
+  ExtendedMeasureResultV2(
+      medlist.med1
+      , 'High Risk Medication Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      medlist.med2
+      , 'High Risk Medication Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if "Two High Risk Medications With Prolonged Duration Anti-Infectives".provider
+  from (  first("AntiInfectives During Measurement Period" sort by start_date asc) Med1
+          , last("AntiInfectives During Measurement Period" sort by start_date asc) Med2
+          , "Cumulative Medication Duration".provider("AntiInfectives During Measurement Period") Duration  )
+  return
+  ExtendedMeasureResultV2(
+      Med1
+      , 'Anti-Infective Medication 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      Med2
+      , 'Anti-Infective Medication 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      Duration
+      , 'Anti-Infective Cumulative Medication Duration' as name
+      , calculated_record = true
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if "Two High Risk Medications With Prolonged Duration Hypnotics".provider
+  from (  first("Hypnotics During Measurement Period" sort by start_date asc) Med1
+          , last("Hypnotics During Measurement Period" sort by start_date asc) Med2
+          , "Cumulative Medication Duration".provider("Hypnotics During Measurement Period") Duration  )
+  return
+  ExtendedMeasureResultV2(
+      Med1
+      , 'Nonbenzodiazepine Hypnotic 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      Med2
+      , 'Nonbenzodiazepine Hypnotic 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      Duration
+      , 'Nonbenzodiazepine Hypnotic Cumulative Medication Duration' as name
+      , calculated_record = true
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if exists ( "High Risk Medications with Average Daily Dose Criteria Digoxin".provider ) DigoxinCriteria
+  return
+  ExtendedMeasureResultV2(
+      DigoxinCriteria.med1
+      , 'Digoxin Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      DigoxinCriteria.med2
+      , 'Digoxin Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      DigoxinCriteria.dose
+      , 'Digoxin Average Daily Dose' as name
+      , calculated_record = true
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if exists ( "High Risk Medications with Average Daily Dose Criteria Doxepin".provider ) DoxepinCriteria
+  return
+  ExtendedMeasureResultV2(
+      DoxepinCriteria.med1
+      , 'Doxepin Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      DoxepinCriteria.med2
+      , 'Doxepin Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      DoxepinCriteria.dose
+      , 'Doxepin Average Daily Dose' as name
+      , calculated_record = true
+      , population = Performance Met
+      , option_id = G9367
+  ) */
+rule 'Year2026.Mips238Rate1.Success.G9367.provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate1')
+    $patient: Patient()
+    exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    )
+    or exists(
+        //"Medication List".provider
+        Year2026Mips238Rate1MedicationListProvider(
+            encounter.providerExternalId == $encounter.providerExternalId
+        )
+    )
+   
+    or exists(
+        //"Two High Risk Medications With Prolonged Duration Anti-Infectives".provider
+        Year2026Mips238Rate1TwoHighRiskMedicationAntiInfectivesProviderEvidence(
+            encounter.providerExternalId == $encounter.providerExternalId
+        )
+    )
+    or exists(
+        //"Two High Risk Medications With Prolonged Duration Hypnotics".provider
+        Year2026Mips238Rate1TwoHighRiskMedicationHypnoticsProviderEvidence(
+            encounter.providerExternalId == $encounter.providerExternalId
+        )
+    )
+    or exists(
+        //"High Risk Medications with Average Daily Dose Criteria Digoxin".provider
+        Year2026Mips238Rate1AverageDailyDoseDigoxinProviderEvidence(
+            encounter.providerExternalId == $encounter.providerExternalId
+        )
+    )
+    or exists(
+        //"High Risk Medications with Average Daily Dose Criteria Doxepin".provider
+        Year2026Mips238Rate1AverageDailyDoseDoxepinProviderEvidence(
+            encounter.providerExternalId == $encounter.providerExternalId
+        )
+    )
+then
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "G9367");
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Provider.EMR.QualityCode'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate1',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    $providerId: String() from $encounter.providerExternalId
+    $qualityCode: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367ProviderEMR(providerId == $providerId))
+then
+    insert(new Year2026Mips238Rate1SuccessG9367ProviderEMR($providerId));
+    controlSet.addPatientEMR($program, $patient, $measure, $providerId, "Performance Met Quality Code", "G9367", PopulationEnum.numerator_performance_met, $qualityCode, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qualityCode.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Provider.EMR.MedicationList'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate1',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    $providerId: String() from $encounter.providerExternalId
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    Year2026Mips238Rate1MedicationListProvider(
+        encounter.providerExternalId == $encounter.providerExternalId,
+        $med1: med1,
+        $med2: med2
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367ProviderEMR(providerId == $providerId))
+then
+    insert(new Year2026Mips238Rate1SuccessG9367ProviderEMR($providerId));
+    controlSet.addPatientEMR($program, $patient, $measure, $providerId, "High Risk Medication Order 1", "G9367", PopulationEnum.numerator_performance_met, $med1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med1.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $providerId, "High Risk Medication Order 2", "G9367", PopulationEnum.numerator_performance_met, $med2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med2.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Provider.EMR.AntiInfectives'
+salience -12
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate1',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    $providerId: String() from $encounter.providerExternalId
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    exists Year2026Mips238Rate1TwoHighRiskMedicationAntiInfectivesProviderEvidence(
+        encounter.providerExternalId == $encounter.providerExternalId
+    )
+    queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    $durationDays: Number() from accumulate(
+        $m: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIINFECTIVES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            isPresent(providerExternalId),
+            providerExternalId == $providerId
+        );
+        sum($m.totalDaysSupplied($program.measurementPeriodEndDate))
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367ProviderEMR(providerId == $providerId))
+then
+    insert(new Year2026Mips238Rate1SuccessG9367ProviderEMR($providerId));
+    controlSet.addPatientEMR($program, $patient, $measure, $providerId, "Anti-Infective Medication 1", "G9367", PopulationEnum.numerator_performance_met, $pairMed1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $pairMed1.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $providerId, "Anti-Infective Medication 2", "G9367", PopulationEnum.numerator_performance_met, $pairMed2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $pairMed2.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $providerId, "Anti-Infective Cumulative Medication Duration", "G9367", PopulationEnum.numerator_performance_met, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), String.valueOf($durationDays.longValue()), SupplementalInfoEnum.CALCULATED_VALUE_TYPE.displayName(), ElementValueType.LONG.displayName());
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Provider.EMR.Hypnotics'
+salience -13
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate1',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    $providerId: String() from $encounter.providerExternalId
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    exists Year2026Mips238Rate1TwoHighRiskMedicationHypnoticsProviderEvidence(
+        encounter.providerExternalId == $encounter.providerExternalId
+    )
+    queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+    $durationDays: Number() from accumulate(
+        $m: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_NONBENZODIAZEPINE_HYPNOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            isPresent(providerExternalId),
+            providerExternalId == $providerId
+        );
+        sum($m.totalDaysSupplied($program.measurementPeriodEndDate))
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367ProviderEMR(providerId == $providerId))
+then
+    insert(new Year2026Mips238Rate1SuccessG9367ProviderEMR($providerId));
+    controlSet.addPatientEMR($program, $patient, $measure, $providerId, "Nonbenzodiazepine Hypnotic 1", "G9367", PopulationEnum.numerator_performance_met, $pairMed1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $pairMed1.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $providerId, "Nonbenzodiazepine Hypnotic 2", "G9367", PopulationEnum.numerator_performance_met, $pairMed2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $pairMed2.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $providerId, "Nonbenzodiazepine Hypnotic Cumulative Medication Duration", "G9367", PopulationEnum.numerator_performance_met, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), String.valueOf($durationDays.longValue()), SupplementalInfoEnum.CALCULATED_VALUE_TYPE.displayName(), ElementValueType.LONG.displayName());
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Provider.EMR.Digoxin'
+salience -14
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate1',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    $providerId: String() from $encounter.providerExternalId
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    $doseEvidence: Year2026Mips238Rate1AverageDailyDoseDigoxinProviderEvidence(
+        encounter.providerExternalId == $encounter.providerExternalId,
+        $med1: med1,
+        $med2: med2,
+        $dose: dose
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367ProviderEMR(providerId == $providerId))
+then
+    insert(new Year2026Mips238Rate1SuccessG9367ProviderEMR($providerId));
+    controlSet.addPatientEMR($program, $patient, $measure, $providerId, "Digoxin Order 1", "G9367", PopulationEnum.numerator_performance_met, $med1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med1.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $providerId, "Digoxin Order 2", "G9367", PopulationEnum.numerator_performance_met, $med2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med2.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $providerId, "Digoxin Average Daily Dose", "G9367", PopulationEnum.numerator_performance_met, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), String.valueOf($dose.doubleValue()), SupplementalInfoEnum.CALCULATED_VALUE_TYPE.displayName(), ElementValueType.DECIMAL.displayName());
+end
+
+rule 'Year2026.Mips238Rate1.Success.G9367.Provider.EMR.Doxepin'
+salience -15
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate1',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    $providerId: String() from $encounter.providerExternalId
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    $doseEvidence: Year2026Mips238Rate1AverageDailyDoseDoxepinProviderEvidence(
+        encounter.providerExternalId == $encounter.providerExternalId,
+        $med1: med1,
+        $med2: med2,
+        $dose: dose
+    )
+    and not (exists Year2026Mips238Rate1SuccessG9367ProviderEMR(providerId == $providerId))
+then
+    insert(new Year2026Mips238Rate1SuccessG9367ProviderEMR($providerId));
+    controlSet.addPatientEMR($program, $patient, $measure, $providerId, "Doxepin Order 1", "G9367", PopulationEnum.numerator_performance_met, $med1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med1.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $providerId, "Doxepin Order 2", "G9367", PopulationEnum.numerator_performance_met, $med2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $med2.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $providerId, "Doxepin Average Daily Dose", "G9367", PopulationEnum.numerator_performance_met, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), String.valueOf($dose.doubleValue()), SupplementalInfoEnum.CALCULATED_VALUE_TYPE.displayName(), ElementValueType.DECIMAL.displayName());
+end
+
+/*
+define "Numerator Performance Not Met G9368".org:
+* Option ID: G9368 *
+   "Denominator".all
+	and not exists "Denominator Exclusion G9741 Hospice".all
+	and not exists "Denominator Exclusion G0034 Palliative Care".all
+	and not exists "Numerator Performance Met G9367".org 
+
+Note: Org, Group and Provider will share the same rule, since the EncounterDenominator is for all. Group/Provider 
+statuses will be updated in their rules.
+*/
+rule 'Year2026.Mips238Rate1.Gap.G9368.org'
+when
+    EncounterDenominator($program: program, $measure:measure == 'Year2026.Mips238Rate1')
+    $patient: Patient()
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.GAP, "G9368");
+end
+
+rule 'Year2026.Mips238Rate1.Gap.G9368.group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate1',
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+then
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.GAP, "G9368");
+end
+
+rule 'Year2026.Mips238Rate1.Gap.G9368.provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate1',
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+then
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, "G9368");
+end

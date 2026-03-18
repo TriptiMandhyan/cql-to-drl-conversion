@@ -1,0 +1,139 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+
+import com.ablehealth.enums.extendedmeaures.*;
+import accumulate com.ablehealth.functions.LatestClinicalActivityAccumulateFunction latestClinicalActivity;
+
+global PatientResults controlSet;
+
+/*
+define "Denominator":
+  "Denominator Encounter" Encounter
+  ,
+  if exists ("Denominator")
+  return
+  ExtendedMeasureResultV2(
+            Encounter //return 1 record even if multiple exist
+            , 'Denominator Encounter' as name
+            , display_date = start_date
+            , calculated_record = false
+            , population = Denominator
+            , option_id = all
+        )
+
+define "Denominator Encounter".all:
+    ["Clinical Activity": "MIPS; 130_ENCOUNTER"] Encounter
+    where   (   Encounter.start_date during "Measurement Period"
+                and AgeInYearsAt(start of "Measurement Period") >= 18
+        and Encounter.provider_id.hasMeasureMembership = true   )
+*/
+rule 'Year2026.Mips130.Denominator'
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips130')
+    $patient: Patient(getAgeInYearsAt($program.measurementPeriod.start) >= 18)
+    $encounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "130_ENCOUNTER"),
+        startsDuring($program.measurementPeriod)
+    )
+then
+    insert(new EncounterDenominator($program, $encounter, 'Year2026.Mips130'));
+    controlSet.addEncounterEMR($program, $patient, "Year2026.130", $encounter, "Denominator Encounter", "G8427", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, "Year2026.130", $encounter, "Denominator Encounter", "G8430", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, "Year2026.130", $encounter, "Denominator Encounter", "G8428", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met G8427".all:
+  *
+  * Option ID: G8427
+  *
+    ("Valid Procedures" CurrentMedDoc
+    with"Denominator" Encounter 
+    such that   (   CurrentMedDoc.start_date during Interval[Encounter.start_date, Encounter.stop_date]
+                    and Encounter.stop_date is not null or empty  )
+                or CurrentMedDoc.start_date = Encounter.start_date) EncounterCurrentMedDoc
+    ,
+    return
+    ExtendedMeasureResultV2(
+            EncounterCurrentMedDoc //return 1 record even if multiple exist
+            , 'Evidence of Current Medications Documented' as name
+            , display_date = start_date
+            , calculated_record = false
+            , population = Numerator Performance Met
+            , option_id = G8427
+        )
+
+define "Valid Procedures":
+    ["Clinical Activity": "MIPS; 130_PERFORMANCE_MET_G8427"]
+    union ["Clinical Activity": "eCQM Direct Reference Codes; DOCUMENTATION_OF_CURRENT_MEDICATIONS_PROCEDURE"] 
+*/
+rule 'Year2026.Mips130.Success.MipsG8427'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips130')
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "130_PERFORMANCE_MET_G8427") ||
+            withValueSet("Ecqm_Direct_Reference_CodesYear2025", "DOCUMENTATION_OF_CURRENT_MEDICATIONS_PROCEDURE"),
+            (($encounter.stopDate != null && startsDuring($encounter)) || startDate == $encounter.startDate)
+        ),
+        latestClinicalActivity($r)
+    )
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.SUCCESS, "G8427");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Evidence of Current Medications Documented", "G8427", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Denominator Exception G8430".all:
+   *
+   * Option ID: G8430
+   *
+    (["Clinical Activity": "MIPS; 130_DENOMINATOR_EXCEPTION_G8430"] Exception
+    with "Denominator" Encounter
+    such that Exception.start_date during Interval[Encounter.start_date, Encounter.stop_date])DenException
+    ,
+    return
+    ExtendedMeasureResultV2(
+            DenException //return 1 record even if multiple exist
+            , 'Denominator Exception Quality Code' as name
+            , display_date = start_date
+            , calculated_record = false
+            , population = Denominator Exception
+            , option_id = G8430
+        )
+*/
+rule 'Year2026.Mips130.Exception.MipsG8430'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips130')
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "130_DENOMINATOR_EXCEPTION_G8430"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($r)
+    )
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCEPTION, "G8430");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Denominator Exception Quality Code", "G8430", PopulationEnum.denominator_exception, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Numerator Failure G8428".all:
+   *
+   * Option ID: G8428
+   *
+    not "Denominator Exception G8430"
+    and not "Numerator Performance Met G8427"
+*/
+rule 'Year2026.Mips130.Gaps.MipsG8428'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips130')
+    $patient: Patient()
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.GAP, "G8428");
+end

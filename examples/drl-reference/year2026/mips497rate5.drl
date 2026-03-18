@@ -1,0 +1,1872 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+import com.ablehealth.enums.extendedmeaures.*;
+import java.util.Collections;
+import java.time.LocalDate;
+
+import accumulate com.ablehealth.functions.LatestClinicalActivityAccumulateFunction latestClinicalActivity;
+import accumulate com.ablehealth.functions.LatestQdmDatatypeAccumulateFunction latestQdmDatatype;
+
+global PatientResults controlSet;
+
+declare Year2026Mips497rate5QualifyingEncounterWithBMI
+    record: ClinicalActivity
+end
+
+declare Year2026Mips497rate5LastBMIBeforeEncounterOrg
+    encounterStartDate: LocalDate
+    bmiResult: Double
+    bmi: ClinicalActivity
+end
+
+declare Year2026Mips497rate5LastBMIBeforeEncounterGroup
+    encounterStartDate: LocalDate
+    bmiResult: Double
+    bmi: ClinicalActivity
+    groupExternalId: String
+end
+
+declare Year2026Mips497rate5LastBMIBeforeEncounterProvider
+    encounterStartDate: LocalDate
+    bmiResult: Double
+    bmi: ClinicalActivity
+    providerExternalId: String
+end
+
+declare Year2026Mips497rate5M1296OrgEmr
+end
+
+declare Year2026Mips497rate5M1296Group
+    encounter: ClinicalActivity
+    groupExternalId: String
+end
+
+declare Year2026Mips497rate5M1296Provider
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips497rate5NumeratorPerformanceMetM1293Emr
+end
+
+declare Year2026Mips497rate5NumeratorPerformanceMetM1293Group
+    encounter: ClinicalActivity
+    groupExternalId: String
+end
+
+declare Year2026Mips497rate5NumeratorPerformanceMetM1293Provider
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips497rate5NumeratorPerformanceMetM1287Emr
+end
+
+declare Year2026Mips497rate5NumeratorPerformanceMetM1287Group
+    encounter: ClinicalActivity
+    groupExternalId: String
+end
+
+declare Year2026Mips497rate5NumeratorPerformanceMetM1287Provider
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips497rate5DenominatorExceptionM1286Emr
+end
+
+declare Year2026Mips497rate5DenominatorExceptionM1297Emr
+end
+
+declare Year2026Mips497rate5DenominatorExceptionM1297Group
+    encounter: ClinicalActivity
+    groupExternalId: String
+end
+
+declare Year2026Mips497rate5DenominatorExceptionM1297Provider
+    encounter: ClinicalActivity
+    providerExternalId: String
+end
+
+declare Year2026Mips497rate5ExclusionPregnancyOrg
+end
+
+declare Year2026Mips497rate5ExclusionPregnancyGroup
+    groupExternalId: String
+end
+
+declare Year2026Mips497rate5ExclusionPregnancyProvider
+    providerExternalId: String
+end
+
+declare Year2026Mips497rate5ExclusionHospiceOrPalliativeOrg
+end
+
+declare Year2026Mips497rate5ExclusionHospiceOrPalliativeGroup
+    groupExternalId: String
+end
+
+declare Year2026Mips497rate5ExclusionHospiceOrPalliativeProvider
+    providerExternalId: String
+end
+
+declare Year2026Mips497rate5PerformanceNotMetM1276
+end
+
+declare Year2026Mips497rate5DenominatorEncounterEmrGroup
+    groupExternalId: String
+end
+
+declare Year2026Mips497rate5DenominatorEncounterEmrProvider
+    providerExternalId: String
+end
+
+/*
+define "Denominator".all:
+  "Qualifying Encounter" Encounter
+  ,
+  if exists("Denominator") 
+  return
+  ExtendedMeasureResultV2(
+        Last(Encounter) sort by Encounter.start_date ascending//LastperLevel
+        , 'Denominator Encounter' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all   
+    )
+
+define "Qualifying Encounter"
+    ["Clinical Activity": "MIPS; 128_ENCOUNTER"] Encounter
+      where Encounter.start_date during "Measurement Period"
+        and AgeInYearsAt(Encounter.start_date) >= 18
+        and not Encounter.code_modifier in {'GQ','GT','95','FQ','93'}
+        and not Encounter.place_of_service in {'02','10','12'}
+        and Encounter.provider_id.hasMeasureMembership = true
+    and not exists((["Clinical Activity": "MIPS; 128_M1431_ENCOUNTERS_CONDUCTED_VIA_TELEHEALTH"]
+                   union ["Clinical Activity": "MIPS; 497RATE5_M1426_ENCOUNTERS_CONDUCTED_VIA_TELEHEALTH"])TelehealthEncounter
+                      with Encounter
+                      such that TelehealthEncounter.start_date during Interval[Encounter.start_date, Encounter.stop_date])
+
+*/
+rule 'Year2026.Mips497Rate5.Denominator'
+salience 70
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips497Rate5")
+    $encounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "128_ENCOUNTER"),
+        startsDuring($program.measurementPeriod),
+        withCodeModifiersNotIn("GQ", "GT", "95", "FQ", "93"),
+        withPlaceOfServiceNotIn("02", "10", "12")
+    )
+    and not(
+        exists ClinicalActivity(
+            withValueSet("MipsYear2026", "128_M1431_ENCOUNTERS_CONDUCTED_VIA_TELEHEALTH") ||
+            withValueSet("MipsYear2026", "497RATE5_M1426_ENCOUNTERS_CONDUCTED_VIA_TELEHEALTH"),
+            startsDuring($encounter)
+        )
+    )
+    $patient: Patient(getAgeInYearsAt($encounter.startDate) >= 18)
+then 
+    insert(new EncounterDenominator($program, $encounter, "Year2026.Mips497Rate5"));
+end
+
+// EMR rules for last encounter per org/group/provider
+rule 'Year2026.Mips497Rate5.Denominator.EMR.Org'
+salience -10
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips497Rate5")
+    $patient: Patient()
+    exists EncounterDenominator(program == $program, measure == "Year2026.Mips497Rate5")
+    $lastEncounter: ClinicalActivity() from accumulate(
+        EncounterDenominator($e: clinicalActivity, measure == "Year2026.Mips497Rate5"),
+        latestClinicalActivity($e)
+    )
+then
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", "", "Denominator Encounter", "M1298", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", "", "Denominator Encounter", "M1307", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", "", "Denominator Encounter", "M1296", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", "", "Denominator Encounter", "M1293", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", "", "Denominator Encounter", "M1287", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", "", "Denominator Encounter", "M1286", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", "", "Denominator Encounter", "M1297", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", "", "Denominator Encounter", "M1276", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", "", "Denominator Encounter", "M1314", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Denominator.EMR.Group'
+salience -10
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips497Rate5")
+    $patient: Patient()
+    EncounterDenominator($encounter: clinicalActivity, program == $program, measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $groupExternalId: String() from $encounter.getGroupExternalIds()
+    not Year2026Mips497rate5DenominatorEncounterEmrGroup(groupExternalId == $groupExternalId)
+    $lastEncounter: ClinicalActivity() from accumulate(
+        EncounterDenominator(
+            $enc: clinicalActivity, 
+            measure == "Year2026.Mips497Rate5",
+            clinicalActivity.isPresent(clinicalActivity.groupExternalIds),
+            $groupExternalId memberOf clinicalActivity.groupExternalIds
+        ),
+        latestClinicalActivity($enc)
+    )
+then
+    insert(new Year2026Mips497rate5DenominatorEncounterEmrGroup($groupExternalId));
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $groupExternalId, "Denominator Encounter", "M1298", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $groupExternalId, "Denominator Encounter", "M1307", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $groupExternalId, "Denominator Encounter", "M1296", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $groupExternalId, "Denominator Encounter", "M1293", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $groupExternalId, "Denominator Encounter", "M1287", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $groupExternalId, "Denominator Encounter", "M1286", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $groupExternalId, "Denominator Encounter", "M1297", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $groupExternalId, "Denominator Encounter", "M1276", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $groupExternalId, "Denominator Encounter", "M1314", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Denominator.EMR.Provider'
+salience -10
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips497Rate5")
+    $patient: Patient()
+    EncounterDenominator($encounter: clinicalActivity, program == $program, measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.providerExternalId))
+    not Year2026Mips497rate5DenominatorEncounterEmrProvider(providerExternalId == $encounter.providerExternalId)
+    $lastEncounter: ClinicalActivity() from accumulate(
+        EncounterDenominator(
+            $enc: clinicalActivity, 
+            measure == "Year2026.Mips497Rate5",
+            clinicalActivity.isPresent(clinicalActivity.providerExternalId),
+            clinicalActivity.providerExternalId == $encounter.providerExternalId
+        ),
+        latestClinicalActivity($enc)
+    )
+then
+    insert(new Year2026Mips497rate5DenominatorEncounterEmrProvider($encounter.providerExternalId));
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $encounter.providerExternalId, "Denominator Encounter", "M1298", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $encounter.providerExternalId, "Denominator Encounter", "M1307", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $encounter.providerExternalId, "Denominator Encounter", "M1296", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $encounter.providerExternalId, "Denominator Encounter", "M1293", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $encounter.providerExternalId, "Denominator Encounter", "M1287", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $encounter.providerExternalId, "Denominator Encounter", "M1286", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $encounter.providerExternalId, "Denominator Encounter", "M1297", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $encounter.providerExternalId, "Denominator Encounter", "M1276", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips497Rate5", $encounter.providerExternalId, "Denominator Encounter", "M1314", PopulationEnum.denominator, $lastEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $lastEncounter.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion Pregnancy M1298".all: 
+   *
+   * Option ID: M1298
+   *
+  (((["Clinical Activity": "MIPS; 128_DENOMINATOR_EXCLUSION_G9997"] 
+    union ["Clinical Activity": "MIPS; 497RATE5_DENOMINATOR_EXCLUSION_M1298"])QC 
+            with "Denominator" Encounter
+            such that QC.start_date during Interval[start of "Measurement Period", Encounter.start_date])
+        or 
+    union (["Diagnosis": "VSAC; PREGNANCY"] Preg
+              with "Denominator" Encounter
+              such that(( Interval[Preg.start_date, Preg.stop_date] overlaps Interval[start of "Measurement Period", Encounter.start_date]
+                            and Preg.stop_ date is not null or empty)
+                        or Preg.start_date during Interval[start of "Measurement Period", Encounter.start_date]))
+        )M1298
+        ,
+        ExtendedMeasureResultV2(
+          M1298 //return 1 record per patient even if multiple exists
+          , 'Evidence of Pregnancy' as name
+          , display_date = start_date
+          , calculated_record = false
+          , population = Denominator Exclusion
+          , option_id = M1298 
+      )
+*/
+query queryYear2026Mips497rate5DenominatorExclusionPregnancyM1298(Program $program, ClinicalActivity $encounter, QdmDatatype $result)
+    $result:= ClinicalActivity(
+        withValueSet("MipsYear2026", "128_DENOMINATOR_EXCLUSION_G9997") ||
+        withValueSet("MipsYear2026", "497RATE5_DENOMINATOR_EXCLUSION_M1298"),
+        startsDuring($program.measurementPeriod.start, $encounter.startDate)
+    )
+    or $result:= Diagnosis(
+        withValueSet("VsacYear2026", "PREGNANCY"),
+        overlaps($program.measurementPeriod.start, $encounter.startDate),
+        stopDate != null  
+    )
+    or $result:= Diagnosis(
+        withValueSet("VsacYear2026", "PREGNANCY"),
+        startsDuring($program.measurementPeriod.start, $encounter.startDate)
+    )
+end
+
+rule 'Year2026.Mips497Rate5.Exclusion.pregnancy.org'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    $result: QdmDatatype() from accumulate(
+        queryYear2026Mips497rate5DenominatorExclusionPregnancyM1298($program, $encounter, $r;),
+        latestQdmDatatype($r)
+    )
+    not (exists Year2026Mips497rate5ExclusionPregnancyOrg())
+then
+    insert(new Year2026Mips497rate5ExclusionPregnancyOrg());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, "M1298");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Evidence of Pregnancy", "M1298", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Exclusion.pregnancy.group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.getGroupExternalIds()
+    not (exists Year2026Mips497rate5ExclusionPregnancyGroup(groupExternalId == $groupExternalId))
+    $result: QdmDatatype() from accumulate(
+        queryYear2026Mips497rate5DenominatorExclusionPregnancyM1298($program, $encounter, $r;),
+        latestQdmDatatype($r)
+    )
+then
+    insert(new Year2026Mips497rate5ExclusionPregnancyGroup($groupExternalId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupExternalId, $measure, MeasureStatusValue.EXCLUSION, "M1298");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Evidence of Pregnancy", "M1298", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Exclusion.pregnancy.provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.providerExternalId))
+    $patient: Patient()
+    $result: QdmDatatype() from accumulate(
+        queryYear2026Mips497rate5DenominatorExclusionPregnancyM1298($program, $encounter, $r;),
+        latestQdmDatatype($r)
+    )
+    not (exists Year2026Mips497rate5ExclusionPregnancyProvider(providerExternalId == $encounter.providerExternalId))
+then
+    insert(new Year2026Mips497rate5ExclusionPregnancyProvider($encounter.providerExternalId));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, "M1298");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Evidence of Pregnancy", "M1298", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion Hospice or Palliative M1307":
+   *
+   * Option ID: M1307
+   *
+    (exists((["Clinical Activity": "MIPS; 128_DENOMINATOR_EXCLUSION_G9996"]
+            union ["Clinical Activity": "MIPS; 497RATE5_DENOMINATOR_EXCLUSION_M1307"]) M1307
+      where M1307.start_date during "Measurement Period")
+    or exists (sharedHospice."Has Hospice")
+    or exists (sharedPalliativeCare."Has Palliative Care")) HospicePalliativeExclusion
+    ,
+    ExtendedMeasureResultV2(
+      HospicePalliativeExclusion //return 1 record per patient even if multiple exists
+      , 'Evidence of Hospice or Palliative Care' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator Exclusion
+      , option_id = M1307
+  )
+*/
+query queryYear2026Mips497rate5DenominatorExclusionHospiceOrPalliative(Program $program, QdmDatatype $result)
+    $result:= ClinicalActivity(
+        withValueSet("MipsYear2026", "128_DENOMINATOR_EXCLUSION_G9996") ||
+        withValueSet("MipsYear2026", "497RATE5_DENOMINATOR_EXCLUSION_M1307"),
+        startsDuring($program.measurementPeriod)
+    )
+    or queryYear2026MipsSharedHashospiceInMeasurementPeriod($program, $result;)
+    or queryYear2026MipsSharedPalliativeCareInMeasurementPeriod($program, $result;)
+end
+
+rule 'Year2026.Mips497Rate5.Exclusion.HospiceOrPalliative.org'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    $result: QdmDatatype() from accumulate(
+        queryYear2026Mips497rate5DenominatorExclusionHospiceOrPalliative($program, $r;),
+        latestQdmDatatype($r)
+    )
+    not (exists Year2026Mips497rate5ExclusionHospiceOrPalliativeOrg())
+then
+    insert(new Year2026Mips497rate5ExclusionHospiceOrPalliativeOrg());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, "M1307");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Evidence of Hospice or Palliative Care", "M1307", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Exclusion.HospiceOrPalliative.group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.getGroupExternalIds()
+    not (exists Year2026Mips497rate5ExclusionHospiceOrPalliativeGroup(groupExternalId == $groupExternalId))
+    $result: QdmDatatype() from accumulate(
+        queryYear2026Mips497rate5DenominatorExclusionHospiceOrPalliative($program, $r;),
+        latestQdmDatatype($r)
+    )
+then
+    insert(new Year2026Mips497rate5ExclusionHospiceOrPalliativeGroup($groupExternalId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupExternalId, $measure, MeasureStatusValue.EXCLUSION, "M1307");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Evidence of Hospice or Palliative Care", "M1307", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Exclusion.HospiceOrPalliative.provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.providerExternalId))
+    $patient: Patient()
+    $result: QdmDatatype() from accumulate(
+        queryYear2026Mips497rate5DenominatorExclusionHospiceOrPalliative($program, $r;),
+        latestQdmDatatype($r)
+    )
+    not (exists Year2026Mips497rate5ExclusionHospiceOrPalliativeProvider(providerExternalId == $encounter.providerExternalId))
+then
+    insert(new Year2026Mips497rate5ExclusionHospiceOrPalliativeProvider($encounter.providerExternalId));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, "M1307");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Evidence of Hospice or Palliative Care", "M1307", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Last Qualifying Encounter with BMI": 
+    Last("Qualifying Encounter" Encounter
+        with ["Clinical Activity": "eCQM Direct Reference Code; BODY_MASS_INDEX_BMI_RATIO"] BMI
+        such that BMI.start_date during Interval[Encounter.start_date - 12 months, Encounter.start_date]
+                  and BMI.result is not null or empty )                
+
+define "Last BMI Before Encounter".all  
+// Use LastPerLevel to return statuses for org and each provider_id and group_id associated with a "Last Qualifying Encounter with BMI" Encounter
+    (LastPerLevel(["Clinical Activity": "eCQM Direct Reference Code; BODY_MASS_INDEX_BMI_RATIO"] BMI
+      with ("Last Qualifying Encounter with BMI" ) Encounter
+        such that BMI.start_date during Interval[Encounter.start_date - 12 months, Encounter.start_date])
+      sort by BMI.start_date asc) LastBMI
+from "Last BMI Before Encounter"
+return LastBMI.start_date
+return LastBMI.result  
+return Encounter.provider_id if Encounter.provider_id is not null or empty
+return Encounter.group_id if Encounter.group_id is not null or empty
+*/
+rule 'Year2026.Mips497Rate5.QualifyingEncounterWithBMI'
+salience 50
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    and exists ClinicalActivity(
+        withValueSet("Ecqm_Direct_Reference_CodesYear2026", "BODY_MASS_INDEX_BMI_RATIO"),
+        startsDuring($encounter.startDate.minusMonths(12), $encounter.startDate)
+    )
+then
+    insert(new Year2026Mips497rate5QualifyingEncounterWithBMI($encounter));
+end
+
+rule 'Year2026.Mips497Rate5.LastBMIBeforeEncounter.Org'
+salience 40
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips497Rate5")
+    $patient: Patient()
+    $latestEncounter: ClinicalActivity() from accumulate (
+        Year2026Mips497rate5QualifyingEncounterWithBMI($c: record),
+        latestClinicalActivity($c)
+    )
+    $latestBmi: ClinicalActivity() from accumulate (
+        $c: ClinicalActivity(
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "BODY_MASS_INDEX_BMI_RATIO"),
+            startsDuring($latestEncounter.startDate.minusMonths(12), $latestEncounter.startDate)
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips497rate5LastBMIBeforeEncounterOrg($latestEncounter.startDate, $latestBmi.resultAsDecimal, $latestBmi));
+end
+
+rule 'Year2026.Mips497Rate5.LastBMIBeforeEncounter.Group'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.getGroupExternalIds()
+    $latestEncounter: ClinicalActivity() from accumulate (
+        Year2026Mips497rate5QualifyingEncounterWithBMI(
+            $c: record,
+            $c.isPresent($c.groupExternalIds),
+            $groupExternalId memberOf $c.groupExternalIds
+        ),
+        latestClinicalActivity($c)
+    )
+    $latestBmi: ClinicalActivity() from accumulate (
+        $c: ClinicalActivity(
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "BODY_MASS_INDEX_BMI_RATIO"),
+            startsDuring($latestEncounter.startDate.minusMonths(12), $latestEncounter.startDate)
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips497rate5LastBMIBeforeEncounterGroup($latestEncounter.startDate, $latestBmi.resultAsDecimal, $latestBmi, $groupExternalId));
+end
+
+rule 'Year2026.Mips497Rate5.LastBMIBeforeEncounter.Provider'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.providerExternalId))
+    $patient: Patient()
+    $latestEncounter: ClinicalActivity() from accumulate (
+        Year2026Mips497rate5QualifyingEncounterWithBMI(
+            $c: record,
+            $c.isPresent($c.providerExternalId),
+            $encounter.providerExternalId == $c.providerExternalId
+        ),
+        latestClinicalActivity($c)
+    )
+    $latestBmi: ClinicalActivity() from accumulate (
+        $c: ClinicalActivity(
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "BODY_MASS_INDEX_BMI_RATIO"),
+            startsDuring($latestEncounter.startDate.minusMonths(12), $latestEncounter.startDate)
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips497rate5LastBMIBeforeEncounterProvider($latestEncounter.startDate, $latestBmi.resultAsDecimal, $latestBmi, $encounter.providerExternalId));
+end
+
+/*
+define "Numerator Performance Met M1296".org:
+   *
+   * Option ID: M1296
+   *
+((((["Clinical Activity": "MIPS; 128_PERFORMANCE_MET_G8420"]
+  union ["Clinical Activity": "MIPS; 497RATE5_PERFORMANCE_MET_M1296"]) P
+    with "Denominator" Encounter
+    such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date])c
+  and not exists("Last Qualifying Encounter with BMI".org LastEncounterBMI
+                  where LastEncounterBMI after Encounter.start_date) M1296
+union "Last BMI Before Encounter Is Normal".org)LastBMINormal) 
+  ,
+  if exists ((["Clinical Activity": "MIPS; 128_PERFORMANCE_MET_G8420"]
+             union ["Clinical Activity": "MIPS; 497RATE5_PERFORMANCE_MET_M1296"]) P
+                with "Denominator" Encounter
+                such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date])
+              and not exists("Last Qualifying Encounter with BMI".org LastEncounterBMI
+                  where LastEncounterBMI after Encounter.start_date) M1296
+  then return
+  ExtendedMeasureResultV2(
+        M1296 //return 1 record per patient even if multiple exists
+        , 'Normal BMI Quality Code' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Met
+        , option_id = M1296 
+    )
+  else if exists("Last BMI Before Encounter Is Normal".org)LastBMINormal
+  then return
+  ExtendedMeasureResultV2(
+        LastBMINormal //return 1 record per patient even if multiple exists
+        , 'Normal BMI' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Met
+        , option_id = M1296 
+    )
+
+define "Last BMI Before Encounter Is Normal":
+    "Last BMI Before Encounter Result" >= 18.5
+    and "Last BMI Before Encounter Result" < 25
+
+Note: CQL outputs EMR for both branches (M1296 quality code and normal BMI), so keep both.
+*/
+rule 'Year2026.Mips497Rate5.Success.M1296.p1.Org'
+salience 30
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "128_PERFORMANCE_MET_G8420") ||
+            withValueSet("MipsYear2026", "497RATE5_PERFORMANCE_MET_M1296"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (exists Year2026Mips497rate5LastBMIBeforeEncounterOrg(encounterStartDate.isAfter($encounter.startDate)))
+    and not (exists Year2026Mips497rate5M1296OrgEmr())
+then
+    insert (new Year2026Mips497rate5M1296OrgEmr());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "M1296");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Normal BMI Quality Code", "M1296", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+
+end
+
+rule 'Year2026.Mips497Rate5.Success.M1296.p2.Org'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    Year2026Mips497rate5LastBMIBeforeEncounterOrg(
+        encounterStartDate == $encounter.startDate,
+        $bmi: bmi,
+        bmiResult >= 18.5,
+        bmiResult < 25
+    )
+    and not (exists Year2026Mips497rate5M1296OrgEmr())
+then
+    insert (new Year2026Mips497rate5M1296OrgEmr());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "M1296");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Normal BMI", "M1296", PopulationEnum.numerator_performance_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met M1296".group:
+   *
+   * Option ID: M1296
+   *
+((((["Clinical Activity": "MIPS; 128_PERFORMANCE_MET_G8420"]
+  union ["Clinical Activity": "MIPS; 497RATE5_PERFORMANCE_MET_M1296"]) P
+    with "Denominator" Encounter
+    such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date])
+  and not exists("Last Qualifying Encounter with BMI".group LastEncounterBMI
+                  where (LastEncounterBMI.group_id = Encounter.group_id
+                        and LastEncounterBMI after Encounter.start_date)))
+  union "Last BMI Before Encounter Is Normal".group)
+  ,
+  if exists ((["Clinical Activity": "MIPS; 128_PERFORMANCE_MET_G8420"]
+             union ["Clinical Activity": "MIPS; 497RATE5_PERFORMANCE_MET_M1296"]) P
+                with "Denominator" Encounter
+                such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date])
+              and not exists("Last Qualifying Encounter with BMI".group LastEncounterBMI
+                              where (LastEncounterBMI.group_id = Encounter.group_id
+                                      and LastEncounterBMI after Encounter.start_date)) M1296Group
+  then return
+  ExtendedMeasureResultV2(
+        M1296Group //return 1 record per patient even if multiple exists
+        , 'Normal BMI Quality Code' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Met
+        , option_id = M1296 
+    )
+  else if exists("Last BMI Before Encounter Is Normal".group)LastBMINormalGroup
+  then return
+  ExtendedMeasureResultV2(
+        LastBMINormalGroup //return 1 record per patient even if multiple exists
+        , 'Normal BMI' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Met
+        , option_id = M1296 
+    )
+
+define "Last BMI Before Encounter Is Normal":
+    "Last BMI Before Encounter Result" >= 18.5
+    and "Last BMI Before Encounter Result" < 25
+
+Note: we want to only output EMR for 128_PERFORMANCE_MET_M1296 since "Last BMI Before Encounter Is Normal".org is already covered
+*/
+rule 'Year2026.Mips497Rate5.Success.M1296.p1.Group'
+salience 30
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.getGroupExternalIds()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "128_PERFORMANCE_MET_G8420") ||
+            withValueSet("MipsYear2026", "497RATE5_PERFORMANCE_MET_M1296"),
+            startsDuring($encounter),
+            $encounter.isPresent($encounter.groupExternalIds)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (
+        exists Year2026Mips497rate5LastBMIBeforeEncounterGroup(
+            groupExternalId == $groupExternalId,
+            encounterStartDate.isAfter($encounter.startDate)
+        )
+    )
+    and not (exists Year2026Mips497rate5M1296Group(groupExternalId == $groupExternalId))
+then
+    insert (new Year2026Mips497rate5M1296Group($encounter, $groupExternalId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupExternalId, $measure, MeasureStatusValue.SUCCESS, "M1296");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Normal BMI Quality Code", "M1296", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Success.M1296.p2.Group'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.getGroupExternalIds()
+    Year2026Mips497rate5LastBMIBeforeEncounterGroup(
+        encounterStartDate == $encounter.startDate,
+        $bmi: bmi,
+        bmiResult >= 18.5,
+        bmiResult < 25,
+        groupExternalId == $groupExternalId
+    )
+    and not (exists Year2026Mips497rate5M1296Group(groupExternalId == $groupExternalId))
+then
+    insert (new Year2026Mips497rate5M1296Group($encounter, $groupExternalId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupExternalId, $measure, MeasureStatusValue.SUCCESS, "M1296");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Normal BMI", "M1296", PopulationEnum.numerator_performance_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met M1296".provider:
+   *
+   * Option ID: M1296
+   *
+(((["Clinical Activity": "MIPS; 128_PERFORMANCE_MET_G8420"]
+  union ["Clinical Activity": "MIPS; 497RATE5_PERFORMANCE_MET_M1296"]) P
+    with "Denominator" Encounter
+    such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date])
+  and not exists("Last Qualifying Encounter with BMI".provider LastEncounterBMI
+                  where (LastEncounterBMI.provider_id = Encounter.provider_id
+                        and LastEncounterBMI.start_date after Encounter.start_date))
+union "Last BMI Before Encounter Is Normal".provider)
+  ,
+  if exists ((["Clinical Activity": "MIPS; 128_PERFORMANCE_MET_G8420"]
+             union ["Clinical Activity": "MIPS; 497RATE5_PERFORMANCE_MET_M1296"]) P
+                with "Denominator" Encounter
+                such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date])
+              and not exists("Last Qualifying Encounter with BMI".provider LastEncounterBMI
+                              where (LastQualifyingEncounter.provider_id = Encounter.provider_id
+                                      and LastQualifyingEncounter.start_date after Encounter.start_date)) M1296Provider
+  then return
+  ExtendedMeasureResultV2(
+        M1296Provider //return 1 record per patient even if multiple exists
+        , 'Normal BMI Quality Code' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Met
+        , option_id = M1296 
+    )
+  else if exists("Last BMI Before Encounter Is Normal".provider)LastBMINormalProvider
+  then return
+  ExtendedMeasureResultV2(
+        LastBMINormalProvider //return 1 record per patient even if multiple exists
+        , 'Normal BMI' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Met
+        , option_id = M1296 
+    )
+*/
+rule 'Year2026.Mips497Rate5.Success.M1296.p1.Provider'
+salience 30
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "128_PERFORMANCE_MET_G8420") ||
+            withValueSet("MipsYear2026", "497RATE5_PERFORMANCE_MET_M1296"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (
+        exists Year2026Mips497rate5LastBMIBeforeEncounterProvider(
+            providerExternalId == $encounter.providerExternalId,
+            encounterStartDate.isAfter($encounter.startDate)
+        )
+    )
+    and not (exists Year2026Mips497rate5M1296Provider($encounter.providerExternalId == $encounter.providerExternalId))
+then
+    insert (new Year2026Mips497rate5M1296Provider($encounter));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "M1296");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Normal BMI Quality Code", "M1296", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Success.M1296.p2.Provider'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    Year2026Mips497rate5LastBMIBeforeEncounterProvider(
+        encounterStartDate == $encounter.startDate,
+        $bmi: bmi,
+        bmiResult >= 18.5,
+        bmiResult < 25,
+        providerExternalId == $encounter.providerExternalId
+    )
+    and not (exists Year2026Mips497rate5M1296Provider($encounter.providerExternalId == $encounter.providerExternalId))
+then
+    insert (new Year2026Mips497rate5M1296Provider($encounter));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "M1296");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Normal BMI", "M1296", PopulationEnum.numerator_performance_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+/*
+ define "Numerator Performance Met M1293".all:
+    *
+    * Option ID: M1293
+    *
+(((["Clinical Activity": "MIPS; 128_PERFORMANCE_MET_G8417"] 
+  union ["Clinical Activity": "MIPS; 497RATE5_PERFORMANCE_MET_M1293"]) P
+        with "Denominator" Encounter
+        such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date])
+  union(( ["Clinical Activity": "ABLE; ABOVE_NORMAL_BMI_FOLLOW_UP"]
+        union ["Clinical Activity": "VSAC; FOLLOW_UP_FOR_ABOVE_NORMAL_BMI"]
+        union ["Diagnosis": "VSAC; FOLLOW_UP_FOR_ABOVE_NORMAL_BMI"]) AboveFU 
+            with "Denominator" Encounter
+            and with "Last BMI Before Encounter Is High" HighBMIEncounter
+            such that( AboveFU.start_date during Interval[HighBMIEncounter.start_date - 12 months, HighBMIEncounter.start_date]
+                      and HighBMIEncounter.start_date = Encounter.start_date))
+)M1293
+  ,
+  if exists ((["Clinical Activity": "MIPS; 128_PERFORMANCE_MET_G8417"]
+             union ["Clinical Activity": "MIPS; 497RATE5_PERFORMANCE_MET_M1293"]) P
+                with "Denominator" Encounter
+                such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date]) M1293PerformanceMet
+  then return
+  ExtendedMeasureResultV2(
+        M1293PerformanceMet //return 1 record per patient even if multiple exists
+        , 'Above Normal BMI with Follow-Up Quality Code' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Met
+        , option_id = M1293 
+    )
+  else if exists(( ["Clinical Activity": "ABLE; ABOVE_NORMAL_BMI_FOLLOW_UP"]
+        union ["Clinical Activity": "VSAC; FOLLOW_UP_FOR_ABOVE_NORMAL_BMI"]
+        union ["Diagnosis": "VSAC; FOLLOW_UP_FOR_ABOVE_NORMAL_BMI"]) AboveFU 
+            with "Denominator" Encounter
+            and with "Last BMI Before Encounter Is High" HighBMIEncounter
+            such that( AboveFU.start_date during Interval[HighBMIEncounter.start_date - 12 months, HighBMIEncounter.start_date]
+                      and HighBMIEncounter.start_date = Encounter.start_date) ) PerfMetAboveFU
+  then return
+  (ExtendedMeasureResultV2(
+        PerfMetAboveFU //return 1 record per patient even if multiple exists
+        , 'Follow-up for Above Normal BMI' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Met
+        , option_id = M1293 
+    )
+  and from (LastPerLevel(["Clinical Activity": "eCQM Direct Reference Code; BODY_MASS_INDEX_BMI_RATIO"] BMI // Use LastPerLevel to return statuses for org and each provider_id and group_id associated with a "Last Qualifying Encounter with BMI" Encounter
+            with ("Denominator" ) Encounter
+            such that BMI.start_date during Interval[Encounter.start_date - 12 months, Encounter.start_date])
+          sort by BMI.start_date asc) LastBMI
+  return
+  ExtendedMeasureResultV2(
+        LastBMI //return 1 record per patient even if multiple exists
+        , 'Above Normal BMI' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Met
+        , option_id = M1293 
+    )
+  )
+
+define "Last BMI Before Encounter Is High":
+    "Last BMI Before Encounter Result" >= 25
+*/
+rule 'Year2026.Mips497Rate5.Success.M1293.p1.org'
+salience 30
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "128_PERFORMANCE_MET_G8417") ||
+            withValueSet("MipsYear2026", "497RATE5_PERFORMANCE_MET_M1293"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (exists Year2026Mips497rate5NumeratorPerformanceMetM1293Emr())
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1293Emr());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "M1293");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Above Normal BMI with Follow-Up Quality Code", "M1293", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Success.M1293.p2a.org'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    //"Last BMI Before Encounter Is High"
+    Year2026Mips497rate5LastBMIBeforeEncounterOrg(
+        $encounterStartDate: encounterStartDate,
+        encounterStartDate == $encounter.startDate,
+        $bmi: bmi,
+        bmiResult >= 25
+    )
+    //"Above Normal BMI Follow Up"
+    and $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity (
+            withValueSet("AbleYear2026", "ABOVE_NORMAL_BMI_FOLLOW_UP") ||
+            withValueSet("VsacYear2026", "FOLLOW_UP_FOR_ABOVE_NORMAL_BMI"),
+            startsDuring($encounterStartDate.minusMonths(12), $encounterStartDate)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1293Emr()
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1293Emr());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "M1293");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Follow-up for Above Normal BMI", "M1293", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Above Normal BMI", "M1293", PopulationEnum.numerator_performance_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Success.M1293.p2b.org'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    //"Last BMI Before Encounter Is High"
+    Year2026Mips497rate5LastBMIBeforeEncounterOrg(
+        $encounterStartDate: encounterStartDate,
+        encounterStartDate == $encounter.startDate,
+        $bmi: bmi,
+        bmiResult >= 25
+    )
+    //"Above Normal BMI Follow Up"
+    and $result: QdmDatatype() from accumulate(
+        $r: Diagnosis(
+            withValueSet("VsacYear2026", "FOLLOW_UP_FOR_ABOVE_NORMAL_BMI"),
+            startsDuring($encounterStartDate.minusMonths(12), $encounterStartDate)
+        ),
+        latestQdmDatatype($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1293Emr()
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1293Emr());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "M1293");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Follow-up for Above Normal BMI", "M1293", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Above Normal BMI", "M1293", PopulationEnum.numerator_performance_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+
+rule 'Year2026.Mips497Rate5.Success.M1293.p1.group'
+salience 30
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.getGroupExternalIds()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "128_PERFORMANCE_MET_G8417") ||
+            withValueSet("MipsYear2026", "497RATE5_PERFORMANCE_MET_M1293"),
+            startsDuring($encounter),
+            $encounter.isPresent($encounter.groupExternalIds)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1293Group(groupExternalId == $groupExternalId)
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1293Group($encounter, $groupExternalId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupExternalId, $measure, MeasureStatusValue.SUCCESS, "M1293");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Above Normal BMI with Follow-Up Quality Code", "M1293", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+
+rule 'Year2026.Mips497Rate5.Success.M1293.p2a.group'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.getGroupExternalIds()
+    //"Last BMI Before Encounter Is High"
+    Year2026Mips497rate5LastBMIBeforeEncounterGroup(
+        $encounterStartDate: encounterStartDate,
+        encounterStartDate == $encounter.startDate,
+        $bmi: bmi,
+        bmiResult >= 25,
+        groupExternalId == $groupExternalId
+    )
+    //"Above Normal BMI Follow Up"
+    and $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity (
+            withValueSet("AbleYear2026", "ABOVE_NORMAL_BMI_FOLLOW_UP") ||
+            withValueSet("VsacYear2026", "FOLLOW_UP_FOR_ABOVE_NORMAL_BMI"),
+            startsDuring($encounterStartDate.minusMonths(12), $encounterStartDate)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1293Group(groupExternalId == $groupExternalId)
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1293Group($encounter, $groupExternalId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupExternalId, $measure, MeasureStatusValue.SUCCESS, "M1293");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Follow-up for Above Normal BMI", "M1293", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Above Normal BMI", "M1293", PopulationEnum.numerator_performance_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Success.M1293.p2b.group'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.getGroupExternalIds()
+    //"Last BMI Before Encounter Is High"
+    Year2026Mips497rate5LastBMIBeforeEncounterGroup(
+        $encounterStartDate: encounterStartDate,
+        encounterStartDate == $encounter.startDate,
+        $bmi: bmi,
+        bmiResult >= 25,
+        groupExternalId == $groupExternalId
+    )
+    //"Above Normal BMI Follow Up"
+    and $result: QdmDatatype() from accumulate(
+        $r: Diagnosis(
+            withValueSet("VsacYear2026", "FOLLOW_UP_FOR_ABOVE_NORMAL_BMI"),
+            startsDuring($encounterStartDate.minusMonths(12), $encounterStartDate)
+        ),
+        latestQdmDatatype($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1293Group(groupExternalId == $groupExternalId)
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1293Group($encounter, $groupExternalId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupExternalId, $measure, MeasureStatusValue.SUCCESS, "M1293");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Follow-up for Above Normal BMI", "M1293", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Above Normal BMI", "M1293", PopulationEnum.numerator_performance_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+
+rule 'Year2026.Mips497Rate5.Success.M1293.p1.provider'
+salience 30
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "128_PERFORMANCE_MET_G8417") ||
+            withValueSet("MipsYear2026", "497RATE5_PERFORMANCE_MET_M1293"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1293Provider($encounter.providerExternalId == encounter.providerExternalId)
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1293Provider($encounter));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "M1293");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Above Normal BMI with Follow-Up Quality Code", "M1293", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Success.M1293.p2a.provider'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    //"Last BMI Before Encounter Is High"
+    Year2026Mips497rate5LastBMIBeforeEncounterProvider(
+        $encounterStartDate: encounterStartDate,
+        $bmi: bmi,
+        encounterStartDate == $encounter.startDate,
+        bmiResult >= 25,
+        providerExternalId == $encounter.providerExternalId
+    )
+    //"Above Normal BMI Follow Up"
+    and $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity (
+            withValueSet("AbleYear2026", "ABOVE_NORMAL_BMI_FOLLOW_UP") ||
+            withValueSet("VsacYear2026", "FOLLOW_UP_FOR_ABOVE_NORMAL_BMI"),
+            startsDuring($encounterStartDate.minusMonths(12), $encounterStartDate)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1293Provider($encounter.providerExternalId == encounter.providerExternalId)
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1293Provider($encounter));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "M1293");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Follow-up for Above Normal BMI", "M1293", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Above Normal BMI", "M1293", PopulationEnum.numerator_performance_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Success.M1293.p2b.provider'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    //"Last BMI Before Encounter Is High"
+    Year2026Mips497rate5LastBMIBeforeEncounterProvider(
+        $encounterStartDate: encounterStartDate,
+        $bmi: bmi,
+        encounterStartDate == $encounter.startDate,
+        bmiResult >= 25,
+        providerExternalId == $encounter.providerExternalId
+    )
+    //"Above Normal BMI Follow Up"
+    and $result: QdmDatatype() from accumulate(
+        $r: Diagnosis(
+            withValueSet("VsacYear2026", "FOLLOW_UP_FOR_ABOVE_NORMAL_BMI"),
+            startsDuring($encounterStartDate.minusMonths(12), $encounterStartDate)
+        ),
+        latestQdmDatatype($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1293Provider($encounter.providerExternalId == encounter.providerExternalId)
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1293Provider($encounter));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "M1293");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Follow-up for Above Normal BMI", "M1293", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Above Normal BMI", "M1293", PopulationEnum.numerator_performance_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met M1287".all:
+   *
+   * Option ID: M1287
+   *
+(((["Clinical Activity": "MIPS; 128_PERFORMANCE_MET_G8418"]
+   union ["Clinical Activity": "MIPS; 497RATE5_PERFORMANCE_MET_M1287"]) P
+        with "Denominator" Encounter
+        such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date])
+  union((["Clinical Activity": "ABLE; BELOW_NORMAL_BMI_FOLLOW_UP"]
+          union ["Clinical Activity": "VSAC; FOLLOW_UP_FOR_BELOW_NORMAL_BMI"]
+          union ["Diagnosis": "VSAC; FOLLOW_UP_FOR_BELOW_NORMAL_BMI"]) BelowFU 
+            with "Denominator" Encounter
+            and with "Last BMI Before Encounter Is Low" LowBMIEncounter
+            such that( BelowFU.start_date during Interval[LowBMIEncounter.start_date - 12 months, LowBMIEncounter.start_date]
+                      and LowBMIEncounter.start_date = Encounter.start_date))
+)M1287
+  ,
+  if exists ((["Clinical Activity": "MIPS; 128_PERFORMANCE_MET_G8418"]
+                union ["Clinical Activity": "MIPS; 497RATE5_PERFORMANCE_MET_M1287"]) P
+                with "Denominator" Encounter
+                such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date]) M1287PerformanceMet
+  then return
+  ExtendedMeasureResultV2(
+        M1287PerformanceMet //return 1 record per patient even if multiple exists
+        , 'Below Normal BMI with Follow-Up Quality Code' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Met
+        , option_id = M1287 
+    )
+  else if exists((["Clinical Activity": "ABLE; BELOW_NORMAL_BMI_FOLLOW_UP"]
+          union ["Clinical Activity": "VSAC; FOLLOW_UP_FOR_BELOW_NORMAL_BMI"]
+          union ["Diagnosis": "VSAC; FOLLOW_UP_FOR_BELOW_NORMAL_BMI"]) BelowFU 
+            with "Denominator" Encounter
+            and with "Last BMI Before Encounter Is Low" LowBMIEncounter
+            such that( BelowFU.start_date during Interval[LowBMIEncounter.start_date - 12 months, LowBMIEncounter.start_date]
+                      and LowBMIEncounter.start_date = Encounter.start_date) ) PerfMetBelowFU
+  then return
+ ( ExtendedMeasureResultV2(
+        PerfMetBelowFU //return 1 record per patient even if multiple exists
+        , 'Follow-up for Below Normal BMI' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Met
+        , option_id = M1287 
+    )
+  and from (LastPerLevel(["Clinical Activity": "eCQM Direct Reference Code; BODY_MASS_INDEX_BMI_RATIO"] BMI // Use LastPerLevel to return statuses for org and each provider_id and group_id associated with a "Last Qualifying Encounter with BMI" Encounter
+            with ("Denominator" ) Encounter
+            such that BMI.start_date during Interval[Encounter.start_date - 12 months, Encounter.start_date])
+          sort by BMI.start_date asc) LastBMI
+  return
+  ExtendedMeasureResultV2(
+        LastBMI //return 1 record per patient even if multiple exists
+        , 'Below Normal BMI' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Met
+        , option_id = M1287 
+    )
+  )
+
+define "Last BMI Before Encounter Is Low": 
+    "Last BMI Before Encounter Result" < 18.5
+*/
+rule 'Year2026.Mips497Rate5.Success.M1287.p1.org'
+salience 30
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "128_PERFORMANCE_MET_G8418") ||
+            withValueSet("MipsYear2026", "497RATE5_PERFORMANCE_MET_M1287"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1287Emr()
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1287Emr());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "M1287");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Below Normal BMI with Follow-Up Quality Code", "M1287", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Success.M1287.p2a.org'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    //"Last BMI Before Encounter Is Low"
+    Year2026Mips497rate5LastBMIBeforeEncounterOrg(
+        $encounterStartDate: encounterStartDate,
+        encounterStartDate == $encounter.startDate,
+        $bmi: bmi,
+        bmiResult < 18.5
+    )
+    //"Below Normal BMI Follow Up"
+    and $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity (
+            withValueSet("AbleYear2026", "BELOW_NORMAL_BMI_FOLLOW_UP") ||
+            withValueSet("VsacYear2026", "FOLLOW_UP_FOR_BELOW_NORMAL_BMI"),
+            startsDuring($encounterStartDate.minusMonths(12), $encounterStartDate)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1287Emr()
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1287Emr());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "M1287");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Follow-up for Below Normal BMI", "M1287", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Below Normal BMI", "M1287", PopulationEnum.numerator_performance_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Success.M1287.p2b.org'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    //"Last BMI Before Encounter Is Low"
+    Year2026Mips497rate5LastBMIBeforeEncounterOrg(
+        $encounterStartDate: encounterStartDate,
+        encounterStartDate == $encounter.startDate,
+        $bmi: bmi,
+        bmiResult < 18.5
+    )
+    //"Below Normal BMI Follow Up"
+    and $result: QdmDatatype() from accumulate(
+        $r: Diagnosis(
+            withValueSet("VsacYear2026", "FOLLOW_UP_FOR_BELOW_NORMAL_BMI"),
+            startsDuring($encounterStartDate.minusMonths(12), $encounterStartDate)
+        ),
+        latestQdmDatatype($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1287Emr()
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1287Emr());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "M1287");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Follow-up for Below Normal BMI", "M1287", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Below Normal BMI", "M1287", PopulationEnum.numerator_performance_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+
+rule 'Year2026.Mips497Rate5.Success.M1287.p1.group'
+salience 30
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.getGroupExternalIds()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "128_PERFORMANCE_MET_G8418") ||
+            withValueSet("MipsYear2026", "497RATE5_PERFORMANCE_MET_M1287"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1287Group(groupExternalId == $groupExternalId)
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1287Group($encounter, $groupExternalId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupExternalId, $measure, MeasureStatusValue.SUCCESS, "M1287");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Below Normal BMI with Follow-Up Quality Code", "M1287", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Success.M1287.p2a.group'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.getGroupExternalIds()
+    //"Last BMI Before Encounter Is Low"
+    Year2026Mips497rate5LastBMIBeforeEncounterGroup(
+        $encounterStartDate: encounterStartDate,
+        encounterStartDate == $encounter.startDate,
+        $bmi: bmi,
+        bmiResult < 18.5
+    )
+    //"Below Normal BMI Follow Up"
+    and $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity (
+            withValueSet("AbleYear2026", "BELOW_NORMAL_BMI_FOLLOW_UP") ||
+            withValueSet("VsacYear2026", "FOLLOW_UP_FOR_BELOW_NORMAL_BMI"),
+            startsDuring($encounterStartDate.minusMonths(12), $encounterStartDate)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1287Group(groupExternalId == $groupExternalId)
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1287Group($encounter, $groupExternalId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupExternalId, $measure, MeasureStatusValue.SUCCESS, "M1287");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Follow-up for Below Normal BMI", "M1287", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Below Normal BMI", "M1287", PopulationEnum.numerator_performance_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Success.M1287.p2b.group'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.getGroupExternalIds()
+    //"Last BMI Before Encounter Is Low"
+    Year2026Mips497rate5LastBMIBeforeEncounterGroup(
+        $encounterStartDate: encounterStartDate,
+        encounterStartDate == $encounter.startDate,
+        $bmi: bmi,
+        bmiResult < 18.5
+    )
+    //"Below Normal BMI Follow Up"
+    and $result: QdmDatatype() from accumulate(
+        $r: Diagnosis(
+            withValueSet("VsacYear2026", "FOLLOW_UP_FOR_BELOW_NORMAL_BMI"),
+            startsDuring($encounterStartDate.minusMonths(12), $encounterStartDate)
+        ),
+        latestQdmDatatype($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1287Group(groupExternalId == $groupExternalId)
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1287Group($encounter, $groupExternalId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupExternalId, $measure, MeasureStatusValue.SUCCESS, "M1287");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Follow-up for Below Normal BMI", "M1287", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Below Normal BMI", "M1287", PopulationEnum.numerator_performance_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+
+rule 'Year2026.Mips497Rate5.Success.M1287.p1.provider'
+salience 30
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "128_PERFORMANCE_MET_G8418") ||
+            withValueSet("MipsYear2026", "497RATE5_PERFORMANCE_MET_M1287"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1287Provider($encounter.providerExternalId == encounter.providerExternalId)
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1287Provider($encounter));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "M1287");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Below Normal BMI with Follow-Up Quality Code", "M1287", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Success.M1287.p2a.provider'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    //"Last BMI Before Encounter Is Low"
+    Year2026Mips497rate5LastBMIBeforeEncounterProvider(
+        $encounterStartDate: encounterStartDate,
+        encounterStartDate == $encounter.startDate,
+        $bmi: bmi,
+        bmiResult < 18.5
+    )
+    //"Below Normal BMI Follow Up"
+    and $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity (
+            withValueSet("AbleYear2026", "BELOW_NORMAL_BMI_FOLLOW_UP") ||
+            withValueSet("VsacYear2026", "FOLLOW_UP_FOR_BELOW_NORMAL_BMI"),
+            startsDuring($encounterStartDate.minusMonths(12), $encounterStartDate)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1287Provider($encounter.providerExternalId == encounter.providerExternalId)
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1287Provider($encounter));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "M1287");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Follow-up for Below Normal BMI", "M1287", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Below Normal BMI", "M1287", PopulationEnum.numerator_performance_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Success.M1287.p2b.provider'
+salience 40
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    //"Last BMI Before Encounter Is Low"
+    Year2026Mips497rate5LastBMIBeforeEncounterProvider(
+        $encounterStartDate: encounterStartDate,
+        encounterStartDate == $encounter.startDate,
+        $bmi: bmi,
+        bmiResult < 18.5
+    )
+    //"Below Normal BMI Follow Up"
+    and $result: QdmDatatype() from accumulate(
+        $r: Diagnosis(
+            withValueSet("VsacYear2026", "FOLLOW_UP_FOR_BELOW_NORMAL_BMI"),
+            startsDuring($encounterStartDate.minusMonths(12), $encounterStartDate)
+        ),
+        latestQdmDatatype($r)
+    )
+    and not (
+        exists Year2026Mips497rate5NumeratorPerformanceMetM1287Provider($encounter.providerExternalId == encounter.providerExternalId)
+    )
+then
+    insert(new Year2026Mips497rate5NumeratorPerformanceMetM1287Provider($encounter));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "M1287");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Follow-up for Below Normal BMI", "M1287", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Below Normal BMI", "M1287", PopulationEnum.numerator_performance_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+/*
+define "Denominator Exception M1286".org:
+   *
+   * Option ID: M1286
+   *
+((["Clinical Activity": "MIPS; 128_DENOMINATOR_EXCEPTION_G9716"] 
+  union ["Clinical Activity": "MIPS; 497RATE5_DENOMINATOR_EXCEPTION_M1286"]) P
+    with "Denominator" Encounter
+    such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date]
+  and not exists ("Last Qualifying Encounter with BMI".org BMIEncounter
+                   where BMIEncounter.start_date after Encounter.start_date))M1286Org
+ ,
+ return
+ ExtendedMeasureResultV2(
+      M1286Org //return 1 record per patient even if multiple exists
+      , 'Abnormal BMI Follow-up Not Indicated' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator Exception
+      , option_id = M1286 
+  )
+*/
+rule 'Year2026.Mips497Rate5.Exception.M1286.org'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "128_DENOMINATOR_EXCEPTION_G9716")  ||
+            withValueSet("MipsYear2026", "497RATE5_DENOMINATOR_EXCEPTION_M1286"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (exists Year2026Mips497rate5LastBMIBeforeEncounterOrg(encounterStartDate.isAfter($encounter.startDate)))
+    and not (exists Year2026Mips497rate5DenominatorExceptionM1286Emr())
+then
+    insert(new Year2026Mips497rate5DenominatorExceptionM1286Emr());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCEPTION, "M1286");    
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Abnormal BMI Follow-up Not Indicated", "M1286", PopulationEnum.denominator_exception, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Denominator Exception M1286".group:
+   *
+   * Option ID: M1286
+   *
+((["Clinical Activity": "MIPS; 128_DENOMINATOR_EXCEPTION_G9716"]
+  union ["Clinical Activity": "MIPS; 497RATE5_DENOMINATOR_EXCEPTION_M1286"]) P
+    with "Denominator" Encounter
+    such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date]
+  and not exists ("Last Qualifying Encounter with BMI".group BMIEncounter 
+                  where BMIEncounter.group_id = Encounter.group_id
+                        and BMIEncounter.start_date after Encounter.start_date )) M1286Group
+  ,
+  return
+  ExtendedMeasureResultV2(
+      M1286Group //return 1 record per patient even if multiple exists
+      , 'Abnormal BMI Follow-up Not Indicated' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator Exception
+      , option_id = M1286 
+  )
+*/
+rule 'Year2026.Mips497Rate5.Exception.M1286.group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.getGroupExternalIds()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "128_DENOMINATOR_EXCEPTION_G9716") ||
+            withValueSet("MipsYear2026", "497RATE5_DENOMINATOR_EXCEPTION_M1286"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($r)
+    ) and not (
+        exists Year2026Mips497rate5LastBMIBeforeEncounterGroup(
+            groupExternalId == $groupExternalId,
+            encounterStartDate.isAfter($encounter.startDate)
+        )
+    )
+then
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupExternalId, $measure, MeasureStatusValue.EXCEPTION, "M1286");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "Abnormal BMI Follow-up Not Indicated", "M1286", PopulationEnum.denominator_exception, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Denominator Exception M1286".provider:
+   *
+   * Option ID: M1286
+   *
+((["Clinical Activity": "MIPS; 128_DENOMINATOR_EXCEPTION_G9716"]
+  union ["Clinical Activity": "MIPS; 497RATE5_DENOMINATOR_EXCEPTION_M1286"]) P
+    with "Denominator" Encounter
+    such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date]
+  and not exists ("Last Qualifying Encounter with BMI" BMIEncounter 
+                  where BMIEncounter.provider_id = Encounter.provider_id
+                        and BMIENcounter.start_date after Encounter.start_date)) M1286Provider
+  ,
+  return
+  ExtendedMeasureResultV2(
+      M1286Provider //return 1 record per patient even if multiple exists
+      , 'Abnormal BMI Follow-up Not Indicated' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator Exception
+      , option_id = M1286 
+  )
+*/
+rule 'Year2026.Mips497Rate5.Exception.M1286.provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "128_DENOMINATOR_EXCEPTION_G9716")  ||
+            withValueSet("MipsYear2026", "497RATE5_DENOMINATOR_EXCEPTION_M1286"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($r)
+    ) and not (
+        exists Year2026Mips497rate5LastBMIBeforeEncounterProvider(
+            providerExternalId == $encounter.providerExternalId,
+            encounterStartDate.isAfter($encounter.startDate)
+        )
+    )
+then
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCEPTION, "M1286");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Abnormal BMI Follow-up Not Indicated", "M1286", PopulationEnum.denominator_exception, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Denominator Exception M1297".org:
+   *
+   * Option ID: M1297
+   * 
+((["Clinical Activity": "MIPS; 128_DENOMINATOR_EXCEPTION_G2181"] 
+  union ["Clinical Activity": "MIPS; 497RATE5_DENOMINATOR_EXCEPTION_M1297"]) P
+    with "Denominator" Encounter
+    such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date]
+  and not exists ("Last Qualifying Encounter with BMI".org BMIEncounter
+                   where BMIEncounter.start_date after Encounter.start_date))M1297Org
+  ,
+  return
+  ExtendedMeasureResultV2(
+      M1297Org //return 1 record per patient even if multiple exists
+      , 'BMI Not Done For Patient Reasons as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator Exception
+      , option_id = M1297 
+  )
+*/
+rule 'Year2026.Mips497Rate5.Exception.M1297.org'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "128_DENOMINATOR_EXCEPTION_G2181") ||
+            withValueSet("MipsYear2026", "497RATE5_DENOMINATOR_EXCEPTION_M1297"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($r)
+    )
+    and not (exists Year2026Mips497rate5LastBMIBeforeEncounterOrg(encounterStartDate.isAfter($encounter.startDate)))
+    and not (exists Year2026Mips497rate5DenominatorExceptionM1297Emr())
+then
+    insert (new Year2026Mips497rate5DenominatorExceptionM1297Emr());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCEPTION, "M1297");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "BMI Not Done For Patient Reasons", "M1297", PopulationEnum.denominator_exception, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Denominator Exception M1297".group:
+   *
+   * Option ID: M1297
+   *
+((["Clinical Activity": "MIPS; 128_DENOMINATOR_EXCEPTION_G2181"] 
+  union ["Clinical Activity": "MIPS; 497RATE5_DENOMINATOR_EXCEPTION_M1297"]) P
+    with "Denominator" Encounter
+    such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date]
+  and not exists ("Last Qualifying Encounter with BMI".group BMIEncounter 
+                  where BMIEncounter.group_id = Encounter.group_id
+                        and BMIEncounter.start_date after Encounter.start_date )) M1297Group
+  ,
+  return
+  ExtendedMeasureResultV2(
+      M1297Group //return 1 record per patient even if multiple exists
+      , 'BMI Not Done For Patient Reasons as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator Exception
+      , option_id = M1297 
+  )
+*/
+rule 'Year2026.Mips497Rate5.Exception.M1297.group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.getGroupExternalIds()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "128_DENOMINATOR_EXCEPTION_G2181") ||
+            withValueSet("MipsYear2026", "497RATE5_DENOMINATOR_EXCEPTION_M1297"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($r)
+    ) and not (
+        exists Year2026Mips497rate5LastBMIBeforeEncounterGroup(
+            groupExternalId == $groupExternalId,
+            encounterStartDate.isAfter($encounter.startDate)
+        )
+    ) and not (
+        exists Year2026Mips497rate5DenominatorExceptionM1297Group(groupExternalId == $groupExternalId)
+    )
+then
+    insert (new Year2026Mips497rate5DenominatorExceptionM1297Group($encounter, $groupExternalId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupExternalId, $measure, MeasureStatusValue.EXCEPTION, "M1297");
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, "BMI Not Done For Patient Reasons", "M1297", PopulationEnum.denominator_exception, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Denominator Exception M1297".provider:
+   *
+   * Option ID: M1297
+   *
+((["Clinical Activity": "MIPS; 128_DENOMINATOR_EXCEPTION_G2181"] 
+  union ["Clinical Activity": "MIPS; 497RATE5_DENOMINATOR_EXCEPTION_M1297"]) P
+    with "Denominator" Encounter
+    such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date]
+  and not exists ("Last Qualifying Encounter with BMI" BMIEncounter 
+                  where BMIEncounter.provider_id = Encounter.provider_id
+                        and BMIENcounter.start_date after Encounter.start_date)) M1297Provider
+  ,
+  return
+  ExtendedMeasureResultV2(
+      M1297Provider //return 1 record per patient even if multiple exists
+      , 'BMI Not Done For Patient Reasons as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator Exception
+      , option_id = M1297 
+  )
+*/
+rule 'Year2026.Mips497Rate5.Exception.M1297.provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "128_DENOMINATOR_EXCEPTION_G2181") ||
+            withValueSet("MipsYear2026", "497RATE5_DENOMINATOR_EXCEPTION_M1297"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($r)
+    ) and not (
+        exists Year2026Mips497rate5LastBMIBeforeEncounterProvider(
+            providerExternalId == $encounter.providerExternalId,
+            encounterStartDate.isAfter($encounter.startDate)
+        )
+    ) and not (
+        exists Year2026Mips497rate5DenominatorExceptionM1297Provider(providerExternalId == $encounter.providerExternalId)
+    )
+then
+    insert (new Year2026Mips497rate5DenominatorExceptionM1297Provider($encounter, $encounter.providerExternalId));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCEPTION, "M1297");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "BMI Not Done For Patient Reasons", "M1297", PopulationEnum.denominator_exception, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Numerator Performance Not Met M1276":
+   *
+   * Option ID: M1276
+   *
+   exists((["Clinical Activity": "MIPS; 128_PERFORMANCE_NOT_MET_G8419"]
+        union ["Clinical Activity": "MIPS; 497RATE5_PERFORMANCE_NOT_MET_M1276"]) P
+         with "Denominator" Encounter
+         such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date]
+        union P
+          with "Denominator" Encounter
+          such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date]) M1276Encounter
+   or exists("Last BMI Before Encounter Is High")
+   or exists("Last BMI Before Encounter Is Low") 
+  ,
+  if exists((["Clinical Activity": "MIPS; 128_PERFORMANCE_NOT_MET_G8419"]
+        union ["Clinical Activity": "MIPS; 497RATE5_PERFORMANCE_NOT_MET_M1276"]) P
+          with "Denominator" Encounter
+          such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date]) M1276Encounter
+  then return
+  ExtendedMeasureResultV2(
+        M1276Encounter //return 1 record per patient even if multiple exists
+        , 'Abnormal BMI without Follow-up Code' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Not Met
+        , option_id = M1276 
+    )
+  else if exists("Last BMI Before Encounter Is High") HighBMIEncounter
+  then return
+  ExtendedMeasureResultV2(
+        HighBMIEncounter //return 1 record per patient even if multiple exists
+        , 'High BMI without Follow-up' as name //will return the last high BMI for each org/group/provider depending on Denominator encounter
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Not Met
+        , option_id = M1276 
+    )
+  else if exists("Last BMI Before Encounter Is Low") LowBMIEncounter
+  then return
+  ExtendedMeasureResultV2(
+        LowBMI //return 1 record per patient even if multiple exists
+        , 'Low BMI without Follow-up' as name //will return the last BMI for each org/group/provider depending on Denominator encounter
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Not Met
+        , option_id = M1276 
+    )
+
+   
+define "Last BMI Before Encounter Is High":
+    "Last BMI Before Encounter Result" >= 25
+
+define "Last BMI Before Encounter Is Low": 
+    "Last BMI Before Encounter Result" < 18.5
+*/
+rule 'Year2026.Mips497Rate5.Gap.M1276.p1.all'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "128_PERFORMANCE_NOT_MET_G8419") ||
+            withValueSet("MipsYear2026", "497RATE5_PERFORMANCE_NOT_MET_M1276"),
+            startsDuring($encounter)
+        ),
+        latestClinicalActivity($r)
+    )
+then
+    insert(new Year2026Mips497rate5PerformanceNotMetM1276());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.GAP, "M1276");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Abnormal BMI without Follow-up Code", "M1276", PopulationEnum.numerator_performance_not_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    if ($encounter.isPresent($encounter.groupExternalIds)) {
+        for (String groupExternalId : $encounter.getGroupExternalIds()) {
+            controlSet.addGroupPatientMeasureStatus($program, $patient, groupExternalId, $measure, MeasureStatusValue.GAP, "M1276");
+            controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Abnormal BMI without Follow-up Code", "M1276", PopulationEnum.numerator_performance_not_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+        }
+    }
+    if ($encounter.isPresent($encounter.providerExternalId)) {
+        controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, "M1276");
+        controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Abnormal BMI without Follow-up Code", "M1276", PopulationEnum.numerator_performance_not_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips497Rate5.Gap.M1276.p2.org'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    Year2026Mips497rate5LastBMIBeforeEncounterOrg(
+        encounterStartDate == $encounter.startDate,
+        $bmi: bmi,
+        $bmiResult: bmiResult,
+        bmiResult >= 25 ||
+        bmiResult < 18.5
+    )
+then
+    insert(new Year2026Mips497rate5PerformanceNotMetM1276());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.GAP, "M1276");
+    String evidenceLabel = $bmiResult >= 25 ? "High BMI without Follow-up" : "Low BMI without Follow-up";
+    controlSet.addPatientEMR($program, $patient, $measure, "", evidenceLabel, "M1276", PopulationEnum.numerator_performance_not_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Gap.M1276.p2.group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5", clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.getGroupExternalIds()
+    Year2026Mips497rate5LastBMIBeforeEncounterGroup(
+        encounterStartDate == $encounter.startDate,
+        $bmi: bmi,
+        $bmiResult: bmiResult,
+        bmiResult >= 25 ||
+        bmiResult < 18.5,
+        groupExternalId == $groupExternalId
+    )
+then
+    insert(new Year2026Mips497rate5PerformanceNotMetM1276());
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupExternalId, $measure, MeasureStatusValue.GAP, "M1276");
+    String evidenceLabel = $bmiResult >= 25 ? "High BMI without Follow-up" : "Low BMI without Follow-up";
+    controlSet.addPatientEMR($program, $patient, $measure, $groupExternalId, evidenceLabel, "M1276", PopulationEnum.numerator_performance_not_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+rule 'Year2026.Mips497Rate5.Gap.M1276.p2.provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    Year2026Mips497rate5LastBMIBeforeEncounterProvider(
+        encounterStartDate == $encounter.startDate,
+        $bmi: bmi,
+        $bmiResult: bmiResult,
+        bmiResult >= 25 ||
+        bmiResult < 18.5
+    )
+then
+    insert(new Year2026Mips497rate5PerformanceNotMetM1276());
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, "M1276");
+    String evidenceLabel = $bmiResult >= 25 ? "High BMI without Follow-up" : "Low BMI without Follow-up";
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, evidenceLabel, "M1276", PopulationEnum.numerator_performance_not_met, $bmi, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $bmi.startDate.toString());
+end
+
+/*
+define "Numerator Performance Not Met M1314".all:
+  *
+  * Option ID: M1314
+  *
+  not "Denominator Exclusion Pregnancy M1298"
+  and not "Denominator Exclusion Hospice or Palliative"
+  and not "Numerator Performance Met M1296"
+  and not "Numerator Performance Met M1293"
+  and not "Numerator Performance Met M1287"
+  and not "Denominator Exception M1286"
+  and not "Denominator Exception M1297"
+  and not "Numerator Performance Not Met M1276"
+
+*/
+rule 'Year2026.Mips497Rate5.Gap.M1314'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == "Year2026.Mips497Rate5")
+    $patient: Patient()
+    not (
+        exists Year2026Mips497rate5PerformanceNotMetM1276()
+    )
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.GAP, "M1314");
+    if ($encounter.isPresent($encounter.groupExternalIds)) {
+        for (String groupExternalId : $encounter.getGroupExternalIds()) {
+            controlSet.addGroupPatientMeasureStatus($program, $patient, groupExternalId, $measure, MeasureStatusValue.GAP, "M1314");
+        }
+    }
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, "M1314");
+end

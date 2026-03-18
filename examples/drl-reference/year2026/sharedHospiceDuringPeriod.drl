@@ -1,0 +1,120 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+
+import accumulate com.ablehealth.functions.LatestQdmDatatypeAccumulateFunction latestQdmDatatype;
+
+declare Year2026MipsSharedHasHospice
+    program: Program
+    hospice: QdmDatatype
+end   
+
+/*
+----------------------------------------------------------------------------------------------
+Hospice services given to patient any time during the measurement period
+In 2026 definition changed to match eCQM, along with addition of Quality Codes.
+----------------------------------------------------------------------------------------------
+
+define "Has Hospice":
+    (   ["Clinical Activity": "VSAC; ENCOUNTER_INPATIENT"] InpatientEncounter
+        where   (   InpatientEncounter.discharge_disposition_code_type, InpatientEncounter.discharge_disposition_code_value in "eCQM Direct Reference Codes; DISCHARGE_TO_HOME_FOR_HOSPICE_CARE_PROCEDURE"
+                    or InpatientEncounter.discharge_disposition_code_type, InpatientEncounter.discharge_disposition_code_value in "eCQM Direct Reference Codes; DISCHARGE_TO_HEALTHCARE_FACILITY_FOR_HOSPICE_CARE_PROCEDURE"    )
+                and InpatientEncounter.stop_date during "Measurement Period"    )
+    union ( ["Clinical Activity": "eCQM Direct Reference Codes; HOSPICE_CARE_MINIMUM_DATA_SET"] HospiceAssessment
+            where   (   HospiceAssessment.result_code_type, HospiceAssessment.result_code_value in "eCQM Direct Reference Codes; YES_QUALIFIER_VALUE"
+                        and (   (   HospiceAssessment.stop_date is not null or empty 
+                                    and Interval[HospiceAssessment.start_date, HospiceAssessment.stop_date] overlaps "Measurement Period"   )
+                                or  (   HospiceAssessment.stop_date is null 
+                                        and HospiceAssessment.start_date during "Measurement Period"    )   )   )   )
+    union   (   ["Order": "VSAC; HOSPICE_CARE_AMBULATORY"] HospiceOrder
+                where HospiceOrder.author_datetime during "Measurement Period"  )
+    union   (   (   ["Clinical Activity": "VSAC; HOSPICE_CARE_AMBULATORY"] 
+                    union ["Clinical Activity" : "VSAC; HOSPICE_DIAGNOSIS"]
+                    union ["Clinical Activity": "VSAC; HOSPICE_ENCOUNTER"]  )HospicePerformed
+                where   (   (   HospicePerformed.stop_date is not null or empty 
+                                and Interval[HospicePerformed.start_date, HospicePerformed.stop_date] overlaps "Measurement Period" )
+                            or  (   HospicePerformed.stop_date is null 
+                                    and HospicePerformed.start_date during "Measurement Period" )   )   )
+    union   (   (   ["Diagnosis": "VSAC; HOSPICE_DIAGNOSIS"]
+                    union ["Diagnosis": "HOSPICE_ENCOUNTER"]
+                    union ["Diagnosis": "VSAC; HOSPICE_CARE_AMBULATORY"] )  HospiceCareDiagnosis
+                where   (   (   HospiceCareDiagnosis.stop_date is not null or empty 
+                                and Interval[HospiceCareDiagnosis.start_date, HospiceCareDiagnosis.stop_date] overlaps "Measurement Period")
+                            or (    HospiceCareDiagnosis.stop_date is null 
+                                    and HospiceCareDiagnosis.start_date during "Measurement Period" )   )   )
+    union   (   ["Clinical Activity": "MIPS; MIPS_HOSPICE_QUALITY_CODES"] HospiceQC 
+                where HospiceQC.start_date during "Measurement Period"  )
+*/
+query queryYear2026MipsSharedHashospiceInMeasurementPeriod(Program $program, QdmDatatype $hospice)
+    (
+        $hospice:= ClinicalActivity(
+            withValueSet("VsacYear2026", "ENCOUNTER_INPATIENT"),
+            withValueSetInDischargeDisposition("Ecqm_Direct_Reference_CodesYear2026", "DISCHARGE_TO_HOME_FOR_HOSPICE_CARE_PROCEDURE") ||
+            withValueSetInDischargeDisposition("Ecqm_Direct_Reference_CodesYear2026", "DISCHARGE_TO_HEALTHCARE_FACILITY_FOR_HOSPICE_CARE_PROCEDURE"),
+            endsDuring($program.measurementPeriod)
+        )
+        or $hospice:= ClinicalActivity(
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "HOSPICE_CARE_MINIMUM_DATA_SET"),
+            withValueSetInResultCodeValue("Ecqm_Direct_Reference_CodesYear2026", "YES_QUALIFIER_VALUE"),
+            stopDate != null,
+            overlaps($program.measurementPeriod)
+        )
+        or $hospice:= ClinicalActivity(
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "HOSPICE_CARE_MINIMUM_DATA_SET"),
+            withValueSetInResultCodeValue("Ecqm_Direct_Reference_CodesYear2026", "YES_QUALIFIER_VALUE"),
+            stopDate == null,
+            startsDuring($program.measurementPeriod)
+        )
+        or $hospice:= Order(
+            withValueSet("VsacYear2026", "HOSPICE_CARE_AMBULATORY"),
+            authoredDuring($program.measurementPeriod)
+        )
+        or $hospice:= ClinicalActivity(
+            withValueSet("VsacYear2026", "HOSPICE_CARE_AMBULATORY") ||
+            withValueSet("VsacYear2026", "HOSPICE_DIAGNOSIS") ||
+            withValueSet("VsacYear2026", "HOSPICE_ENCOUNTER"),
+            stopDate != null,
+            overlaps($program.measurementPeriod)
+        )
+        or $hospice:= ClinicalActivity(
+            withValueSet("VsacYear2026", "HOSPICE_CARE_AMBULATORY") ||
+            withValueSet("VsacYear2026", "HOSPICE_DIAGNOSIS") ||
+            withValueSet("VsacYear2026", "HOSPICE_ENCOUNTER"),
+            stopDate == null,
+            startsDuring($program.measurementPeriod)
+        )
+        or $hospice:= Diagnosis(
+            withValueSet("VsacYear2026", "HOSPICE_CARE_AMBULATORY") ||
+            withValueSet("VsacYear2026", "HOSPICE_DIAGNOSIS") ||
+            withValueSet("VsacYear2026", "HOSPICE_ENCOUNTER"),
+            stopDate != null,
+            overlaps($program.measurementPeriod)
+        )
+        or $hospice:= Diagnosis(
+            withValueSet("VsacYear2026", "HOSPICE_CARE_AMBULATORY") ||
+            withValueSet("VsacYear2026", "HOSPICE_DIAGNOSIS") ||
+            withValueSet("VsacYear2026", "HOSPICE_ENCOUNTER"),
+            stopDate == null,
+            startsDuring($program.measurementPeriod)
+        )
+        or $hospice:= ClinicalActivity(
+            withValueSet("MipsYear2026", "MIPS_HOSPICE_QUALITY_CODES"),
+            startsDuring($program.measurementPeriod)
+        )
+    )
+end
+
+rule 'Year2026.Mips.SharedHospice'
+when
+    $program: Program()
+    $latestHospice: QdmDatatype() from accumulate (
+        queryYear2026MipsSharedHashospiceInMeasurementPeriod($program, $hospice;),
+        latestQdmDatatype($hospice)
+    )
+    and not(
+        exists Year2026MipsSharedHasHospice($program == program)
+    )
+then
+    insert(new Year2026MipsSharedHasHospice($program, $latestHospice));
+end

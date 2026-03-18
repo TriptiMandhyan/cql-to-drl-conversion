@@ -1,0 +1,440 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+import com.ablehealth.enums.extendedmeaures.*;
+import java.time.LocalDate;
+
+import accumulate com.ablehealth.functions.EarliestClinicalActivityAccumulateFunction earliestClinicalActivity;
+
+global PatientResults controlSet;
+
+declare Year2026Mips217Denominator
+    program: Program
+    encounter: ClinicalActivity
+    startDate: LocalDate
+    stopDate: LocalDate
+    measure: String
+end
+
+/*
+define "Denominator":
+    "Denominator Encounter" E
+    with "Denominator Discharge" D
+    where   E.start_date < D.start_date
+    // Ensure no other discharge exists between this encounter and discharge
+            and not exists (    "Denominator Discharge" D2
+                                where   D2.start_date > E.start_date
+                                        and D2.start_date < D.start_date    )
+        // Ensure no other encounter exists between this encounter and discharge
+            and not exists (    "Denominator Encounter" E2
+                                where   E2.start_date > E.start_date
+                                        and E2.start_date < D.start_date    )
+    return Interval[E.start_date, D.stop_date] as "Denominator Episode"
+// Evaluate all Denominator Encounters
+// Match each discharge with the most recent encounter that occurred before it
+// Create attribution from Denominator Encounter definition. Carry forward interval to numerator definitinos
+    ,
+    return 
+    ExtendedMeasureResultV2(
+        "Denominator Episode" Episode
+        , 'Denominator Episode' as name
+        , Interval[Episode.start_date, Episode.stop_date] // return the interval as a string -- see Treatment Period Extended Results in SPC
+        , calculated_record = true
+        , population = Denominator
+        , option_id = all
+    )
+
+define "Denominator Encounter"
+    ["Clinical Activity": "MIPS; 217_ENCOUNTER"] Eval
+    where   Eval.start_date during "Measurement Period"
+            and AgeInYearsAt(Eval.start_date) >= 14
+    with ["Diagnosis": "MIPS; 217_KNEE_IMPAIRMENT"] KneeDeficit
+    such that Interval[KneeDeficit.start_date, KneeDeficit.stop_date] overlaps Interval[Eval.start_date, Eval.stop_date]
+define "Denominator Discharge": // use provider.id/group.id on Denominator Discharge for attribution
+    ["Clinical Activity": "MIPS; 217_DISCHARGE_DOCUMENTED_M1009"] Discharge
+    where   Discharge.start_date during "Measurement Period"
+            and Discharge.provider_id.hasMeasureMembership = true
+    with ["Diagnosis": "MIPS; 217_KNEE_IMPAIRMENT"] KneeDeficit
+    such that Interval[KneeDeficit.start_date, KneeDeficit.stop_date] overlaps Interval[Discharge.start_date, Discharge.stop_date]
+
+- Find List of evals ("Denomintor Encounter")
+Start Dates
+2023-04-19
+2023-04-20
+2023-06-02
+2023-10-03
+
+- Find list of potential discharges ("Denominator Discharge")
+Stop dates
+2023-05-01
+2023-07-02
+2023-10-03
+
+There would be three episodes to create:
+2023-04-20 - 2023-05-01
+2023-06-02 - 2023-07-02
+2023-10-03 - 2023-10-03
+*/
+
+rule 'Year2026.Mips217.Denominator'
+salience 40
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips217")
+    $patient: Patient()
+    // match a discharge AFTER the encounter
+    $encounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "217_ENCOUNTER"),
+        startsDuring($program.measurementPeriod),
+        $patient.getAgeInYearsAt(startDate) >= 14
+    )
+    and exists Diagnosis(
+        withValueSet("MipsYear2026", "217_KNEE_IMPAIRMENT"),
+        overlaps($encounter)
+    )
+    // find the nearest discharge on or after the encounter start date using an inline accumulate
+    $nearestDischarge: ClinicalActivity() from accumulate(
+        $d: ClinicalActivity(
+            withValueSet("MipsYear2026", "217_DISCHARGE_DOCUMENTED_M1009"),
+            startsDuring($program.measurementPeriod),
+            startDate >= $encounter.startDate
+        ),
+        earliestClinicalActivity($d)
+    )
+    and exists Diagnosis(
+        withValueSet("MipsYear2026", "217_KNEE_IMPAIRMENT"),
+        overlaps($nearestDischarge)
+    )
+    // ensure no other encounter between E and nearest discharge
+    not (
+        exists (    
+            $encounter2 : ClinicalActivity(
+                withValueSet("MipsYear2026", "217_ENCOUNTER"),
+                startDate > $encounter.startDate,     
+                startDate < $nearestDischarge.startDate
+            ) 
+            and exists Diagnosis(
+                withValueSet("MipsYear2026", "217_KNEE_IMPAIRMENT"),
+                overlaps($encounter2)
+            )
+        )
+    )   
+then
+    insert(new Year2026Mips217Denominator($program, $nearestDischarge, $encounter.startDate, $nearestDischarge.stopDate, "Year2026.Mips217"));
+    String calculatedValue = "[" + $encounter.startDate + ", " + $nearestDischarge.stopDate + "]";
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $nearestDischarge, "Denominator Episode", "M1107", PopulationEnum.denominator, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), calculatedValue);
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $nearestDischarge, "Denominator Episode", "G9727", PopulationEnum.denominator, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), calculatedValue);
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $nearestDischarge, "Denominator Episode", "G8647", PopulationEnum.denominator, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), calculatedValue);
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $nearestDischarge, "Denominator Episode", "M1108", PopulationEnum.denominator, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), calculatedValue);
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $nearestDischarge, "Denominator Episode", "M1109", PopulationEnum.denominator, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), calculatedValue);
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $nearestDischarge, "Denominator Episode", "M1110", PopulationEnum.denominator, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), calculatedValue);
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $nearestDischarge, "Denominator Episode", "G9726", PopulationEnum.denominator, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), calculatedValue);
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $nearestDischarge, "Denominator Episode", "G8648", PopulationEnum.denominator, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), calculatedValue);
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $nearestDischarge, "Denominator Episode", "G8650", PopulationEnum.denominator, null, SupplementalInfoEnum.CALCULATION_VALUE.displayName(), calculatedValue);
+end
+
+
+
+
+/* 
+define "Denominator Exclusion Patient Diagnosis of Neuro Condition M1107":
+ // Option ID: M1107
+    (   first(  ["Clinical Activity": "MIPS; 217_NEURO_DIAGNOSIS_M1107"] P
+                with "Denominator Episode" Episode
+                such that P.start_date during Interval[Episode.start_date, Episode.stop_date]
+        ) NeuroDiagnosis sort by NeuroDiagnosis.start_date ascending 
+    ) firstNeuroDiagnosis
+    ,
+    if exists "Denominator Exclusion Patient Diagnosis of Neuro Condition M1107" return
+    ExtendedMeasureResultV2(
+      firstNeuroDiagnosis
+      , 'Evidence of Neuro Diagnosis M1107' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator Exclusion
+      , option_id = M1107
+    )
+*/
+
+rule 'Year2026.Mips217.Denominator.Exclusion.M1107'
+when
+    Year2026Mips217Denominator($program: program, $encounter: encounter, $startDate: startDate, $stopDate: stopDate, $measure: measure == "Year2026.Mips217")
+    $patient: Patient()
+    $earliestM1107: ClinicalActivity() from accumulate (
+        $neuroDiagnosis: ClinicalActivity(
+            withValueSet("MipsYear2026", "217_NEURO_DIAGNOSIS_M1107"),
+            startsDuring($startDate, $stopDate)
+        ),
+        earliestClinicalActivity($neuroDiagnosis)
+    )
+then 
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCLUSION, "M1107");
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $encounter, "Evidence of Neuro Diagnosis M1107", "M1107", PopulationEnum.denominator_exclusion, $earliestM1107, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $earliestM1107.startDate.toString());
+end
+
+/* 
+define "Denominator Exclusion Patient Inability G9727":
+  // Option ID: G9727 
+    (   first(  ["Clinical Activity": "MIPS; 217_PATIENT_INABILITY_G9727"] P
+                with "Denominator Episode" Episode
+                such that P.start_date during Interval[Episode.start_date, Episode.stop_date]
+        ) PatientInability sort by PatientInability.start_date ascending 
+    ) firstPatientInability
+    ,
+    if exists "Denominator Exclusion Patient Inability G9727" return
+    ExtendedMeasureResultV2(
+      firstPatientInability
+      , 'Evidence of Patient Inability G9727' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator Exclusion
+      , option_id = G9727
+    )
+*/
+rule 'Year2026.Mips217.Denominator.Exclusion.G9727'
+when
+    Year2026Mips217Denominator($program: program, $encounter: encounter, $startDate: startDate, $stopDate: stopDate, $measure: measure == "Year2026.Mips217")
+    $patient: Patient()
+    $earliestG9727: ClinicalActivity() from accumulate(
+        $p: ClinicalActivity(
+            withValueSet("MipsYear2026", "217_PATIENT_INABILITY_G9727"),
+            startsDuring($startDate, $stopDate)
+        ),
+        earliestClinicalActivity($p)
+    )
+then 
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCLUSION, "G9727");
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $encounter, "Evidence of Patient Inability G9727", "G9727", PopulationEnum.denominator_exclusion, $earliestG9727, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $earliestG9727.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met G8647":
+  // Option ID: G8647
+  (   first(  ["Clinical Activity": "MIPS; 217_PERFORMANCE_MET_G8647"] P
+                with "Denominator Episode" Episode
+                such that P.start_date during Interval[Episode.start_date, Episode.stop_date]
+        ) PerformanceMet sort by PerformanceMet.start_date ascending 
+    ) firstPerformanceMet
+    ,
+    if exists "Numerator Performance Met G8647" return
+    ExtendedMeasureResultV2(
+      firstPerformanceMet
+      , 'Evidence of Performance Met G8647' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Numerator Performance Met
+      , option_id = G8647
+    )
+*/
+rule 'Year2026.Mips217.Success.G8647'
+when
+    Year2026Mips217Denominator($program: program, $encounter: encounter, $startDate: startDate, $stopDate: stopDate, $measure: measure == "Year2026.Mips217")
+    $patient: Patient()
+    $earliestG8647: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "217_PERFORMANCE_MET_G8647"),
+            startsDuring($startDate, $stopDate)
+        ),
+        earliestClinicalActivity($r)
+    )
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.SUCCESS, "G8647");
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $encounter, "Evidence of Performance Met G8647", "G8647", PopulationEnum.numerator_performance_met, $earliestG8647, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $earliestG8647.startDate.toString());
+end
+
+/*
+define "Denominator Exception Care Not Indicated M1108":
+//   Option ID: M1108 
+    (   first(  ["Clinical Activity": "MIPS; 217_DENOMINATOR_EXCEPTION_M1108"] P
+                with "Denominator Episode" Episode
+                such that P.start_date during Interval[Episode.start_date, Episode.stop_date]
+        ) CareNotIndicated sort by CareNotIndicated.start_date ascending 
+    ) firstCareNotIndicated
+    ,
+    if exists "Denominator Exception Care Not Indicated M1108" return
+    ExtendedMeasureResultV2(
+      firstCareNotIndicated
+      , 'Evidence of Care Not Indicated M1108' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator Exception
+      , option_id = M1108
+    )
+*/
+rule 'Year2026.Mips217.Denominator.Exception.M1108'
+when
+    Year2026Mips217Denominator($program: program, $encounter: encounter, $startDate: startDate, $stopDate: stopDate, $measure: measure == "Year2026.Mips217")
+    $patient: Patient()
+    $earliestM1108: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "217_DENOMINATOR_EXCEPTION_M1108"),
+            startsDuring($startDate, $stopDate)
+        ),
+        earliestClinicalActivity($r)
+    )
+then 
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCEPTION, "M1108");
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $encounter, "Denominator Exception Care Not Indicated M1108", "M1108", PopulationEnum.denominator_exception, $earliestM1108, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $earliestM1108.startDate.toString());
+end
+
+/*
+define "Denominator Exception Patient Discharged Medical Event M1109":
+// Option ID: M1109 
+    (   first(  ["Clinical Activity": "MIPS; 217_DENOMINATOR_EXCEPTION_M1109"] P
+                with "Denominator Episode" Episode
+                such that P.start_date during Interval[Episode.start_date, Episode.stop_date]
+        ) DischargedMedicalEvent sort by DischargedMedicalEvent.start_date ascending 
+    ) firstDischargedMedicalEvent
+    ,
+    if exists "Denominator Exception Patient Discharged Medical Event M1109" return
+    ExtendedMeasureResultV2(
+      firstDischargedMedicalEvent
+      , 'Evidence of Patient Discharged Medical Event M1109' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator Exception
+      , option_id = M1109
+    )
+*/
+rule 'Year2026.Mips217.Denominator.Exception.M1109'
+when
+    Year2026Mips217Denominator($program: program, $encounter: encounter, $startDate: startDate, $stopDate: stopDate, $measure: measure == "Year2026.Mips217")
+    $patient: Patient()
+    $earliestM1109: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "217_DENOMINATOR_EXCEPTION_M1109"),
+            startsDuring($startDate, $stopDate)
+        ),
+        earliestClinicalActivity($r)
+    )
+then 
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCEPTION, "M1109");
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $encounter, "Denominator Exception Patient Discharged Medical Event M1109", "M1109", PopulationEnum.denominator_exception, $earliestM1109, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $earliestM1109.startDate.toString());
+end
+
+/*
+define "Denominator Exception Patient Self Discharge M1110":
+// Option ID: M1110 
+    (   first(  ["Clinical Activity": "MIPS; 217_DENOMINATOR_EXCEPTION_M1110"] P
+                with "Denominator Episode" Episode
+                such that P.start_date during Interval[Episode.start_date, Episode.stop_date]
+        ) SelfDischarge sort by SelfDischarge.start_date ascending 
+    ) firstSelfDischarge
+    ,
+    if exists "Denominator Exception Patient Self Discharge M1110" return
+    ExtendedMeasureResultV2(
+      firstSelfDischarge
+      , 'Evidence of Patient Self Discharge M1110' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator Exception
+      , option_id = M1110
+    )
+
+*/
+rule 'Year2026.Mips217.Denominator.Exception.M1110'
+when
+    Year2026Mips217Denominator($program: program, $encounter: encounter, $startDate: startDate, $stopDate: stopDate, $measure: measure == "Year2026.Mips217")
+    $patient: Patient()
+    $earliestM1110: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "217_DENOMINATOR_EXCEPTION_M1110"),
+            startsDuring($startDate, $stopDate)
+        ),
+        earliestClinicalActivity($r)
+    )
+then 
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCEPTION, "M1110");
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $encounter, "Denominator Exception Patient Self Discharge M1110", "M1110", PopulationEnum.denominator_exception, $earliestM1110, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $earliestM1110.startDate.toString());
+end
+
+/*
+define "Denominator Exception Patient Refused G9726":
+  // Option ID: G9726
+(   first(  ["Clinical Activity": "MIPS; 217_DENOMINATOR_EXCEPTION_G9726"] P
+                with "Denominator Episode" Episode
+                such that P.start_date during Interval[Episode.start_date, Episode.stop_date]
+        ) PatientRefused sort by PatientRefused.start_date ascending 
+    ) firstPatientRefused
+    ,
+    if exists "Denominator Exception Patient Refused G9726" return
+    ExtendedMeasureResultV2(
+      firstPatientRefused
+      , 'Evidence of Patient Refused G9726' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator Exception
+      , option_id = G9726
+    )
+*/
+rule 'Year2026.Mips217.Denominator.Exception.G9726'
+when
+    Year2026Mips217Denominator($program: program, $encounter: encounter, $startDate: startDate, $stopDate: stopDate, $measure: measure == "Year2026.Mips217")
+    $patient: Patient()
+    $earliestG9726: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "217_DENOMINATOR_EXCEPTION_G9726"),
+           startsDuring($startDate, $stopDate)
+        ),
+        earliestClinicalActivity($r)
+    )
+then 
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCEPTION, "G9726");
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $encounter, "Denominator Exception Patient Refused G9726", "G9726", PopulationEnum.denominator_exception, $earliestG9726, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $earliestG9726.startDate.toString());
+end
+
+/*
+define "Numerator Performance Not Met G8648":
+  // Option ID: G8648
+    (   first(  ["Clinical Activity": "MIPS; 217_PERFORMANCE_NOT_MET_G8648"] P
+                with "Denominator Episode" Episode
+                such that P.start_date during Interval[Episode.start_date, Episode.stop_date]
+        ) PerformanceNotMet sort by PerformanceNotMet.start_date ascending 
+    ) firstPerformanceNotMet
+    ,
+    if exists "Numerator Performance Not Met G8648" return
+    ExtendedMeasureResultV2(
+      firstPerformanceNotMet
+      , 'Evidence of Performance Not Met G8648' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Numerator Performance Not Met
+      , option_id = G8648
+    )
+*/
+rule 'Year2026.Mips217.Gap.G8648'
+when
+    Year2026Mips217Denominator($program: program, $encounter: encounter, $startDate: startDate, $stopDate: stopDate, $measure: measure == "Year2026.Mips217")
+    $patient: Patient()
+    $earliestG8648: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            withValueSet("MipsYear2026", "217_PERFORMANCE_NOT_MET_G8648"),
+            startsDuring($startDate, $stopDate)
+        ),
+        earliestClinicalActivity($r)
+    )
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.GAP, "G8648");
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips217", $encounter, "Evidence of Performance Not Met G8648", "G8648", PopulationEnum.numerator_performance_not_met, $earliestG8648, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $earliestG8648.startDate.toString());
+end
+
+/*
+define "Numerator Performance Not Met G8650":
+  // Option ID: G8650
+  not "Denominator Exclusion Patient Diagnosis of Neuro Condition M1107"
+  and not "Denominator Exclusion Patient Inability G9727"
+  and not "Numerator Performance Met G8647"
+  and not "Denominator Exception Care Not Indicated M1108"
+  and not "Denominator Exception Patient Discharged Medical Event M1109"
+  and not "Denominator Exception Patient Self Discharge M1110"
+  and not "Denominator Exception Patient Refused G9726"
+  and not "Numerator Performance Not Met G8648"
+
+*/
+rule 'Year2026.Mips217.Gap.G8650'
+when
+    Year2026Mips217Denominator($program: program, $encounter: encounter, $measure: measure == "Year2026.Mips217")
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.GAP, "G8650");
+end

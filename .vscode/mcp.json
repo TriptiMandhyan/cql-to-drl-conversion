@@ -1,0 +1,40 @@
+{
+    "inputs": [
+        {
+            "id": "ado_org",
+            "type": "promptString",
+            "description": "Azure DevOps organization name",
+            "default": "healthcatalyst"
+        }
+    ],
+    "servers": {
+        "github": {
+            "type": "stdio",
+            "command": "npx",
+            "args": [
+                "-y",
+                "@modelcontextprotocol/server-github"
+            ],
+            "env": {
+                "GITHUB_PERSONAL_ACCESS_TOKEN": "${env:GITHUB_TOKEN}"
+            }
+        },
+        "ado": {
+            "type": "stdio",
+            "command": "npx",
+            "args": [
+                "-y",
+                "@azure-devops/mcp@next",
+                "${input:ado_org}",
+                "-a",
+                "envvar",
+                "-d",
+                "all"
+            ],
+            "env": {
+                "ADO_MCP_AUTH_TOKEN": "${env:ADO_PAT}",
+                "ADO_PAT": "${env:ADO_PAT}"
+            }
+        }
+    }
+}

@@ -1,0 +1,315 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+import java.time.LocalDate;
+import java.util.ArrayList;
+
+import static com.ablehealth.helper.CumulativeConsecutiveDaysHelper.maxConsecutiveDays;
+import accumulate com.ablehealth.functions.EarliestClinicalActivityAccumulateFunction earliestClinicalActivity;
+import accumulate com.ablehealth.functions.EarliestQdmDatatypeAccumulateFunction earliestQdmDatatype;
+
+declare Year2026MipsSharedFrailtyLtiQualityCodes
+    program: Program
+    qualityCode: ClinicalActivity
+end
+
+/*
+-------------------------------------------------------------------------------------------------------------
+* 81 and older with Frailty *  
+Patients 81 years of age and older with at least one claim/encounter for frailty during the measurement period
+-------------------------------------------------------------------------------------------------------------
+
+define function "Is 81 and Older with Frailty with Age Anchor"(Date):
+  exists("Frailty for age 81 and Older" FrailtyDemMeds
+          where AgeInYearsAt(Date) >= 81)
+
+define "Frailty for age 81 and Older":
+    exists( ( ["Clinical Activity": "MIPS; MIPS_FRAILTY_OVER_80_QUALITY_CODES"]FrailtyQC
+                  where FrailtyQC.start_date during Interval[start of "Measurement Period", end of "Measurement Period"] )
+                or  "Frailty Exists During Measurement Period"  )
+
+define "Frailty Exists During Measurement Period": //Note- this shared definition will not work for MIPS 418 which has a different Frailty Period.
+    exists(( (   ["Clinical Activity": "MIPS; MIPS_FRAILTY"]
+                union ["Diagnosis": "MIPS; MIPS_FRAILTY"]
+                union ["Order": "MIPS; MIPS_FRAILTY"]) Frailty
+            where Frailty.start_date during Interval[start of "Measurement Period", end of "Measurement Period"]    )
+    )FrailtyPeriod
+*/
+query queryYear2026MipsSharedIs81AndOlderWithFrailtyWithAgeAnchor(Program $program, LocalDate $date, QdmDatatype $result)
+    (
+        $result:= ClinicalActivity(
+            withValueSet("MipsYear2026", "MIPS_FRAILTY_OVER_80_QUALITY_CODES"),
+            startsDuring($program.measurementPeriod)
+        )
+        or $result:= ClinicalActivity(
+            withValueSet("MipsYear2026", "MIPS_FRAILTY"),
+            startsDuring($program.measurementPeriod)
+        )
+        or $result:= Diagnosis(
+            withValueSet("MipsYear2026", "MIPS_FRAILTY"),
+            startsDuring($program.measurementPeriod)
+        )
+        or $result:= Order(
+            withValueSet("MipsYear2026", "MIPS_FRAILTY"),
+            startsDuring($program.measurementPeriod)
+        )
+    ) and exists Patient(getAgeInYearsAt($date) >= 81)
+end
+
+
+/*
+define function "Is 81 and Older with Frailty  with Age Anchor and Custom Period"(Date, CustomPeriod Interval<DateTime>):
+  (exists( ( ["Clinical Activity": "MIPS; MIPS_FRAILTY_OVER_80_QUALITY_CODES"])FrailtyQC 
+                    where FrailtyQC.start_date during "CustomPeriod" )
+  or exists (  (["Clinical Activity": "MIPS; MIPS_FRAILTY"]
+                union ["Diagnosis": "MIPS; MIPS_FRAILTY"]
+                union ["Order": "MIPS; MIPS_FRAILTY"]) Frailty
+                    where Frailty.start_date during "CustomPeriod"   ))
+  and AgeInYearsAt(Date) >= 81
+*/
+query queryYear2026MipsSharedIs81AndOlderWithFrailtyWithAgeAnchorAndCustomPeriod(LocalDate $date, LocalDate $start, LocalDate $end, QdmDatatype $result)
+    (
+        $result:= ClinicalActivity(
+            withValueSet("MipsYear2026", "MIPS_FRAILTY_OVER_80_QUALITY_CODES"),
+            startsDuring($start, $end)
+        )
+        or $result:= ClinicalActivity(
+            withValueSet("MipsYear2026", "MIPS_FRAILTY"),
+            startsDuring($start, $end)
+        )
+        or $result:= Diagnosis(
+            withValueSet("MipsYear2026", "MIPS_FRAILTY"),
+            startsDuring($start, $end)
+        )
+        or $result:= Order(
+            withValueSet("MipsYear2026", "MIPS_FRAILTY"),
+            startsDuring($start, $end)
+        )
+    ) and exists Patient(getAgeInYearsAt($date) >= 81)
+end
+
+/*
+66-80 Frailty and Dementia Medications----------------------------------------------------------------------
+Patients 66 - 80 years of age with at least one claim/encounter for frailty during the measurement
+period AND a dispensed medication for dementia during the measurement period or the year prior to
+the measurement period--------------------------------------------------------------------------------------
+
+define function "Is 66 to 80 with Frailty and Dementia Meds with Age Anchor"(Date):
+  exists("Frailty and Dementia Meds for Ages 66 to 80"
+          where (AgeInYearsAt(Date) >= 66
+                and AgeInYearsAt(Date) <= 80) )
+
+define "Frailty and Dementia Meds for Ages 66 to 80":
+   exists( ["Clinical Activity": "MIPS; MIPS_FRAILTY_AND_DEMENTIA_MEDICATION_QUALITY_CODES"] FrailDementiaQC
+                where FrailDementiaQC.start_date during Interval[start of "Measurement Period", end of "Measurement Period"])
+   or exists ( "Dementia Medications In Year Before or During Measurement Period"
+                  and "Frailty Exists During Measurement Period"    )  
+
+define "Dementia Medications In Year Before or During Measurement Period" :
+  ( (["Medication": "MIPS; DEMENTIA_MEDICATIONS_MAP_NDC"]
+   union ["Medication": "ABLE; DEMENTIA_MEDICATIONS_OTHER_RXNORM_MAP_NDC"])DementiaMed
+    where Interval[DementiaMed.start_date, DementiaMed.end_date] overlaps Interval[(start of "Measurement Period" - 1 year), end of "Measurement Period"]) DementiaMedPeriod
+*/
+query queryYear2026MipsSharedFrailtyDementiaAge66To80WithAgeAnchor(Program $program, LocalDate $date)
+    exists queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyAndDementiaQualityCodes($program, $date, $result;)
+    or(
+        exists queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyExists($program, $date, $result;)
+        and exists queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorDementiaMedications($program, $date, $result;)
+    )
+end
+
+query queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyAndDementiaQualityCodes(Program $program, LocalDate $date, ClinicalActivity $result)
+    $result:= ClinicalActivity(
+        withValueSet("MipsYear2026", "MIPS_FRAILTY_AND_DEMENTIA_MEDICATION_QUALITY_CODES"),
+        startsDuring($program.measurementPeriod)
+    ) and exists Patient(getAgeInYearsAt($date) >= 66 && getAgeInYearsAt($date) <= 80)
+end
+
+query queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyExists(Program $program, LocalDate $date, QdmDatatype $result)
+    (
+        $result:= Diagnosis(
+            withValueSet("MipsYear2026", "MIPS_FRAILTY"),
+            startsDuring($program.measurementPeriod)
+        )
+        or $result:= ClinicalActivity(
+            withValueSet("MipsYear2026", "MIPS_FRAILTY"),
+            startsDuring($program.measurementPeriod)
+        )
+        or $result:= Order(
+            withValueSet("MipsYear2026", "MIPS_FRAILTY"),
+            startsDuring($program.measurementPeriod)
+        )
+    ) and exists Patient(getAgeInYearsAt($date) >= 66 && getAgeInYearsAt($date) <= 80)
+end
+
+query queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorDementiaMedications(Program $program, LocalDate $date, Medication $result)
+    $result:= Medication(
+        withValueSet("MipsYear2026", "DEMENTIA_MEDICATIONS_MAP_NDC") || 
+        withValueSet("AbleYear2026", "DEMENTIA_MEDICATIONS_OTHER_RXNORM_MAP_NDC"),
+        overlaps($program.measurementPeriod.start.minusYears(1), $program.measurementPeriod.end)
+    ) and exists Patient(getAgeInYearsAt($date) >= 66 && getAgeInYearsAt($date) <= 80)
+end
+
+/*
+66-80 Frailty and Advanced Illness--------------------------------------------------------------------
+Patients 66 - 80 years of age with at least one claim/encounter for frailty during the measurement
+period AND either one acute inpatient encounter with a diagnosis of advanced illness or two
+outpatient, observation, ED or nonacute inpatient encounters on different dates of service with an
+advanced illness diagnosis during the measurement period or the year prior to the measurement period
+
+define function "Is 66 to 80 with Frailty and Advanced Illness with Age Anchor"(Date):
+  exists(
+    "Frailty and Advanced Illness for age 66 to 80" FrailtyAdvIll
+      where AgeInYearsAt(Date) >= 66
+            and AgeInYearsAt(Date) <= 80 )
+
+define "Frailty and Advanced Illness for age 66 to 80":
+    exists( ["Clinical Activity": "MIPS; MIPS_FRAILTY_AND_ADVANCED_ILLNESS_QUALITY_CODES"] FrailAdvIllQC
+                  where FrailAdvIllQC.start_date during Interval[start of "Measurement Period", end of "Measurement Period"])
+    or exists(  "Advanced Illness in Measurement Period or Year Prior"
+                        and "Frailty Exists During Measurement Period"  )  
+
+define "Advanced Illness in Measurement Period or Year Prior":
+     exists (( ["Diagnosis": "MIPS; MIPS_ADVANCED_ILLNESS"] AdvancedIllnessDiagnosis
+              where AdvancedIllnessDiagnosis.start_date during Interval[start of "Measurement Period" - 1 year, end of "Measurement Period"]) )AdvancedIllnessPeriod
+
+define "Frailty Exists During Measurement Period": //Note- this shared definition will not work for MIPS 418 which has a different Frailty Period.
+    exists( (   ["Clinical Activity": "MIPS; MIPS_FRAILTY"]
+                union ["Diagnosis": "MIPS; MIPS_FRAILTY"]
+                union ["Order": "MIPS; MIPS_FRAILTY"]) Frailty
+            where Frailty.start_date during Interval[start of "Measurement Period", end of "Measurement Period"]    )
+*/
+query queryYear2026MipsSharedFrailtyAdvancedIllnessAge66To80WithAgeAnchor(Program $program, LocalDate $date)
+    exists queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyAndAdvancedIllnessQualityCodes($program, $date, $result;)
+    or(
+       exists queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyExists($program, $date, $result;)
+       and exists queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorAdvancedIllness($program, $date, $result;)
+    )
+end
+
+query queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyAndAdvancedIllnessQualityCodes(Program $program, LocalDate $date, ClinicalActivity $result)
+    $result:= ClinicalActivity(
+        withValueSet("MipsYear2026", "MIPS_FRAILTY_AND_ADVANCED_ILLNESS_QUALITY_CODES"),
+        startsDuring($program.measurementPeriod)
+    ) and exists Patient(getAgeInYearsAt($date) >= 66 && getAgeInYearsAt($date) <= 80)
+end
+
+query queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorAdvancedIllness(Program $program, LocalDate $date, Diagnosis $result)
+    $result:= Diagnosis(
+        withValueSet("MipsYear2026", "MIPS_ADVANCED_ILLNESS"),
+        startsDuring($program.measurementPeriod.start.minusYears(1), $program.measurementPeriod.end)
+    ) and exists Patient(getAgeInYearsAt($date) >= 66 && getAgeInYearsAt($date) <= 80)
+end
+
+
+/*
+-------------------------------------------------------------------------------------------------------------
+SNP-LTI Patients age 66 or older in Institutional Special Needs Plans (SNP) or residing in long-term care with
+POS code 32, 33, 34, 54, or 56 for more than 90 consecutive days during the measurement period
+-------------------------------------------------------------------------------------------------------------
+
+define function "Has Long Term Care with Age Anchor"(Date):
+  exists(
+    "Has Long Term Care" LTI
+      where AgeInYearsAt(Date) >= 66)
+
+define "Has Long Term Care":
+    exists( "Has Long Term Care Periods Longer Than 90 Consecutive Days" )
+    or exists(   ["Clinical Activity": "MIPS; MIPS_LTI_QUALITY_CODES"] LTI
+                  where LTI.start_date during Interval[start of "Measurement Period", end of "Measurement Period"]    ) 
+
+define "Long Term Care Periods During Measurement Period":
+    ( ["Clinical Activity": "VSAC; CARE_SERVICES_IN_LONG_TERM_RESIDENTIAL_FACILITY"]
+      union ["Clinical Activity": "VSAC; NURSING_FACILITY_VISIT"] ) LongTermFacilityEncounter
+    where ( (   Interval[LongTermFacilityEncounter.start_date, LongTermFacilityEncounter.stop_date] overlaps Interval[start of "Measurement Period", end of "Measurement Period"]
+                and LongTermFacilityEncounter.stop_date != null or empty)
+                and LongTermFacilityEncounter.place_of_service in (32, 33, 34, 54, 56)  )
+    return Interval[LongTermFacilityEncounter.start_date, LongTermFacilityEncounter.stop_date] intersect Interval[start of "Measurement Period", end of "Measurement Period"]
+
+define "Long Term Care Overlapping Periods":
+    collapse("Long Term Care Periods During Measurement Period")
+
+define "Long Term Care Adjacent Periods":
+    from
+        "Long Term Care Overlapping Periods" LTCPeriod1,
+        "Long Term Care Overlapping Periods" LTCPeriod2
+        where end of LTCPeriod1 within 1 day of start of LTCPeriod2
+    return Interval[start of LTCPeriod1, end of LTCPeriod2]
+
+define "Max Long Term Care Period Length":
+    Max(    (   collapse(   "Long Term Care Overlapping Periods"
+                            union "Long Term Care Adjacent Periods")    )LTCPeriods
+            return duration in days of LTCPeriods   )
+
+define "Has Long Term Care Periods Longer Than 90 Consecutive Days":
+    "Max Long Term Care Period Length" > 90
+*/
+query queryYear2026MipsSharedHasLongTermCareWithAgeAnchor(Program $program, LocalDate $date)
+    Patient(getAgeInYearsAt($date) >= 66)
+    and exists (
+        (
+            $list: ArrayList() from collect (
+                ClinicalActivity(
+                    withValueSet("VsacYear2026", "CARE_SERVICES_IN_LONG_TERM_RESIDENTIAL_FACILITY") ||
+                    withValueSet("VsacYear2026", "NURSING_FACILITY_VISIT"),
+                    !withPlaceOfServiceNotIn("32", "33", "34", "54", "56"),
+                    stopDate != null,
+                    overlaps($program.measurementPeriod)
+                )
+            )
+            and eval(maxConsecutiveDays($list, $program) > 90)
+        )
+        or (
+            ClinicalActivity(
+                withValueSet("MipsYear2026", "MIPS_LTI_QUALITY_CODES"),
+                startsDuring($program.measurementPeriod)
+            )
+        )
+    )
+end
+
+/*
+define "Long Term Care Periods During Measurement Period":
+    ( ["Clinical Activity": "VSAC; CARE_SERVICES_IN_LONG_TERM_RESIDENTIAL_FACILITY"]
+      union ["Clinical Activity": "VSAC; NURSING_FACILITY_VISIT"] ) LongTermFacilityEncounter
+    where ( (   Interval[LongTermFacilityEncounter.start_date, LongTermFacilityEncounter.stop_date] overlaps Interval[start of "Measurement Period", end of "Measurement Period"]
+                and LongTermFacilityEncounter.stop_date != null or empty)
+                and LongTermFacilityEncounter.place_of_service in (32, 33, 34, 54, 56)  )
+    return Interval[LongTermFacilityEncounter.start_date, LongTermFacilityEncounter.stop_date] intersect Interval[start of "Measurement Period", end of "Measurement Period"]
+*/
+query queryYear2026MipsSharedHasLongTermCarePeriodsLongerThan90ConsecutiveDays(Program $program, LocalDate $date, Long $consecutiveDays)
+    Patient(getAgeInYearsAt($date) >= 66)
+    $list: ArrayList() from collect (
+        ClinicalActivity(
+            withValueSet("VsacYear2026", "CARE_SERVICES_IN_LONG_TERM_RESIDENTIAL_FACILITY") ||
+            withValueSet("VsacYear2026", "NURSING_FACILITY_VISIT"),
+            !withPlaceOfServiceNotIn("32", "33", "34", "54", "56"),
+            stopDate != null,
+            overlaps($program.measurementPeriod)
+        )
+    )
+    $consecutiveDays:= Long(this > 90) from maxConsecutiveDays($list, $program)
+end
+
+/*
+last(   ["Clinical Activity": "MIPS; MIPS_LTI_QUALITY_CODES"] LTI
+                  where LTI.start_date during Interval[start of "Measurement Period", end of "Measurement Period"]    ) 
+*/
+rule 'Year2026.Mips.Shared.FrailtyLti.QualityCodes'
+when
+    $program: Program()
+    $firstRecord: ClinicalActivity() from accumulate(
+        $clinical: ClinicalActivity(
+            withValueSet("MipsYear2026", "MIPS_LTI_QUALITY_CODES"),
+            startsDuring($program.measurementPeriod)
+        ),
+        earliestClinicalActivity($clinical)
+    )
+    and not(
+        exists Year2026MipsSharedFrailtyLtiQualityCodes($program == program)
+    )
+then
+    insert(new Year2026MipsSharedFrailtyLtiQualityCodes($program, $firstRecord));
+end

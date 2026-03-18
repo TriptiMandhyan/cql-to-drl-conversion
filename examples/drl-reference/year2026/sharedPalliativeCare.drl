@@ -1,0 +1,177 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+
+import java.time.LocalDate;
+
+import accumulate com.ablehealth.functions.EarliestQdmDatatypeAccumulateFunction earliestQdmDatatype;
+
+declare Year2026MipsSharedHasPalliativeCare
+    program: Program
+    palliative: QdmDatatype
+end 
+ 
+/*
+Palliative Care-----------------------------------------------------------------------------------------------------------------------
+Palliative care services given to patient any time during the measurement period.
+In 2026 definition changed to match eCQM, along with addition of Quality Codes and for now continue to accept codes in CA or Diagnosis.
+--------------------------------------------------------------------------------------------------------------------------------------
+
+define "Has Palliative Care":
+  exists ( ["Clinical Activity": "eCQM Direct Reference Code; FUNCTIONAL_ASSESSMENT_OF_CHRONIC_ILLNESS_THERAPY___PALLIATIVE_CARE_QUESTIONNAIRE_FACIT_PAL"] PalliativeAssessment
+      where( (PalliativeAssessment.stop_date is not null or empty 
+                        and Interval[PalliativeAssessment.start_date, PalliativeAssessment.stop_date] overlaps "Measurement Period")
+            or (PalliativeAssessment.stop_date is null or empty
+                        and PalliativeAssessment.start_date during "Measurement Period"))
+  )
+    or exists (( ["Diagnosis": "VSAC; PALLIATIVE_CARE_DIAGNOSIS"]
+                union ["Diagnosis": "VSAC; PALLIATIVE_CARE_INTERVENTION"]
+                union ["Diagnosis": "VSAC; PALLIATIVE_CARE_ENCOUNTER"]) PalliativeDiagnosis
+        where ( (PalliativeDiagnosis.stop_date is not null or empty 
+                        and Interval[PalliativeDiagnosis.start_date, PalliativeDiagnosis.stop_date] overlaps "Measurement Period")
+            or (PalliativeDiagnosis.stop_date is null or empty
+                        and PalliativeDiagnosis.start_date during "Measurement Period"))
+  )
+    or exists (( ["Clinical Activity": "VSAC; PALLIATIVE_CARE_ENCOUNTER"] 
+                union ["Clinical Activity": "VSAC; PALLIATIVE_CARE_INTERVENTION"] 
+                union ["Clinical Activity": "VSAC; PALLIATIVE_CARE_DIAGNOSIS"] )PalliativeIntervention
+        where ( (PalliativeIntervention.stop_date is not null or empty 
+                        and Interval[PalliativeIntervention.start_date, PalliativeIntervention.stop_date] overlaps "Measurement Period")
+            or (PalliativeIntervention.stop_date is null or empty
+                        and PalliativeIntervention.start_date during "Measurement Period"))
+    )
+    or exists ( ["Clinical Activity": "MIPS; MIPS_PALLIATIVE_CARE_QUALITY_CODES"] PalliativeCareQC 
+        where PalliativeCareQC.start_date during "Measurement Period")
+*/
+query queryYear2026MipsSharedPalliativeCareInMeasurementPeriod(Program $program, QdmDatatype $palliative)
+    (
+        $palliative:= ClinicalActivity(
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "FUNCTIONAL_ASSESSMENT_OF_CHRONIC_ILLNESS_THERAPY___PALLIATIVE_CARE_QUESTIONNAIRE_FACIT_PAL"),
+            stopDate != null,
+            overlaps($program.measurementPeriod)
+        )
+        or $palliative:= ClinicalActivity(
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "FUNCTIONAL_ASSESSMENT_OF_CHRONIC_ILLNESS_THERAPY___PALLIATIVE_CARE_QUESTIONNAIRE_FACIT_PAL"),
+            stopDate == null,
+            startsDuring($program.measurementPeriod)
+        )
+        or $palliative:= Diagnosis(
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_DIAGNOSIS") ||
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_INTERVENTION") ||
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_ENCOUNTER"),
+            stopDate != null,
+            overlaps($program.measurementPeriod)
+        )
+        or $palliative:= Diagnosis(
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_DIAGNOSIS") ||
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_INTERVENTION") ||
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_ENCOUNTER"),
+            stopDate == null,
+            startsDuring($program.measurementPeriod)
+        )
+        or $palliative:= ClinicalActivity(
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_ENCOUNTER") ||
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_INTERVENTION") ||
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_DIAGNOSIS"),
+            stopDate != null,
+            overlaps($program.measurementPeriod)
+        )
+        or $palliative:= ClinicalActivity(
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_ENCOUNTER") ||
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_INTERVENTION") ||
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_DIAGNOSIS"),
+            stopDate == null,
+            startsDuring($program.measurementPeriod)
+        )
+        or $palliative:= ClinicalActivity(
+            withValueSet("MipsYear2026", "MIPS_PALLIATIVE_CARE_QUALITY_CODES"),
+            startsDuring($program.measurementPeriod)
+        )
+    )
+end
+
+/**
+define function "Has Palliative Care Custom Period"("Period"):
+    (   ["Clinical Activity": "eCQM Direct Reference Code; FUNCTIONAL_ASSESSMENT_OF_CHRONIC_ILLNESS_THERAPY___PALLIATIVE_CARE_QUESTIONNAIRE_FACIT_PAL"] PalliativeAssessment
+        where   (   (   PalliativeAssessment.stop_date is not null or empty 
+                        and Interval[PalliativeAssessment.start_date, PalliativeAssessment.stop_date] overlaps "Period")
+                    or  (   PalliativeAssessment.stop_date is null or empty
+                            and PalliativeAssessment.start_date during "Period" )   )   )
+    union   (   (   ["Diagnosis": "VSAC; PALLIATIVE_CARE_DIAGNOSIS"]
+                    union ["Diagnosis": "VSAC; PALLIATIVE_CARE_INTERVENTION"]
+                    union ["Diagnosis": "VSAC; PALLIATIVE_CARE_ENCOUNTER"]) PalliativeDiagnosis
+                where   (   (   PalliativeDiagnosis.stop_date is not null or empty 
+                                and Interval[PalliativeDiagnosis.start_date, PalliativeDiagnosis.stop_date] overlaps "Period")
+                            or  (   PalliativeDiagnosis.stop_date is null or empty
+                                and PalliativeDiagnosis.start_date during "Period"  )   )   )
+    union   (   (   ["Clinical Activity": "VSAC; PALLIATIVE_CARE_ENCOUNTER"] 
+                    union ["Clinical Activity": "VSAC; PALLIATIVE_CARE_INTERVENTION"] 
+                    union ["Clinical Activity": "VSAC; PALLIATIVE_CARE_DIAGNOSIS"] )    PalliativeIntervention
+                where   (   (   PalliativeIntervention.stop_date is not null or empty 
+                                and Interval[PalliativeIntervention.start_date, PalliativeIntervention.stop_date] overlaps "Period" )
+                            or  (   PalliativeIntervention.stop_date is null or empty
+                                    and PalliativeIntervention.start_date during "Period"   )   )    )
+    union ( ["Clinical Activity": "MIPS; MIPS_PALLIATIVE_CARE_QUALITY_CODES"] PalliativeCareQC 
+            where PalliativeCareQC.start_date during "Period"   )
+*/
+query queryYear2026MipsSharedPalliativeCareInCustomPeriod(LocalDate $startDate, LocalDate $stopDate, QdmDatatype $palliative)
+    (
+        $palliative:= ClinicalActivity(
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "FUNCTIONAL_ASSESSMENT_OF_CHRONIC_ILLNESS_THERAPY___PALLIATIVE_CARE_QUESTIONNAIRE_FACIT_PAL"),
+            stopDate != null,
+            overlaps($startDate, $stopDate)
+        )
+        or $palliative:= ClinicalActivity(
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "FUNCTIONAL_ASSESSMENT_OF_CHRONIC_ILLNESS_THERAPY___PALLIATIVE_CARE_QUESTIONNAIRE_FACIT_PAL"),
+            stopDate == null,
+            startsDuring($startDate, $stopDate)
+        )
+        or $palliative:= Diagnosis(
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_DIAGNOSIS") ||
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_INTERVENTION") ||
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_ENCOUNTER"),
+            stopDate != null,
+            overlaps($startDate, $stopDate)
+        )
+        or $palliative:= Diagnosis(
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_DIAGNOSIS") ||
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_INTERVENTION") ||
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_ENCOUNTER"),
+            stopDate == null,
+            startsDuring($startDate, $stopDate)
+        )
+        or $palliative:= ClinicalActivity(
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_ENCOUNTER") ||
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_INTERVENTION") ||
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_DIAGNOSIS"),
+            stopDate != null,
+            overlaps($startDate, $stopDate)
+        )
+        or $palliative:= ClinicalActivity(
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_ENCOUNTER") ||
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_INTERVENTION") ||
+            withValueSet("VsacYear2026", "PALLIATIVE_CARE_DIAGNOSIS"),
+            stopDate == null,
+            startsDuring($startDate, $stopDate)
+        )
+        or $palliative:= ClinicalActivity(
+            withValueSet("MipsYear2026", "MIPS_PALLIATIVE_CARE_QUALITY_CODES"),
+            startsDuring($startDate, $stopDate)
+        )
+    )
+end
+
+rule 'Year2026.Mips.SharedPalliative'
+when
+    $program: Program()
+    $firstPalliative: QdmDatatype() from accumulate (
+        queryYear2026MipsSharedPalliativeCareInMeasurementPeriod($program, $palliative;),
+        earliestQdmDatatype($palliative)
+    )
+    and not(
+        exists Year2026MipsSharedHasPalliativeCare($program == program)
+    )
+then
+    insert(new Year2026MipsSharedHasPalliativeCare($program, $firstPalliative));
+end

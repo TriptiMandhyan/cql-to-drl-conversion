@@ -1,0 +1,204 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.results.*;
+import com.ablehealth.enums.extendedmeaures.*;
+import com.google.common.base.Strings;
+import java.util.Collections;
+
+global PatientResults controlSet;
+
+/*
+define "Denominator".all:
+    exists("Denominator Encounter") Encounter
+    ,
+    ExtendedMeasureResultV2(
+        Encounter
+        , 'Qualifying Encounter' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+// Here we need to return the qualifying encounter for each measure status per level (org,  group, provider)    
+    
+define "Denominator Encounter".all:
+    ["Clinical Activity": "MIPS; 238_ENCOUNTER"] Encounter
+    where   Encounter.start_date during "Measurement Period"
+            and AgeInYearsAt(Encounter.start_date) >= 65
+            and Encounter.provider_id.hasMeasureMembership = true
+*/
+rule 'Year2026.Mips238Shared.Denominator'
+salience 100
+when
+    $program: Program(
+        rules contains 'measure.Mips.2026.Mips238Rate1' || 
+        rules contains 'measure.Mips.2026.Mips238Rate2'
+    )
+    $encounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_ENCOUNTER"),
+        startsDuring($program.measurementPeriod)
+    )
+    $patient: Patient(getAgeInYearsAt($encounter.startDate) >= 65)
+then
+    if ($program.rules.contains("measure.Mips.2026.Mips238Rate1")) {
+        insert(new EncounterDenominator($program, $encounter, "Year2026.Mips238Rate1"));
+        // EMR - Qualifying Encounter (org) - G9741
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate1", "", "Qualifying Encounter", "G9741", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        // EMR - Qualifying Encounter (org) - G0034
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate1", "", "Qualifying Encounter", "G0034", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        // EMR - Qualifying Encounter (org) - G9367
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate1", "", "Qualifying Encounter", "G9367", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        // EMR - Qualifying Encounter (org) - G9368
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate1", "", "Qualifying Encounter", "G9368", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        
+        // EMR - Qualifying Encounter (group)
+        if ($encounter.isPresent($encounter.groupExternalIds)) {
+            for (String groupExternalId : $encounter.getGroupExternalIds()) {
+                // EMR - Qualifying Encounter (group) - G9741
+                controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate1", groupExternalId, "Qualifying Encounter", "G9741", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+                // EMR - Qualifying Encounter (group) - G0034
+                controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate1", groupExternalId, "Qualifying Encounter", "G0034", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+                // EMR - Qualifying Encounter (group) - G9367
+                controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate1", groupExternalId, "Qualifying Encounter", "G9367", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+                // EMR - Qualifying Encounter (group) - G9368
+                controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate1", groupExternalId, "Qualifying Encounter", "G9368", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+            }
+        }
+        
+        // EMR - Qualifying Encounter (provider)
+        if ($encounter.isPresent($encounter.providerExternalId)) {
+            String providerExternalId = $encounter.providerExternalId;
+            // EMR - Qualifying Encounter (provider) - G9741
+            controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate1", providerExternalId, "Qualifying Encounter", "G9741", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+            // EMR - Qualifying Encounter (provider) - G0034
+            controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate1", providerExternalId, "Qualifying Encounter", "G0034", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+            // EMR - Qualifying Encounter (provider) - G9367
+            controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate1", providerExternalId, "Qualifying Encounter", "G9367", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+            // EMR - Qualifying Encounter (provider) - G9368
+            controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate1", providerExternalId, "Qualifying Encounter", "G9368", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        }
+    }
+    if ($program.rules.contains("measure.Mips.2026.Mips238Rate2")) {
+        insert(new EncounterDenominator($program, $encounter, "Year2026.Mips238Rate2"));
+        // EMR - Qualifying Encounter (org) - G9741
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", "", "Qualifying Encounter", "G9741", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        // EMR - Qualifying Encounter (org) - G0034
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", "", "Qualifying Encounter", "G0034", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        // EMR - Qualifying Encounter (org) - G9367
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", "", "Qualifying Encounter", "G9367", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        // EMR - Qualifying Encounter (org) - G0032
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", "", "Qualifying Encounter", "G0032", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        // EMR - Qualifying Encounter (org) - G0033
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", "", "Qualifying Encounter", "G0033", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        // EMR - Qualifying Encounter (org) - G9368
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", "", "Qualifying Encounter", "G9368", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        
+        // EMR - Qualifying Encounter (group)
+        if ($encounter.isPresent($encounter.groupExternalIds)) {
+            for (String groupExternalId : $encounter.getGroupExternalIds()) {
+                // EMR - Qualifying Encounter (group) - G9741
+                controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", groupExternalId, "Qualifying Encounter", "G9741", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+                // EMR - Qualifying Encounter (group) - G0034
+                controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", groupExternalId, "Qualifying Encounter", "G0034", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+                // EMR - Qualifying Encounter (group) - G9367
+                controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", groupExternalId, "Qualifying Encounter", "G9367", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+                // EMR - Qualifying Encounter (group) - G0032
+                controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", groupExternalId, "Qualifying Encounter", "G0032", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+                // EMR - Qualifying Encounter (group) - G0033
+                controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", groupExternalId, "Qualifying Encounter", "G0033", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+                // EMR - Qualifying Encounter (group) - G9368
+                controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", groupExternalId, "Qualifying Encounter", "G9368", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+            }
+        }
+        
+        // EMR - Qualifying Encounter (provider)
+        if ($encounter.isPresent($encounter.providerExternalId)) {
+            String providerExternalId = $encounter.providerExternalId;
+            // EMR - Qualifying Encounter (provider) - G9741
+            controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", providerExternalId, "Qualifying Encounter", "G9741", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+            // EMR - Qualifying Encounter (provider) - G0034
+            controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", providerExternalId, "Qualifying Encounter", "G0034", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+            // EMR - Qualifying Encounter (provider) - G9367
+            controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", providerExternalId, "Qualifying Encounter", "G9367", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+            // EMR - Qualifying Encounter (provider) - G0032
+            controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", providerExternalId, "Qualifying Encounter", "G0032", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+            // EMR - Qualifying Encounter (provider) - G0033
+            controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", providerExternalId, "Qualifying Encounter", "G0033", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+            // EMR - Qualifying Encounter (provider) - G9368
+            controlSet.addPatientEMR($program, $patient, "Year2026.Mips238Rate2", providerExternalId, "Qualifying Encounter", "G9368", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        }
+    }
+end
+
+/*
+define function "More Than One Order".org("Medication List"<"Medication">): 
+    "Medication" MedOrder_1
+    with "Medication" MedOrder_2
+    such that ( MedOrder_1.start_date 1 day or more after MedOrder_2.start_date
+                and MedOrder_1.start_date during "Measurement Period"
+                and MedOrder_2.start_date during "Measurement Period"   )
+    return { med1: MedOrder_1, med2: MedOrder_2 }
+*/
+query queryYear2026Mips238SharedMedicationMoreThanOneOrg(Program $program, String $valueSetYear, String $valueSet, Medication $med1, Medication $med2)
+    $med2 := Medication(
+        withValueSet($valueSetYear, $valueSet),
+        startsDuring($program.measurementPeriod)
+    )
+    and $med1 := Medication(
+        withValueSet($valueSetYear, $valueSet),
+        startsAfter($med2.startDate),
+        startsDuring($program.measurementPeriod)
+    )
+end
+
+/*
+define function "More Than One Order".group("Medication List"<"Medication">):
+    "Medication" MedOrder_1
+    with "Medication" MedOrder_2
+    such that ( MedOrder_1.start_date 1 day or more after MedOrder_2.start_date
+                and MedOrder_1.start_date during "Measurement Period"
+                and MedOrder_2.start_date during "Measurement Period"
+                and MedOrder_1.group_id = MedOrder_2.group_id   )
+    return { med1: MedOrder_1, med2: MedOrder_2 }
+*/
+query queryYear2026Mips238SharedMedicationMoreThanOneGroup(Program $program, ClinicalActivity $encounter, String $valueSetYear, String $valueSet, Medication $med1, Medication $med2)
+    $groupExternalId: String() from $encounter.groupExternalIds
+    $med2 := Medication(
+        withValueSet($valueSetYear, $valueSet),
+        startsDuring($program.measurementPeriod),
+        groupExternalIds contains $groupExternalId
+    )
+    and $med1 := Medication(
+        withValueSet($valueSetYear, $valueSet),
+        startsAfter($med2.startDate),
+        startsDuring($program.measurementPeriod),
+        groupExternalIds contains $groupExternalId
+    )
+end
+
+/*
+define function "More Than One Order".provider("Medication List"<"Medication">):
+    "Medication" MedOrder_1
+    with "Medication" MedOrder_2
+    such that ( MedOrder_1.start_date 1 day or more after MedOrder_2.start_date
+                and MedOrder_1.start_date during "Measurement Period"
+                and MedOrder_2.start_date during "Measurement Period"
+                and MedOrder_1.provider_id = MedOrder_2.provider_id )
+    return { med1: MedOrder_1, med2: MedOrder_2 }
+*/
+query queryYear2026Mips238SharedMedicationMoreThanOneProvider(Program $program, ClinicalActivity $encounter, String $valueSetYear, String $valueSet, Medication $med1, Medication $med2)
+    $med2 := Medication(
+        withValueSet($valueSetYear, $valueSet),
+        startsDuring($program.measurementPeriod),
+		isPresent(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    )
+    and $med1 := Medication(
+        withValueSet($valueSetYear, $valueSet),
+		startsAfter($med2.startDate),
+        startsDuring($program.measurementPeriod),
+		isPresent(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    )
+end

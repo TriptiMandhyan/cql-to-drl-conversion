@@ -1,0 +1,331 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+import com.ablehealth.enums.extendedmeaures.*;
+
+import accumulate com.ablehealth.functions.LatestClinicalActivityAccumulateFunction latestClinicalActivity;
+
+global PatientResults controlSet;
+
+declare Year2026Mips431Rate2G2200Org
+end
+
+declare Year2026Mips431Rate2G2200Group
+    group: String
+end
+
+declare Year2026Mips431Rate2G2200Provider
+    provider: String
+end
+
+/*
+define "Denominator".org:
+    (   431shared."DenominatorRate2".org )DenOrg
+    ,
+    if exists "Denominator".org
+    return
+    ExtendedMeasureResultV2(
+        DenOrg 
+        , 'Last Denominator Encounter' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = denominator
+        , option_id = all   
+    )
+    and from ("Most Recent Alcohol Screening Indicates Alcohol User".org) AlcoholUser
+    return
+    ExtendedMeasureResultV2(
+        AlcoholUser 
+        , 'Most Recent Screening Indicates Unhealthy Alcohol Use' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = denominator
+        , option_id = all   
+    )
+
+define "DenominatorRate2".org
+    last(   (   (   "431 Encounter" P1
+                    with "431 Encounter" P2
+                    such that P1.start_date != P2.start_date    )
+                union "431 Preventive Encounter"
+                ) Denom
+        ) sort by Denom.start_date asc
+    and exists ("Most Recent Alcohol Screening Indicates Alcohol User".org)    
+    return Denom.start_date
+*/
+rule 'Year2026.Mips431Rate2.Denominator.Org'
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips431Rate2')
+    $patient: Patient()
+    // Last Encounter
+    Year2026Mips431SharedEncounterOrg($latestEncounter: latestEncounter)
+    // "Most Recent Alcohol Screening Indicates Alcohol User"
+    and queryYear2026Mips431SharedMostRecentScreening($latestEncounter, $mostRecentScreening;)
+    and queryYear2026Mips431SharedMostRecentAlcoholScreeningIndicatesAlcoholUser($patient, $mostRecentScreening, $result;)
+    and not (exists queryYear2026Mips431SharedMostRecentAlcoholScreeningIndicatesAlcoholNonUser($patient, $mostRecentScreening, $r;))
+then
+    System.out.println($latestEncounter.getStart());
+    System.out.println($latestEncounter.codeValue);
+    System.out.println($mostRecentScreening.getStart());
+    System.out.println($mostRecentScreening.codeValue);
+    System.out.println($result.getStart());
+    System.out.println($result.codeValue);
+    insert(new EncounterDenominator($program, $latestEncounter, "Year2026.Mips431Rate2", EncounterDenominatorType.ORG));
+    String[] optionIds = new String[]{"G2200", "G2202", "M1165", "G2199"};
+    for (String optionId : optionIds) {
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips431Rate2", "", "Last Denominator Encounter", optionId, PopulationEnum.denominator, $latestEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestEncounter.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips431Rate2", "", "Most Recent Screening Indicates Unhealthy Alcohol Use", optionId, PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    }
+end
+
+/**
+define "Denominator".group:
+    exists 431shared."DenominatorRate2".group
+*/
+rule 'Year2026.Mips431Rate2.Denominator.Group'
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips431Rate2')
+    $patient: Patient()
+    Year2026Mips431SharedEncounterGroup($latestEncounter: latestEncounter)
+    // "Most Recent Alcohol Screening Indicates Alcohol User"
+    and queryYear2026Mips431SharedMostRecentScreening($latestEncounter, $mostRecentScreening;)
+    and queryYear2026Mips431SharedMostRecentAlcoholScreeningIndicatesAlcoholUser($patient, $mostRecentScreening, $result;)
+    and not (exists queryYear2026Mips431SharedMostRecentAlcoholScreeningIndicatesAlcoholNonUser($patient, $mostRecentScreening, $r;))
+then
+    insert(new EncounterDenominator($program, $latestEncounter, "Year2026.Mips431Rate2", EncounterDenominatorType.GROUP));
+    String[] optionIds = new String[]{"G2200", "G2202", "M1165", "G2199"};
+    for (String optionId : optionIds) {
+        for(String group : $latestEncounter.groupExternalIds) {
+            controlSet.addPatientEMR($program, $patient, "Year2026.Mips431Rate2", group, "Last Denominator Encounter", optionId, PopulationEnum.denominator, $latestEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestEncounter.startDate.toString());
+            controlSet.addPatientEMR($program, $patient, "Year2026.Mips431Rate2", group, "Most Recent Screening Indicates Unhealthy Alcohol Use", optionId, PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+        }
+    }
+end
+
+/**
+define "Denominator".provider:
+    exists 431shared."DenominatorRate2".provider
+*/
+rule 'Year2026.Mips431Rate2.Denominator.Provider'
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips431Rate2')
+    $patient: Patient()
+    Year2026Mips431SharedEncounterProvider($latestEncounter: latestEncounter)
+    // "Most Recent Alcohol Screening Indicates Alcohol User"
+    and queryYear2026Mips431SharedMostRecentScreening($latestEncounter, $mostRecentScreening;)
+    and queryYear2026Mips431SharedMostRecentAlcoholScreeningIndicatesAlcoholUser($patient, $mostRecentScreening, $result;)
+    and not (exists queryYear2026Mips431SharedMostRecentAlcoholScreeningIndicatesAlcoholNonUser($patient, $mostRecentScreening, $r;))
+then
+    insert(new EncounterDenominator($program, $latestEncounter, "Year2026.Mips431Rate2", EncounterDenominatorType.PROVIDER));
+    String[] optionIds = new String[]{"G2200", "G2202", "M1165", "G2199"};
+    for (String optionId : optionIds) {
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips431Rate2", $latestEncounter.providerExternalId, "Last Denominator Encounter", optionId, PopulationEnum.denominator, $latestEncounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestEncounter.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips431Rate2", $latestEncounter.providerExternalId, "Most Recent Screening Indicates Unhealthy Alcohol Use", optionId, PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    }
+end
+
+/*
+define "Numerator Performance Met G2200".org:
+   *
+   * Option ID: G2200
+   *
+(431shared. "Counseling for Unhealthy Alcohol Use" Counseling
+    with "Denominator".org Encounter
+    such that Counseling.start_date during Interval[Encounter.start_date - 12 months, Encounter.start_date]
+) CounselingOrg
+    ,
+    return
+    ExtendedMeasureResultV2(
+        last(CounselingOrg) sort by CounselingOrg.start_date ascending
+        , 'Counseling for Unhealthy Alcohol Use' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Met
+        , option_id = G2200  
+    )
+
+define "Counseling for Unhealthy Alcohol Use"
+    ["Clinical Activity": "VSAC; ALCOHOL_BRIEF_INTERVENTION_AND_COUNSELING"] 
+    union ["Clinical Activity": "VSAC; REFERRAL_OR_COUNSELING_FOR_ALCOHOL_CONSUMPTION"]
+    union ["Clinical Activity": "MIPS; 431_PERFORMANCE_MET_G2200"]
+    union ["Clinical Activity": "MIPS; 431_PERFORMANCE_MET_G9621"]
+*/
+rule 'Year2026.Mips431Rate2.Success&EMR.G2200.Org'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips431Rate2', type == EncounterDenominatorType.ORG)
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("VsacYear2026", "ALCOHOL_BRIEF_INTERVENTION_AND_COUNSELING") ||
+            withValueSet("VsacYear2026", "REFERRAL_OR_COUNSELING_FOR_ALCOHOL_CONSUMPTION") ||
+            withValueSet("MipsYear2026", "431_PERFORMANCE_MET_G2200") ||
+            withValueSet("MipsYear2026", "431_PERFORMANCE_MET_G9621"),
+            startsDuring($encounter.startDate.minusMonths(12), $encounter.startDate)
+        ),
+        latestClinicalActivity($c)
+    )
+    and not(
+        exists Year2026Mips431Rate2G2200Org()
+    )
+then
+    insert(new Year2026Mips431Rate2G2200Org());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "G2200");
+    controlSet.addPatientEMR($program, $patient,  $measure, "", "Counseling for Unhealthy Alcohol Use", "G2200", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/**
+define "Numerator Performance Met G2200".group:
+   *
+   * Option ID: G2200
+   *
+(431shared. "Counseling for Unhealthy Alcohol Use" Counseling
+    with "Denominator".group Encounter
+    such that Counseling.start_date during Interval[Encounter.start_date - 12 months, Encounter.start_date]
+) CounselingGroup
+    ,
+    return
+    ExtendedMeasureResultV2(
+        last(CounselingGroup) sort by CounselingGroup.start_date ascending
+        , 'Counseling for Unhealthy Alcohol Use' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Met
+        , option_id = G2200  
+    )
+
+define "Counseling for Unhealthy Alcohol Use"
+    ["Clinical Activity": "VSAC; ALCOHOL_BRIEF_INTERVENTION_AND_COUNSELING"] 
+    union ["Clinical Activity": "VSAC; REFERRAL_OR_COUNSELING_FOR_ALCOHOL_CONSUMPTION"]
+    union ["Clinical Activity": "MIPS; 431_PERFORMANCE_MET_G2200"]
+    union ["Clinical Activity": "MIPS; 431_PERFORMANCE_MET_G9621"]
+*/
+rule 'Year2026.Mips431Rate2.Success&EMR.G2200.Group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips431Rate2', type == EncounterDenominatorType.GROUP)
+    $patient: Patient()
+    $groupExternalId: String() from $encounter.getGroupExternalIds()
+    $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("VsacYear2026", "ALCOHOL_BRIEF_INTERVENTION_AND_COUNSELING") ||
+            withValueSet("VsacYear2026", "REFERRAL_OR_COUNSELING_FOR_ALCOHOL_CONSUMPTION") ||
+            withValueSet("MipsYear2026", "431_PERFORMANCE_MET_G2200") ||
+            withValueSet("MipsYear2026", "431_PERFORMANCE_MET_G9621"),
+            startsDuring($encounter.startDate.minusMonths(12), $encounter.startDate)
+        ),
+        latestClinicalActivity($c)
+    )
+    and not(
+        exists Year2026Mips431Rate2G2200Group($groupExternalId == group)
+    )
+then
+    insert(new Year2026Mips431Rate2G2200Group($groupExternalId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $groupExternalId, $measure, MeasureStatusValue.SUCCESS, "G2200");
+    controlSet.addPatientEMR($program, $patient,  $measure, $groupExternalId, "Counseling for Unhealthy Alcohol Use", "G2200", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/**
+define "Numerator Performance Met G2200".provider:
+   *
+   * Option ID: G2200
+   *
+(431shared. "Counseling for Unhealthy Alcohol Use" Counseling
+    with "Denominator".provider Encounter
+    such that Counseling.start_date during Interval[Encounter.start_date - 12 months, Encounter.start_date]
+) CounselingProvider
+    ,
+    return
+    ExtendedMeasureResultV2(
+        last(CounselingProvider) sort by CounselingProvider.start_date ascending
+        , 'Counseling for Unhealthy Alcohol Use' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator Performance Met
+        , option_id = G2200  
+    )
+
+define "Counseling for Unhealthy Alcohol Use"
+    ["Clinical Activity": "VSAC; ALCOHOL_BRIEF_INTERVENTION_AND_COUNSELING"] 
+    union ["Clinical Activity": "VSAC; REFERRAL_OR_COUNSELING_FOR_ALCOHOL_CONSUMPTION"]
+    union ["Clinical Activity": "MIPS; 431_PERFORMANCE_MET_G2200"]
+    union ["Clinical Activity": "MIPS; 431_PERFORMANCE_MET_G9621"]
+*/
+rule 'Year2026.Mips431Rate2.Success&EMR.G2200.Provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips431Rate2', type == EncounterDenominatorType.PROVIDER)
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("VsacYear2026", "ALCOHOL_BRIEF_INTERVENTION_AND_COUNSELING") ||
+            withValueSet("VsacYear2026", "REFERRAL_OR_COUNSELING_FOR_ALCOHOL_CONSUMPTION") ||
+            withValueSet("MipsYear2026", "431_PERFORMANCE_MET_G2200") ||
+            withValueSet("MipsYear2026", "431_PERFORMANCE_MET_G9621"),
+            startsDuring($encounter.startDate.minusMonths(12), $encounter.startDate)
+        ),
+        latestClinicalActivity($c)
+    )
+    and not(
+        exists Year2026Mips431Rate2G2200Provider($encounter.providerExternalId == provider)
+    ) 
+then
+    insert(new Year2026Mips431Rate2G2200Provider($encounter.providerExternalId));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "G2200");
+    controlSet.addPatientEMR($program, $patient,  $measure, $encounter.providerExternalId, "Counseling for Unhealthy Alcohol Use", "G2200", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Numerator Performance Not Met G2202".org:
+   *
+   * Option ID: G2202
+   *
+    "Denominator".org
+    and not "Numerator Performance Met G2200"
+    and not "Denominator Exclusion M1165"
+    and not "Denominator Exclusion M1164"
+*/
+rule 'Year2026.Mips431Rate2Gap.G2202.Org'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips431Rate2', type == EncounterDenominatorType.ORG)
+    $patient: Patient()
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.GAP, "G2202");
+end
+
+/**
+define "Numerator Performance Not Met G2202".group:
+   *
+   * Option ID: G2202
+   *
+    "Denominator".group
+    and not "Numerator Performance Met G2200"
+    and not "Denominator Exclusion M1165"
+    and not "Denominator Exclusion M1164"
+*/
+rule 'Year2026.Mips431Rate2Gap.G2202.Group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips431Rate2', type == EncounterDenominatorType.GROUP)
+    $patient: Patient()
+then
+    for(String group: $encounter.groupExternalIds) {
+        controlSet.addGroupPatientMeasureStatus($program, $patient, group, $measure, MeasureStatusValue.GAP, "G2202");
+    }
+end
+
+/**
+define "Numerator Performance Not Met G2202".provider:
+   *
+   * Option ID: G2202
+   *
+    "Denominator".provider
+    and not "Numerator Performance Met G2200"
+    and not "Denominator Exclusion M1165"
+    and not "Denominator Exclusion M1164"
+*/
+rule 'Year2026.Mips431Rate2Gap.G2202.Provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips431Rate2', type == EncounterDenominatorType.PROVIDER)
+    $patient: Patient()
+then
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, "G2202");
+end

@@ -1,0 +1,32 @@
+# Local secrets
+.env.local
+.env
+config/env/.env.local
+config/env/.env
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# OS and editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+
+# Generated artifacts
+artifacts/intake/*.json
+artifacts/extraction/*.json
+artifacts/plan/*.md
+artifacts/conversion/*.drl
+artifacts/conversion/*-mapping.md
+artifacts/pr/*-pr.md
+
+# Keep folder structure
+!artifacts/**/.gitkeep

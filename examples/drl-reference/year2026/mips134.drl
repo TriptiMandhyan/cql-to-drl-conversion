@@ -1,0 +1,2916 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+
+import accumulate com.ablehealth.functions.LatestQdmResultDatatypeAccumulateFunction latestQdmResultDataType;
+import accumulate com.ablehealth.functions.LatestQdmDatatypeAccumulateFunction latestQdmDatatype;
+import accumulate com.ablehealth.functions.LatestClinicalActivityAccumulateFunction latestClinicalActivity;
+
+import com.ablehealth.enums.extendedmeaures.*;
+
+import java.util.Set;
+import java.util.Collections;
+
+global PatientResults controlSet;
+
+declare Year2026Mips134Groups
+    groupExternalId: String
+end
+
+declare Year2026Mips134Providers
+    providerExternalId: String
+end
+
+declare Year2026Mips134MostRecentAdolescentScreeningOrg
+    latestRecord: QdmResultDataType
+    encounter: QdmDatatype
+end
+
+declare Year2026Mips134MostRecentAdolescentScreeningGroup
+    latestRecord: QdmResultDataType
+    encounter: QdmDatatype
+end
+
+declare Year2026Mips134MostRecentAdolescentScreeningProvider
+    latestRecord: QdmResultDataType
+    encounter: QdmDatatype
+end
+
+declare Year2026Mips134MostRecentAdultScreeningOrg
+    latestRecord: QdmResultDataType
+    encounter: QdmDatatype
+end
+
+declare Year2026Mips134MostRecentAdultScreeningGroup
+    latestRecord: QdmResultDataType
+    encounter: QdmDatatype
+end
+
+declare Year2026Mips134MostRecentAdultScreeningProvider
+    latestRecord: QdmResultDataType
+    encounter: QdmDatatype
+end
+
+declare Year2026Mips134PositiveAdolescentScreeningExistsOrg
+    screening: ClinicalActivity
+end
+
+declare Year2026Mips134PositiveAdolescentScreeningExistsGroup
+    encounter: QdmDatatype
+    screening: ClinicalActivity
+end
+
+declare Year2026Mips134PositiveAdolescentScreeningExistsProvider
+    encounter: QdmDatatype
+    screening: ClinicalActivity
+end
+
+declare Year2026Mips134NegativeAdolescentScreeningExistsOrg
+    screening: ClinicalActivity
+end
+
+declare Year2026Mips134NegativeAdolescentScreeningExistsGroup
+    encounter: QdmDatatype
+    screening: ClinicalActivity
+end
+
+declare Year2026Mips134NegativeAdolescentScreeningExistsProvider
+    encounter: QdmDatatype
+    screening: ClinicalActivity
+end
+
+declare Year2026Mips134PositiveAdultScreeningExistsOrg
+    screening: ClinicalActivity
+end
+
+declare Year2026Mips134PositiveAdultScreeningExistsGroup
+    encounter: QdmDatatype
+    screening: ClinicalActivity
+end
+
+declare Year2026Mips134PositiveAdultScreeningExistsProvider
+    encounter: QdmDatatype
+    screening: ClinicalActivity
+end
+
+declare Year2026Mips134NegativeAdultScreeningExistsOrg
+    screening: ClinicalActivity
+end
+
+declare Year2026Mips134NegativeAdultScreeningExistsGroup
+    encounter: QdmDatatype
+    screening: ClinicalActivity
+end
+
+declare Year2026Mips134NegativeAdultScreeningExistsProvider
+    encounter: QdmDatatype
+    screening: ClinicalActivity
+end
+
+declare Year2026Mips134LatestDenominatorEncounterOrg
+    encounter: QdmDatatype
+end
+
+declare Year2026Mips134LatestDenominatorEncounterGroup
+    encounter: QdmDatatype
+end
+
+declare Year2026Mips134LatestDenominatorEncounterProvider
+    encounter: QdmDatatype
+end
+
+declare Year2026Mips134MostRecentAdolescentScreeningCalculationOrg
+    record: QdmResultDataType
+    encounter: QdmDatatype
+end
+
+declare Year2026Mips134MostRecentAdolescentScreeningCalculationGroup
+    record: QdmResultDataType
+    encounter: QdmDatatype
+end
+
+declare Year2026Mips134MostRecentAdolescentScreeningCalculationProvider
+    record: QdmResultDataType
+    encounter: QdmDatatype
+end
+
+declare Year2026Mips134MostRecentAdultScreeningCalculationOrg
+    record: QdmResultDataType
+    encounter: QdmDatatype
+end
+
+declare Year2026Mips134MostRecentAdultScreeningCalculationGroup
+    record: QdmResultDataType
+    encounter: QdmDatatype
+end
+
+declare Year2026Mips134MostRecentAdultScreeningCalculationProvider
+    record: QdmResultDataType
+    encounter: QdmDatatype
+end
+
+declare Year2026Mips134SucessG8431Org
+end
+
+declare Year2026Mips134SucessG8431Group
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips134SucessG8431Provider
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips134SucessG8510Org
+end
+
+declare Year2026Mips134SucessG8510Group
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips134SucessG8510Provider
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips134ExceptionG8433Org
+end
+
+declare Year2026Mips134ExceptionG8433Group
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips134ExceptionG8433Provider
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips134GapG8511Org
+end
+
+declare Year2026Mips134GapG8511Group
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips134GapG8511Provider
+    encounter: ClinicalActivity
+end
+
+/**
+define "Denominator Encounter":
+    ["Clinical Activity": "MIPS; 134_ENCOUNTER"] Encounter
+      where Encounter.start_date during "Measurement Period"
+        and Encounter.provider_id.hasMeasureMembership = true
+            and AgeInYearsAt(start of "Measurement Period") >= 12
+*/
+rule 'Year2026.Mips134.Denominator'
+salience 150
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips134')
+    Patient(
+        getAgeInYearsAt($program.measurementPeriod.start) >= 12
+    )
+    $mips134encounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "134_ENCOUNTER"),
+        startsDuring($program.measurementPeriod)
+    )
+then
+    insert(new EncounterDenominator($program, $mips134encounter, 'Year2026.Mips134'));
+end
+
+rule 'Year2026.Mips134.FindGroups'
+salience 150
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips134")
+    Patient(
+        getAgeInYearsAt($program.measurementPeriod.start) >= 12
+    )
+    $encounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "134_ENCOUNTER"),
+        startsDuring($program.measurementPeriod),
+        isPresent(groupExternalIds)
+    )
+     // Iterate each groupExternalId
+    $groupId : String() from $encounter.groupExternalIds
+    // Avoid duplicates
+    not Year2026Mips134Groups(
+        groupExternalId == $groupId
+    )
+then
+    insert(new Year2026Mips134Groups($groupId));
+end
+
+rule 'Year2026.Mips134.FindProviders'
+salience 150
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips134")
+    Patient(
+        getAgeInYearsAt($program.measurementPeriod.start) >= 12
+    )
+    $mips134encounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "134_ENCOUNTER"),
+        startsDuring($program.measurementPeriod),
+        isPresent(providerExternalId)
+    ) and not ( 
+        exists Year2026Mips134Providers(
+            providerExternalId.equals($mips134encounter.providerExternalId)
+        )
+    )
+then
+    insert(new Year2026Mips134Providers($mips134encounter.providerExternalId));
+end
+
+
+/**
+define "Latest Denominator Encounter".org  
+    from    (   "Most Recent Adolescent Screening Day".org
+                union "Most Recent Adult Screening Day".org  ) Screening
+    return Encounter.start_date
+// This definition returns the Denominator Encounter.start_date from the "Most Recent Adolescent/Adult Screening Day" not the screening.start_datetime
+*/
+rule 'Year2026.Mips134.LatestDenominatorEncounter.Org'
+salience 50
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips134")
+    $patient: Patient()
+    (
+        Year2026Mips134MostRecentAdolescentScreeningOrg($encounter: encounter, encounter != null) or
+        Year2026Mips134MostRecentAdultScreeningOrg($encounter: encounter, encounter != null)
+    )
+then
+    insert(new Year2026Mips134LatestDenominatorEncounterOrg($encounter));
+end
+
+/**
+define "Latest Denominator Encounter".group  
+    from    (   "Most Recent Adolescent Screening Day".provider
+                union "Most Recent Adult Screening Day".provider  ) Screening
+    return Encounter.start_date, Encounter.group_id
+// This definition returns the Denominator Encounter.start_date from the "Most Recent Adolescent/Adult Screening Day" not the screening.start_datetime
+*/
+rule 'Year2026.Mips134.LatestDenominatorEncounter.group'
+salience 50
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips134")
+    $patient: Patient()
+    Year2026Mips134Groups($groupExternalId: groupExternalId, $groupExternalId != null)
+    (
+        Year2026Mips134MostRecentAdolescentScreeningGroup(
+            $c: latestRecord,
+            $encounter: encounter != null,
+            $encounter.getGroupExternalIds() != null,
+            $encounter.getGroupExternalIds().contains($groupExternalId)
+        )
+        or Year2026Mips134MostRecentAdultScreeningGroup(
+            $c: latestRecord,
+            $encounter: encounter != null,
+            $encounter.getGroupExternalIds() != null,
+            $encounter.getGroupExternalIds().contains($groupExternalId)
+        )
+    )
+then
+    insert(new Year2026Mips134LatestDenominatorEncounterGroup($encounter));
+end
+
+/**
+define "Latest Denominator Encounter".provider  
+    from    (   "Most Recent Adolescent Screening Day".provider
+                union "Most Recent Adult Screening Day".provider  ) Screening
+    return Encounter.start_date, Encounter.provider_id
+// This definition returns the Denominator Encounter.start_date from the "Most Recent Adolescent/Adult Screening Day" not the screening.start_datetime
+*/
+rule 'Year2026.Mips134.LatestDenominatorEncounter.provider'
+salience 50
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips134")
+    $patient: Patient()
+    Year2026Mips134Providers($providerExternalId: providerExternalId)
+    (
+        Year2026Mips134MostRecentAdolescentScreeningProvider($encounter: encounter, encounter != null, encounter.providerExternalId == $providerExternalId) or
+        Year2026Mips134MostRecentAdultScreeningProvider($encounter: encounter, encounter != null, encounter.providerExternalId == $providerExternalId)
+    )
+then
+    insert(new Year2026Mips134LatestDenominatorEncounterProvider($encounter));
+end
+
+/*
+define "Denominator Exclusion - G9717".all:
+   *
+   * Option ID: G9717
+   *
+  exists(   ["Clinical Activity": "MIPS; 134_DENOMINATOR_EXCLUSION_G9717"] P
+            with ("Denominator Encounter") Encounter
+            such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date])
+  or exists(    "Excluded Diagnosis" ExcludeDiag
+                with    ("Denominator Encounter") Encounter
+                such that   ExcludeDiag.start_date before Encounter.start_date  )  
+        
+define "Excluded Diagnosis":
+    ["Diagnosis": "MIPS; 134_BIPOLAR"]
+*/
+rule 'Year2026.Mips134.Exclusion.exclusion'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    exists (
+        ClinicalActivity(
+            withValueSet("MipsYear2026", "134_DENOMINATOR_EXCLUSION_G9717"),
+            startsDuring($encounter)
+        )
+        or Diagnosis(
+            withValueSet("MipsYear2026", "134_BIPOLAR"),
+            startsBefore($encounter.startDate)
+        )
+    )
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, "G9717");
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.EXCLUSION, "G9717");
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, "G9717");
+end
+
+
+/**
+define "Most Recent Adolescent Screening Day".org
+    Last(   (   "Any Numerator Quality Code" NQC
+                    with ("Denominator Encounter") Encounter
+                    such that   NCQ.start_date during Interval[Encounter.start_date, Encounter.stop_date]
+                                and  AgeInYearsAt(Encounter.start_date < 18) )
+                union ( ("Denominator Encounter") Encounter
+                        with  "Excluded Diagnosis" ExcludeDiags         // If a patient is creened -> positive -> diagnosed with bipolar -> seen again -> they will flow through to the exclusion pop
+                        such that   ExcludeDiag.start_date before Encounter.start_date
+                                    AND AgeInYearsAt(Encounter.start_date < 18) )   
+                union ( "Adolescent Screening" AdolescentScreen
+                        with ("Denominator Encounter") Encounter
+                        such that ( AdolescentScreen.start_date during Interval[Encounter.start_date - 14 days, Encounter.start_date]
+                                    and AdolescentScreen.result is not null
+                                    and AgeInYearsAt(Encounter.start_date < 18  )   )   )
+            )   LastAdolescentScreenOrCode
+   sort by LastAdolescentScreenOrCode.start_datetime
+   return   LastAdolescentScreenOrCode.start_datetime
+            , Encounter.start_date
+    ,
+    ExtendedMeasureResultV2(
+        Screening //return 1 record even if multiple exist
+        , 'Most Recent Adolescent Screening' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+
+define "Excluded Diagnosis":
+    ["Diagnosis": "MIPS; 134_BIPOLAR"]
+
+define "Any Numerator Quality Code"
+    ["Clinical Activity": "MIPS; 134_PERFORMANCE_NOT_MET_G8511"]
+    union ["Clinical Activity": "MIPS; 134_DENOMINATOR_EXCEPTION_G8433"]
+    union ["Clinical Activity": "MIPS; 134_PERFORMANCE_MET_G8510"]
+    union ["Clinical Activity": "MIPS; 134_DENOMINATOR_EXCLUSION_G9717"] 
+    union ["Clinical Activity": "MIPS; 134_PERFORMANCE_MET_G8431"] 
+
+define "Adolescent Screening":
+    ["Clinical Activity": "eCQM Direct Reference Codes; ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT"]
+    union ["Clinical Activity": "ABLE; ADOLESCENT_DEPRESSION_SCREENING"]
+    union ["Clinical Activity": "VSAC; PHQ_9_AND_PHQ_9M_TOOLS"]
+    union ["Clinical Activity": "MIPS; 134_PHQ2"]
+    union ["Clinical Activity": "ABLE; EDINBURGH_POSTNATAL_DEPRESSION_SCALE"]
+*/
+query queryYear2026Mips134MostRecentAdolescentScreeningOrg(ClinicalActivity $encounter, QdmResultDataType $result)
+    $result:= QdmResultDataType(
+        withValueSet("MipsYear2026", "134_PERFORMANCE_NOT_MET_G8511") ||
+        withValueSet("MipsYear2026", "134_DENOMINATOR_EXCEPTION_G8433") ||
+        withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8510") ||
+        withValueSet("MipsYear2026", "134_DENOMINATOR_EXCLUSION_G9717") ||
+        withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8431"),
+        startsDuring($encounter)
+    ) 
+    or $result:= QdmResultDataType(
+        withValueSet("MipsYear2026", "134_BIPOLAR"),
+        startsBefore($encounter.startDate)
+    )
+    or $result:= QdmResultDataType(
+        withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+        withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+        withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+        withValueSet("MipsYear2026", "134_PHQ2") ||
+        withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+        startsDuring($encounter.startDate.minusDays(14), $encounter.startDate),
+        result != null
+    )
+end
+
+rule 'Year2026.Mips134.MostRecentAdolescentScreening.Org'
+salience 120
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips134")
+    $last: QdmResultDataType() from accumulate (
+        queryYear2026Mips134MostRecentAdolescentScreeningOrg($encounter, $result;),
+        latestQdmResultDataType($result)
+    )
+    and Patient(
+        getAgeInYearsAt($encounter.startDate) < 18
+    )
+then
+    insert(new Year2026Mips134MostRecentAdolescentScreeningCalculationOrg($last, $encounter));
+end
+
+rule 'Year2026.Mips134.MostRecentAdolescentScreening.LatestEncounter.Org'
+salience 75
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips134")
+    $patient: Patient()
+    $latestRecord: QdmResultDataType() from accumulate (
+        Year2026Mips134MostRecentAdolescentScreeningCalculationOrg($c: record),
+        latestQdmResultDataType($c)
+    )
+    Year2026Mips134MostRecentAdolescentScreeningCalculationOrg(record.equals($latestRecord), $encounter: encounter)
+then
+    insert(new Year2026Mips134MostRecentAdolescentScreeningOrg($latestRecord, $encounter));
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", "", "Most Recent Adolescent Screening", "G8431", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", "", "Most Recent Adolescent Screening", "G8510", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", "", "Most Recent Adolescent Screening", "G8433", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", "", "Most Recent Adolescent Screening", "G8511", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", "", "Most Recent Adolescent Screening", "G9717", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", "", "Most Recent Adolescent Screening", "G8432", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+end
+
+/**
+define "Most Recent Adolescent Screening Day".group
+    Last(   (   "Any Numerator Quality Code" NQC
+                    with ("Denominator Encounter") Encounter
+                    such that   NCQ.start_date during Interval[Encounter.start_date, Encounter.stop_date]
+                                and  AgeInYearsAt(Encounter.start_date < 18) 
+                                and Encounter.group_id is not null or empty)
+                union ( ("Denominator Encounter") Encounter
+                        with  "Excluded Diagnosis" ExcludeDiags         // If a patient is creened -> positive -> diagnosed with bipolar -> seen again -> they will flow through to the exclusion pop
+                        such that   ExcludeDiag.start_date before Encounter.start_date
+                                    AND AgeInYearsAt(Encounter.start_date < 18) 
+                                    and Encounter.group_id is not null or empty)   
+                union ( "Adolescent Screening" AdolescentScreen
+                        with ("Denominator Encounter") Encounter
+                        such that ( AdolescentScreen.start_date during Interval[Encounter.start_date - 14 days, Encounter.start_date]
+                                    and AdolescentScreen.result is not null
+                                    and AgeInYearsAt(Encounter.start_date < 18  ) 
+                                    and Encounter.group_id is not null or empty  )   )
+            )   LastAdolescentScreenOrCode
+   sort by LastAdolescentScreenOrCode.start_datetime
+   return   LastAdolescentScreenOrCode.start_datetime,
+            , Encounter.group_id as "Most Recent Adolescent Screening Day".group.group_id
+            , Encounter.start_date
+    ,
+    ExtendedMeasureResultV2(
+        Screening //return 1 record even if multiple exist
+        , 'Most Recent Adolescent Screening' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+*/
+query queryYear2026Mips134MostRecentAdolescentScreeningGroup(ClinicalActivity $encounter, QdmResultDataType $result)
+    $result:= QdmResultDataType(
+        withValueSet("MipsYear2026", "134_PERFORMANCE_NOT_MET_G8511") ||
+        withValueSet("MipsYear2026", "134_DENOMINATOR_EXCEPTION_G8433") ||
+        withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8510") ||
+        withValueSet("MipsYear2026", "134_DENOMINATOR_EXCLUSION_G9717") ||
+        withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8431"),
+        startsDuring($encounter),
+        isPresent($encounter.groupExternalIds)
+    ) 
+    or $result:= QdmResultDataType(
+        withValueSet("MipsYear2026", "134_BIPOLAR"),
+        startsBefore($encounter.startDate),
+        isPresent($encounter.groupExternalIds)
+    )
+    or $result:= QdmResultDataType(
+        withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+        withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+        withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+        withValueSet("MipsYear2026", "134_PHQ2") ||
+        withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+        startsDuring($encounter.startDate.minusDays(14), $encounter.startDate),
+        result != null,
+        isPresent($encounter.groupExternalIds)
+    )
+end
+
+rule 'Year2026.Mips134.MostRecentAdolescentScreening.Group'
+salience 120
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips134")
+    $last: QdmResultDataType() from accumulate (
+        queryYear2026Mips134MostRecentAdolescentScreeningGroup($encounter, $result;),
+        latestQdmResultDataType($result)
+    )
+    and Patient(
+        getAgeInYearsAt($encounter.startDate) < 18
+    )
+then
+    insert(new Year2026Mips134MostRecentAdolescentScreeningCalculationGroup($last, $encounter));
+end
+
+rule 'Year2026.Mips134.MostRecentAdolescentScreening.LatestEncounter.Group'
+salience 75
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips134")
+    $patient: Patient()
+    Year2026Mips134Groups($groupExternalId: groupExternalId, $groupExternalId != null)
+    $latestRecord : QdmResultDataType() from accumulate(
+        Year2026Mips134MostRecentAdolescentScreeningCalculationGroup(
+            $c: record,
+            $encounter : encounter != null,
+            $encounter.getGroupExternalIds() != null,
+            $encounter.getGroupExternalIds().contains($groupExternalId)
+        ),
+        latestQdmResultDataType($c)
+    )
+    Year2026Mips134MostRecentAdolescentScreeningCalculationGroup(record.equals($latestRecord), $encounter: encounter)
+then
+    insert(new Year2026Mips134MostRecentAdolescentScreeningGroup($latestRecord, $encounter));
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $groupExternalId, "Most Recent Adolescent Screening", "G8431", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $groupExternalId, "Most Recent Adolescent Screening", "G8510", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $groupExternalId, "Most Recent Adolescent Screening", "G8433", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $groupExternalId, "Most Recent Adolescent Screening", "G8511", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $groupExternalId, "Most Recent Adolescent Screening", "G9717", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $groupExternalId, "Most Recent Adolescent Screening", "G8432", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    }
+end
+
+/**
+define "Most Recent Adolescent Screening Day".provider
+    Last    (   (   "Any Numerator Quality Code" NQC
+                    with ("Denominator Encounter") Encounter
+                    such that   NCQ.start_date during Interval[Encounter.start_date, Encounter.stop_date]
+                                and  AgeInYearsAt(Encounter.start_date < 18) 
+                                and Encounter.provider_id is not null or empty  )
+                union ( ("Denominator Encounter") Encounter
+                        with  "Excluded Diagnosis" ExcludeDiags        // If a patient is creened -> positive -> diagnosed with bipolar -> seen again -> they will flow through to the exclusion pop
+                        such that   ExcludeDiag.start_date before Encounter.start_date
+                                    and AgeInYearsAt(Encounter.start_date < 18) 
+                                    and Encounter.provider_id is not null or empty  )   
+                union ( "Adolescent Screening" AdolescentScreen
+                        with ("Denominator Encounter") Encounter
+                        such that ( AdolescentScreen.start_date during Interval[Encounter.start_date - 14 days, Encounter.start_date]
+                                    and AdolescentScreen.result is not null
+                                    and AgeInYearsAt(Encounter.start_date < 18  ) 
+                                    and Encounter.provider_id is not null or empty )   )
+            )   LastAdolescentScreenOrCode
+   sort by LastAdolescentScreenOrCode.start_datetime
+   return   LastAdolescentScreenOrCode.start_datetime
+            , Encounter.provider_id as "Most Recent Adolescent Screening Day".provider.provider_id
+            , Encounter.start_date
+    ,
+    ExtendedMeasureResultV2(
+        Screening //return 1 record even if multiple exist
+        , 'Most Recent Adolescent Screening' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+*/
+query queryYear2026Mips134MostRecentAdolescentScreeningProvider(ClinicalActivity $encounter, QdmResultDataType $result)
+    $result:= QdmResultDataType(
+        withValueSet("MipsYear2026", "134_PERFORMANCE_NOT_MET_G8511") ||
+        withValueSet("MipsYear2026", "134_DENOMINATOR_EXCEPTION_G8433") ||
+        withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8510") ||
+        withValueSet("MipsYear2026", "134_DENOMINATOR_EXCLUSION_G9717") ||
+        withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8431"),
+        startsDuring($encounter),
+        isPresent($encounter.providerExternalId)
+    ) 
+    or $result:= QdmResultDataType(
+        withValueSet("MipsYear2026", "134_BIPOLAR"),
+        startsBefore($encounter.startDate),
+        isPresent($encounter.providerExternalId)
+    )
+    or $result:= QdmResultDataType(
+        withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+        withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+        withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+        withValueSet("MipsYear2026", "134_PHQ2") ||
+        withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+        startsDuring($encounter.startDate.minusDays(14), $encounter.startDate),
+        result != null,
+        isPresent($encounter.providerExternalId)
+    )
+end
+
+rule 'Year2026.Mips134.MostRecentAdolescentScreening.Provider'
+salience 120
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips134")
+    $last: QdmResultDataType() from accumulate (
+        queryYear2026Mips134MostRecentAdolescentScreeningProvider($encounter, $result;),
+        latestQdmResultDataType($result)
+    )
+    and Patient(
+        getAgeInYearsAt($encounter.startDate) < 18
+    )
+then
+    insert(new Year2026Mips134MostRecentAdolescentScreeningCalculationProvider($last, $encounter));
+end
+
+rule 'Year2026.Mips134.MostRecentAdolescentScreening.LatestEncounter.Provider'
+salience 75
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips134")
+    $patient: Patient()
+    Year2026Mips134Providers($providerExternalId: providerExternalId)
+    $latestRecord: QdmResultDataType() from accumulate (
+        Year2026Mips134MostRecentAdolescentScreeningCalculationProvider($c: record, encounter.providerExternalId == $providerExternalId),
+        latestQdmResultDataType($c)
+    )
+    Year2026Mips134MostRecentAdolescentScreeningCalculationProvider(record.equals($latestRecord), $encounter: encounter)
+then
+    insert(new Year2026Mips134MostRecentAdolescentScreeningProvider($latestRecord, $encounter));
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $providerExternalId, "Most Recent Adolescent Screening", "G8431", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $providerExternalId, "Most Recent Adolescent Screening", "G8510", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $providerExternalId, "Most Recent Adolescent Screening", "G8433", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $providerExternalId, "Most Recent Adolescent Screening", "G8511", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $providerExternalId, "Most Recent Adolescent Screening", "G9717", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $providerExternalId, "Most Recent Adolescent Screening", "G8432", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+end
+
+/**
+define "Most Recent Adult Screening DAY".org
+    Last(   (   (   "Any Numerator Quality Code" NQC
+                    with ("Denominator Encounter") Encounter
+                    such that   NQC.start_date during Interval[Encounter.start_date, Encounter.stop_date] 
+                                and AgeInYearsAt(Encounter.start_date >= 18)    )
+                union ( ("Denominator Encounter") Encounter
+                        with   "Excluded Diagnosis" ExcludeDiag             // If a patient is creened -> positive -> diagnosed with bipolar -> seen again -> they will flow through to the exclusion pop
+                        such that   ExcludeDiag.start_date before Encounter.start_date
+                                    AND AgeInYearsAt(Encounter.start_date >= 18) )   
+                union ( "Adult Screening" AdultScreen
+                        with ("Denominator Encounter") Encounter
+                        such that ( AdultScreen.start_date during Interval[Encounter.start_date - 14 days, Encounter.start_date]
+                                    and AdultScreen.result is not null
+                                    and AgeInYearsAt(Encounter.start_date >= 18)    )   )
+            ) LastAdultScreenOrCode
+    sort by LastAdultScreenOrCode.start_datetime
+    return  LastAdultScreenOrCode.start_datetime
+            , Encounter.start_date // for use in Latest Denominator Encounter
+    ,
+    ExtendedMeasureResultV2(
+        Screening //return 1 record even if multiple exist
+        , 'Most Recent Adult Screening' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+                    
+define "Excluded Diagnosis":
+    ["Diagnosis": "MIPS; 134_BIPOLAR"]
+
+define "Any Numerator Quality Code"
+    ["Clinical Activity": "MIPS; 134_PERFORMANCE_NOT_MET_G8511"]
+    union ["Clinical Activity": "MIPS; 134_DENOMINATOR_EXCEPTION_G8433"]
+    union ["Clinical Activity": "MIPS; 134_PERFORMANCE_MET_G8510"]
+    union ["Clinical Activity": "MIPS; 134_DENOMINATOR_EXCLUSION_G9717"] 
+    union ["Clinical Activity": "MIPS; 134_PERFORMANCE_MET_G8431"]
+
+define "Adult Screening"
+    ["Clinical Activity": "eCQM Direct Reference Codes; ADULT_DEPRESSION_SCREENING_ASSESSMENT"]
+    union ["Clinical Activity": "ABLE; ADULT_DEPRESSION_SCREENING"]
+    union ["Clinical Activity": "ABLE; PHQ_9_TOOL_ADULT"]
+    union ["Clinical Activity": "MIPS; 134_PHQ2"]
+    union ["Clinical Activity": "ABLE; GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION"]
+    union ["Clinical Activity": "ABLE; GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL"]
+    union ["Clinical Activity": "ABLE; EDINBURGH_POSTNATAL_DEPRESSION_SCALE"]
+*/
+query queryYear2026Mips134MostRecentAdultScreeningOrg(ClinicalActivity $encounter, QdmResultDataType $result)
+    $result:= QdmResultDataType(
+        withValueSet("MipsYear2026", "134_PERFORMANCE_NOT_MET_G8511") ||
+        withValueSet("MipsYear2026", "134_DENOMINATOR_EXCEPTION_G8433") ||
+        withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8510") ||
+        withValueSet("MipsYear2026", "134_DENOMINATOR_EXCLUSION_G9717") ||
+        withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8431"),
+        startsDuring($encounter)
+    )
+    or $result:= QdmResultDataType(
+        withValueSet("MipsYear2026", "134_BIPOLAR"),
+        startsBefore($encounter.startDate)
+    )
+    or $result:= QdmResultDataType(
+        withValueSet("AbleYear2026", "ADULT_DEPRESSION_SCREENING") ||
+        withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADULT_DEPRESSION_SCREENING_ASSESSMENT") ||
+        withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION") ||
+        withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL") ||
+        withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE") ||
+        withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT") ||
+        withValueSet("MipsYear2026", "134_PHQ2"),
+        startsDuring($encounter.startDate.minusDays(14), $encounter.startDate),
+        result != null
+    )
+end
+
+rule 'Year2026.Mips134.MostRecentAdultScreening.Org'
+salience 120
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, measure == "Year2026.Mips134")
+    $last: QdmResultDataType() from accumulate (
+        queryYear2026Mips134MostRecentAdultScreeningOrg($encounter, $result;),
+        latestQdmResultDataType($result)
+    )
+    and Patient(
+        getAgeInYearsAt($encounter.startDate) >= 18
+    )
+then
+    insert(new Year2026Mips134MostRecentAdultScreeningCalculationOrg($last, $encounter));
+end
+
+rule 'Year2026.Mips134.MostRecentAdultScreening.LatestEncounter.Org'
+salience 75
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips134")
+    $patient: Patient()
+    $latestRecord: QdmResultDataType() from accumulate (
+        Year2026Mips134MostRecentAdultScreeningCalculationOrg($c: record),
+        latestQdmResultDataType($c)
+    )
+    Year2026Mips134MostRecentAdultScreeningCalculationOrg(record.equals($latestRecord), $encounter: encounter)
+then
+    insert(new Year2026Mips134MostRecentAdultScreeningOrg($latestRecord, $encounter));
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", "", "Most Recent Adult Screening", "G8431", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", "", "Most Recent Adult Screening", "G8510", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", "", "Most Recent Adult Screening", "G8433", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", "", "Most Recent Adult Screening", "G8511", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", "", "Most Recent Adult Screening", "G9717", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", "", "Most Recent Adult Screening", "G8432", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+end
+
+/*
+define "Most Recent Adult Screening DAY".group
+    Last(   (   "Any Numerator Quality Code" NQC
+                    with ("Denominator Encounter") Encounter
+                    such that   NQC.start_date during Interval[Encounter.start_date, Encounter.stop_date] 
+                                and AgeInYearsAt(Encounter.start_date >= 18) 
+                                and Encounter.group_id is not null or empty   )
+                union ( ("Denominator Encounter") Encounter
+                        with   "Excluded Diagnosis" ExcludeDiag             // If a patient is creened -> positive -> diagnosed with bipolar -> seen again -> they will flow through to the exclusion pop
+                        such that   ExcludeDiag.start_date before Encounter.start_date
+                                    AND AgeInYearsAt(Encounter.start_date >= 18) 
+                                    and Encounter.group_id is not null or empty)   
+                union ( "Adult Screening" AdultScreen
+                        with ("Denominator Encounter") Encounter
+                        such that ( AdultScreen.start_date during Interval[Encounter.start_date - 14 days, Encounter.start_date]
+                                    and AdultScreen.result is not null
+                                    and AgeInYearsAt(Encounter.start_date >= 18)   
+                                    and Encounter.group_id is not null or empty )   )
+            ) LastAdultScreenOrCode
+    sort by LastAdultScreenOrCode.start_datetime
+    return  LastAdultScreenOrCode.start_datetime
+            , Encounter.group_id as "Most Recent Adult Screening DAY".group.group_id
+            , Encounter.start_date // for use in Latest Denominator Encounter
+    ,
+    ExtendedMeasureResultV2(
+        Screening //return 1 record even if multiple exist
+        , 'Most Recent Adult Screening' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+*/
+query queryYear2026Mips134MostRecentAdultScreeningGroup(ClinicalActivity $encounter, QdmResultDataType $result)
+    $result:= QdmResultDataType(
+        withValueSet("MipsYear2026", "134_PERFORMANCE_NOT_MET_G8511") ||
+        withValueSet("MipsYear2026", "134_DENOMINATOR_EXCEPTION_G8433") ||
+        withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8510") ||
+        withValueSet("MipsYear2026", "134_DENOMINATOR_EXCLUSION_G9717") ||
+        withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8431"),
+        startsDuring($encounter),
+        isPresent($encounter.groupExternalIds)
+    )
+    or $result:= QdmResultDataType(
+        withValueSet("MipsYear2026", "134_BIPOLAR"),
+        startsBefore($encounter.startDate),
+        isPresent($encounter.groupExternalIds)
+    )
+    or $result:= QdmResultDataType(
+        withValueSet("AbleYear2026", "ADULT_DEPRESSION_SCREENING") ||
+        withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADULT_DEPRESSION_SCREENING_ASSESSMENT") ||
+        withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION") ||
+        withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL") ||
+        withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE") ||
+        withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT") ||
+        withValueSet("MipsYear2026", "134_PHQ2"),
+        startsDuring($encounter.startDate.minusDays(14), $encounter.startDate),
+        result != null,
+        isPresent($encounter.groupExternalIds)
+    )
+end
+
+rule 'Year2026.Mips134.MostRecentAdultScreening.Group'
+salience 120
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, measure == "Year2026.Mips134")
+    $last: QdmResultDataType() from accumulate (
+        queryYear2026Mips134MostRecentAdultScreeningGroup($encounter, $result;),
+        latestQdmResultDataType($result)
+    )
+    and Patient(
+        getAgeInYearsAt($encounter.startDate) >= 18
+    )
+then
+    insert(new Year2026Mips134MostRecentAdultScreeningCalculationGroup($last, $encounter));
+end
+
+rule 'Year2026.Mips134.MostRecentAdultScreening.LatestEncounter.Group'
+salience 75
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips134")
+    $patient: Patient()
+    Year2026Mips134Groups($groupExternalId: groupExternalId, $groupExternalId != null)
+    $latestRecord : QdmResultDataType() from accumulate(
+        Year2026Mips134MostRecentAdultScreeningCalculationGroup(
+            $c: record,
+            $encounter : encounter != null,
+            $encounter.getGroupExternalIds() != null,
+            $encounter.getGroupExternalIds().contains($groupExternalId)
+        ),
+        latestQdmResultDataType($c)
+    )
+    and Year2026Mips134MostRecentAdultScreeningCalculationGroup(record.equals($latestRecord), $encounter: encounter)
+then
+    insert(new Year2026Mips134MostRecentAdultScreeningGroup($latestRecord, $encounter));
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", groupExternalId, "Most Recent Adult Screening", "G8431", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", groupExternalId, "Most Recent Adult Screening", "G8510", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", groupExternalId, "Most Recent Adult Screening", "G8433", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", groupExternalId, "Most Recent Adult Screening", "G8511", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", groupExternalId, "Most Recent Adult Screening", "G9717", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", groupExternalId, "Most Recent Adult Screening", "G8432", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    }
+end
+
+/*
+define "Most Recent Adult Screening DAY".provider
+    Last   (   (   "Any Numerator Quality Code" NQC
+                    with ("Denominator Encounter") Encounter
+                    such that   NQC.start_date during Interval[Encounter.start_date, Encounter.stop_date] 
+                                and AgeInYearsAt(Encounter.start_date >= 18) 
+                                and Encounter.provider_id is not null or empty   )
+                union ( ("Denominator Encounter") Encounter
+                        with   "Excluded Diagnosis" ExcludeDiag         // If a patient is creened -> positive -> diagnosed with bipolar -> seen again -> they will flow through to the exclusion pop
+                        
+                        such that   ExcludeDiag.start_date before Encounter.start_date
+                                    AND AgeInYearsAt(Encounter.start_date >= 18)
+                                    and Encounter.provider_id is not null or empty )   
+                union ( "Adult Screening" AdultScreen
+                        with ("Denominator Encounter") Encounter
+                        such that ( AdultScreen.start_date during Interval[Encounter.start_date - 14 days, Encounter.start_date]
+                                    and AdultScreen.result is not null
+                                    and AgeInYearsAt(Encounter.start_date >= 18) 
+                                    and Encounter.provider_id is not null or empty   )   )
+            ) LastAdultScreenOrCode
+    sort by LastAdultScreenOrCode.start_datetime
+    return  LastAdultScreenOrCode.start_datetime
+            , Encounter.provider_id as "Most Recent Adult Screening DAY".provider.provider_id
+            , Encounter.start_date // for use in Latest Denominator Encounter
+    ,
+    ExtendedMeasureResultV2(
+        Screening //return 1 record even if multiple exist
+        , 'Most Recent Adult Screening' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+*/
+query queryYear2026Mips134MostRecentAdultScreeningProvider(ClinicalActivity $encounter, QdmResultDataType $result)
+    $result:= QdmResultDataType(
+        withValueSet("MipsYear2026", "134_PERFORMANCE_NOT_MET_G8511") ||
+        withValueSet("MipsYear2026", "134_DENOMINATOR_EXCEPTION_G8433") ||
+        withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8510") ||
+        withValueSet("MipsYear2026", "134_DENOMINATOR_EXCLUSION_G9717") ||
+        withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8431"),
+        startsDuring($encounter),
+        isPresent($encounter.providerExternalId)
+    )
+    or $result:= QdmResultDataType(
+        withValueSet("MipsYear2026", "134_BIPOLAR"),
+        startsBefore($encounter.startDate),
+        isPresent($encounter.providerExternalId)
+    )
+    or $result:= QdmResultDataType(
+        withValueSet("AbleYear2026", "ADULT_DEPRESSION_SCREENING") ||
+        withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADULT_DEPRESSION_SCREENING_ASSESSMENT") ||
+        withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION") ||
+        withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL") ||
+        withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE") ||
+        withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT") ||
+        withValueSet("MipsYear2026", "134_PHQ2"),
+        startsDuring($encounter.startDate.minusDays(14), $encounter.startDate),
+        result != null,
+        isPresent($encounter.providerExternalId)
+    )
+end
+
+rule 'Year2026.Mips134.MostRecentAdultScreening.Provider'
+salience 120
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, measure == "Year2026.Mips134")
+    $last: QdmResultDataType() from accumulate (
+        queryYear2026Mips134MostRecentAdultScreeningProvider($encounter, $result;),
+        latestQdmResultDataType($result)
+    )
+    and Patient(
+        getAgeInYearsAt($encounter.startDate) >= 18
+    )
+then
+    insert(new Year2026Mips134MostRecentAdultScreeningCalculationProvider($last, $encounter));
+end
+
+rule 'Year2026.Mips134.MostRecentAdultScreening.LatestEncounter.Provider'
+salience 75
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips134")
+    $patient: Patient()
+    Year2026Mips134Providers($providerExternalId: providerExternalId)
+    $latestRecord: QdmResultDataType() from accumulate (
+        Year2026Mips134MostRecentAdultScreeningCalculationProvider($c: record, encounter.providerExternalId == $providerExternalId),
+        latestQdmResultDataType($c)
+    )
+    Year2026Mips134MostRecentAdultScreeningCalculationProvider(record.equals($latestRecord), $encounter: encounter)
+then
+    insert(new Year2026Mips134MostRecentAdultScreeningProvider($latestRecord, $encounter));
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $providerExternalId, "Most Recent Adult Screening", "G8431", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $providerExternalId, "Most Recent Adult Screening", "G8510", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $providerExternalId, "Most Recent Adult Screening", "G8433", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $providerExternalId, "Most Recent Adult Screening", "G8511", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $providerExternalId, "Most Recent Adult Screening", "G9717", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, "Year2026.Mips134", $providerExternalId, "Most Recent Adult Screening", "G8432", PopulationEnum.denominator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+end
+
+/**
+define "Numerator Performance Met - G8431".org:
+  *
+  * Option ID: G8431
+  *
+    (   ["Clinical Activity": "MIPS; 134_PERFORMANCE_MET_G8431"] G8431
+        with ("Latest Denominator Encounter".org) Encounter
+        such that   (   (   Encounter.stop_date is not null or empty
+                            and G8431.start_date during Interval[Encounter.start_date, Encounter.stop_date] )   
+                        or  (   Encounter.stop_date is null or empty
+                                and P.start_date = Encounter.start_date )                        
+                    )
+    ) P1
+    union "Positive Adolescent Screening and Follow-up Exist".org P2
+    union "Positive Adult Screening and Follow-up Exist".org P3
+    ,
+    ExtendedMeasureResultV2(
+        Num //return 1 record even if multiple exist
+        , 'Numerator Performance Met G8431' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator
+        , option_id = G8431
+    )
+
+ define "Positive Adolescent Screening and Follow-Up Exist".org:
+    "Adolescent Follow-Up Exists".org
+    and exists ("Positive Adolescent Screening Exists on Most Recent Day".org)
+
+define "Positive Adult Screening and Follow-Up Exist".org:
+    "Adult Follow-Up Exists".org
+    and exists ("Positive Adult Screening Exists on Most Recent Day".org)
+*/
+rule 'Year2026.Mips134.Success.G8431.Org.P1'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134SucessG8431Org())
+    exists Year2026Mips134LatestDenominatorEncounterOrg(encounter.equals($encounter))
+    $perfMet: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8431"),
+            ($encounter.stopDate != null && startsDuring($encounter)) ||
+            ($encounter.stopDate == null && $encounter.startDate == startDate)
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips134SucessG8431Org());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "G8431");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Numerator Performance Met G8431", "G8431", PopulationEnum.numerator, $perfMet, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $perfMet.startDate.toString());
+end
+
+rule 'Year2026.Mips134.Success.G8431.Org.P2'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134SucessG8431Org())
+    $perfMet: QdmDatatype() from accumulate(
+        queryYear2026Mips134AdolescentFollowUpExists($encounter, $result;),
+        latestQdmDatatype($result)
+    )
+    and exists Year2026Mips134PositiveAdolescentScreeningExistsOrg()
+    and exists Year2026Mips134LatestDenominatorEncounterOrg(encounter.equals($encounter))
+then
+    insert(new Year2026Mips134SucessG8431Org());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "G8431");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Numerator Performance Met G8431", "G8431", PopulationEnum.numerator, $perfMet, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $perfMet.startDate.toString());
+end
+
+rule 'Year2026.Mips134.Success.G8431.Org.P3'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134SucessG8431Org())
+    $perfMet: QdmDatatype() from accumulate(
+        queryYear2026Mips134AdultFollowUpExists($encounter, $result;),
+        latestQdmDatatype($result)
+    )
+    and exists Year2026Mips134PositiveAdultScreeningExistsOrg()
+    and exists Year2026Mips134LatestDenominatorEncounterOrg(encounter.equals($encounter))
+then
+    insert(new Year2026Mips134SucessG8431Org());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "G8431");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Numerator Performance Met G8431", "G8431", PopulationEnum.numerator, $perfMet, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $perfMet.startDate.toString());
+end
+
+/**
+define "Numerator Performance Met - G8431".group:
+  *
+  * Option ID: G8431
+  *
+    (   ["Clinical Activity": "MIPS; 134_PERFORMANCE_MET_G8431"] G8431
+        with ("Latest Denominator Encounter".group) Encounter
+        such that   (   (   Encounter.stop_date is not null or empty
+                            and G8431.start_date during Interval[Encounter.start_date, Encounter.stop_date] )   
+                        or  (   Encounter.stop_date is null or empty
+                                and P.start_date = Encounter.start_date )                        
+                    )
+    ) P1
+    union "Positive Adolescent Screening and Follow-up Exist".group P2
+    union "Positive Adult Screening and Follow-up Exist".group P3
+    ,
+    ExtendedMeasureResultV2(
+        Num //return 1 record even if multiple exist
+        , 'Numerator Performance Met G8431' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator
+        , option_id = G8431
+    )
+
+define "Positive Adolescent Screening and Follow-Up Exist".group:
+    ("Adolescent Follow-Up Exists".group) Followup
+    with ("Positive Adolescent Screening Exists on Most Recent Day".group) PosScreen
+    such that PosScreen.group_id = Followup.group_id
+    
+define "Positive Adult Screening and Follow-Up Exist".group:
+    ("Adult Follow-Up Exists".group) Followup
+    with ("Positive Adult Screening Exists on Most Recent Day".group) PosScreen
+    such that PosScreen.group_id = Followup.group_id
+*/
+rule 'Year2026.Mips134.Success.G8431.Group.P1'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134SucessG8431Group(encounter == $encounter))
+    exists Year2026Mips134LatestDenominatorEncounterGroup(encounter.equals($encounter))
+    $perfMet: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8431"),
+            ($encounter.stopDate != null && startsDuring($encounter)) ||
+            ($encounter.stopDate == null && $encounter.startDate == startDate)
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips134SucessG8431Group($encounter));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.SUCCESS, "G8431");
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Numerator Performance Met G8431", "G8431", PopulationEnum.numerator, $perfMet, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $perfMet.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips134.Success.G8431.Group.P2'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134SucessG8431Group(encounter == $encounter))
+    $perfMet: QdmDatatype() from accumulate(
+        queryYear2026Mips134AdolescentFollowUpExists($encounter, $result;),
+        latestQdmDatatype($result)
+    )
+    and exists Year2026Mips134PositiveAdolescentScreeningExistsGroup($encounter == encounter)
+    and exists Year2026Mips134LatestDenominatorEncounterGroup(encounter.equals($encounter))
+then
+    insert(new Year2026Mips134SucessG8431Group($encounter));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.SUCCESS, "G8431");
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Numerator Performance Met G8431", "G8431", PopulationEnum.numerator, $perfMet, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $perfMet.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips134.Success.G8431.Group.P3'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134SucessG8431Group(encounter == $encounter))
+    $perfMet: QdmDatatype() from accumulate(
+        queryYear2026Mips134AdultFollowUpExists($encounter, $result;),
+        latestQdmDatatype($result)
+    )
+    and exists Year2026Mips134PositiveAdultScreeningExistsGroup($encounter == encounter)
+    and exists Year2026Mips134LatestDenominatorEncounterGroup(encounter.equals($encounter))
+then
+    insert(new Year2026Mips134SucessG8431Group($encounter));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.SUCCESS, "G8431");
+        for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Numerator Performance Met G8431", "G8431", PopulationEnum.numerator, $perfMet, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $perfMet.startDate.toString());
+    }
+end
+
+/**
+define "Numerator Performance Met - G8431".provider:
+  *
+  * Option ID: G8431
+  *
+    (   ["Clinical Activity": "MIPS; 134_PERFORMANCE_MET_G8431"] G8431
+        with ("Latest Denominator Encounter".provider) Encounter
+        such that   (   (   Encounter.stop_date is not null or empty
+                            and G8431.start_date during Interval[Encounter.start_date, Encounter.stop_date] )   
+                        or  (   Encounter.stop_date is null or empty
+                                and P.start_date = Encounter.start_date )                        
+                    )
+    ) P1
+    union "Positive Adolescent Screening and Follow-up Exist".provider P2
+    union "Positive Adult Screening and Follow-up Exist".provider P3
+    ,
+    ExtendedMeasureResultV2(
+        Num //return 1 record even if multiple exist
+        , 'Numerator Performance Met G8431' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator
+        , option_id = G8431
+    )
+
+define "Positive Adolescent Screening and Follow-Up Exist".provider:
+    ("Adolescent Follow-Up Exists".provider) Followup
+    with ("Positive Adolescent Screening Exists on Most Recent Day".provider) PosScreen
+    such that PosScreen.provider_id = Followup.provider_id
+
+define "Positive Adult Screening and Follow-Up Exist".provider:
+    ("Adult Follow-Up Exists".provider) Followup
+    with ("Positive Adult Screening Exists on Most Recent Day".provider) PosScreen
+    such that PosScreen.provider_id = Followup.provider_id
+
+*/
+rule 'Year2026.Mips134.Success.G8431.Provider.P1'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134SucessG8431Provider(encounter.providerExternalId == $encounter.providerExternalId))
+    exists Year2026Mips134LatestDenominatorEncounterProvider(encounter.equals($encounter))
+    $perfMet: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8431"),
+            ($encounter.stopDate != null && startsDuring($encounter)) ||
+            ($encounter.stopDate == null && $encounter.startDate == startDate)
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips134SucessG8431Provider($encounter));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "G8431");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Numerator Performance Met G8431", "G8431", PopulationEnum.numerator, $perfMet, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $perfMet.startDate.toString());
+end
+
+rule 'Year2026.Mips134.Success.G8431.Provider.P2'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134SucessG8431Provider(encounter.providerExternalId == $encounter.providerExternalId))
+    $perfMet: QdmDatatype() from accumulate(
+        queryYear2026Mips134AdolescentFollowUpExists($encounter, $result;),
+        latestQdmDatatype($result)
+    )
+    and exists Year2026Mips134PositiveAdolescentScreeningExistsProvider($encounter == encounter)
+    and exists Year2026Mips134LatestDenominatorEncounterProvider(encounter.equals($encounter))
+then
+    insert(new Year2026Mips134SucessG8431Provider($encounter));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "G8431");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Numerator Performance Met G8431", "G8431", PopulationEnum.numerator, $perfMet, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $perfMet.startDate.toString());
+end
+
+rule 'Year2026.Mips134.Success.G8431.Provider.P3'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134SucessG8431Provider(encounter.providerExternalId == $encounter.providerExternalId))
+    $perfMet: QdmDatatype() from accumulate(
+        queryYear2026Mips134AdultFollowUpExists($encounter, $result;),
+        latestQdmDatatype($result)
+    )
+    and exists Year2026Mips134PositiveAdultScreeningExistsProvider($encounter == encounter)
+    and exists Year2026Mips134LatestDenominatorEncounterProvider(encounter.equals($encounter))
+then
+    insert(new Year2026Mips134SucessG8431Provider($encounter));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "G8431");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Numerator Performance Met G8431", "G8431", PopulationEnum.numerator, $perfMet, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $perfMet.startDate.toString());
+end
+
+/**
+define "Numerator Performance Met - G8510".org:
+    *
+    * Option ID: G8510
+    *
+    (   ["Clinical Activity": "MIPS; 134_PERFORMANCE_MET_G8510"] G8510
+        with ("Latest Denominator Encounter".org) Encounter
+        such that   (   (   Encounter.stop_date is not null or empty
+                            and G8510.start_date during Interval[Encounter.start_date, Encounter.stop_date] )   
+                        or  (   Encounter.stop_date is null or empty
+                                and G8510.start_date = Encounter.start_date )                        
+                    )
+    ) P1
+   union "Negative Adolescent Screening Exists on Most Recent Day".org P2
+   union  "Negative Adult Screening Exists on Most Recent Day".org P3               
+    ,
+    ExtendedMeasureResultV2(
+        Num //return 1 record even if multiple exist
+        , 'Numerator Performance Met G8510' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator
+        , option_id = G8510
+    )
+*/
+rule 'Year2026.Mips134.Success.G8510.Org'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134SucessG8510Org())
+    exists Year2026Mips134LatestDenominatorEncounterOrg(encounter.equals($encounter))
+    and (
+        $perfMet: ClinicalActivity() from accumulate(
+            $c: ClinicalActivity(
+                withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8510"),
+                ($encounter.stopDate != null && startsDuring($encounter)) ||
+                ($encounter.stopDate == null && startDate == $encounter.startDate)
+            ),
+            latestClinicalActivity($c)
+        )
+        or $perfMet: ClinicalActivity() from accumulate(
+            Year2026Mips134NegativeAdolescentScreeningExistsOrg($c: screening),
+            latestClinicalActivity($c)
+        )
+        or $perfMet: ClinicalActivity() from accumulate(
+            Year2026Mips134NegativeAdultScreeningExistsOrg($c: screening),
+            latestClinicalActivity($c)
+        )
+    )
+then
+    insert(new Year2026Mips134SucessG8510Org());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "G8510");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Numerator Performance Met G8510", "G8510", PopulationEnum.numerator, $perfMet, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $perfMet.startDate.toString());
+end
+
+/**
+ define "Numerator Performance Met - G8510".group:
+  *
+  * Option ID: G8510
+  *
+    (   ["Clinical Activity": "MIPS; 134_PERFORMANCE_MET_G8510"] G8510
+        with ("Latest Denominator Encounter".group) Encounter
+        such that   (   (   Encounter.stop_date is not null or empty
+                            and G8510.start_date during Interval[Encounter.start_date, Encounter.stop_date] )   
+                        or  (   Encounter.stop_date is null or empty
+                                and G8510.start_date = Encounter.start_date )                        
+                    )
+    ) P1
+   union "Negative Adolescent Screening Exists on Most Recent Day".group P2
+   union  "Negative Adult Screening Exists on Most Recent Day".group P3
+    ,
+    ExtendedMeasureResultV2(
+        Num //return 1 record even if multiple exist
+        , 'Numerator Performance Met G8510' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator
+        , option_id = G8510
+    )
+*/
+rule 'Year2026.Mips134.Success.G8510.Group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134SucessG8510Group(encounter == $encounter))
+    exists Year2026Mips134LatestDenominatorEncounterGroup(encounter.equals($encounter))
+    and (
+        $perfMet: ClinicalActivity() from accumulate(
+            $c: ClinicalActivity(
+                withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8510"),
+                ($encounter.stopDate != null && startsDuring($encounter)) ||
+                ($encounter.stopDate == null && startDate == $encounter.startDate)
+            ),
+            latestClinicalActivity($c)
+        )
+        or $perfMet: ClinicalActivity() from accumulate(
+            Year2026Mips134NegativeAdolescentScreeningExistsGroup($encounter == encounter, $c: screening),
+            latestClinicalActivity($c)
+        )
+        or $perfMet: ClinicalActivity() from accumulate(
+            Year2026Mips134NegativeAdultScreeningExistsGroup($encounter == encounter, $c: screening),
+            latestClinicalActivity($c)
+        )
+    )
+then
+    insert(new Year2026Mips134SucessG8510Group($encounter));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.SUCCESS, "G8510");
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Numerator Performance Met G8510", "G8510", PopulationEnum.numerator, $perfMet, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $perfMet.startDate.toString());
+    }
+end
+
+/**
+ define "Numerator Performance Met - G8510".provider:
+  *
+  * Option ID: G8510
+  *   
+    (   ["Clinical Activity": "MIPS; 134_PERFORMANCE_MET_G8510"] G8510
+        with ("Latest Denominator Encounter".provider) Encounter
+        such that   (   (   Encounter.stop_date is not null or empty
+                            and G8510.start_date during Interval[Encounter.start_date, Encounter.stop_date] )   
+                        or  (   Encounter.stop_date is null or empty
+                                and G8510.start_date = Encounter.start_date )                        
+                    )
+    ) P1
+   union "Negative Adolescent Screening Exists on Most Recent Day".provider P2
+   union  "Negative Adult Screening Exists on Most Recent Day".provider P3
+    ,
+    ExtendedMeasureResultV2(
+        Num //return 1 record even if multiple exist
+        , 'Numerator Performance Met G8510' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator
+        , option_id = G8510
+    )
+*/
+rule 'Year2026.Mips134.Success.G8510.Provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134SucessG8510Provider(encounter == $encounter))
+    exists Year2026Mips134LatestDenominatorEncounterProvider(encounter.equals($encounter))
+    and (
+        $perfMet: ClinicalActivity() from accumulate(
+            $c: ClinicalActivity(
+                withValueSet("MipsYear2026", "134_PERFORMANCE_MET_G8510"),
+                ($encounter.stopDate != null && startsDuring($encounter)) ||
+                ($encounter.stopDate == null && startDate == $encounter.startDate)
+            ),
+            latestClinicalActivity($c)
+        )
+        or $perfMet: ClinicalActivity() from accumulate(
+            Year2026Mips134NegativeAdolescentScreeningExistsProvider($encounter == encounter, $c: screening),
+            latestClinicalActivity($c)
+        )
+        or $perfMet: ClinicalActivity() from accumulate(
+            Year2026Mips134NegativeAdultScreeningExistsProvider($encounter == encounter, $c: screening),
+            latestClinicalActivity($c)
+        )
+    )
+then
+    insert(new Year2026Mips134SucessG8510Provider($encounter));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "G8510");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Numerator Performance Met G8510", "G8510", PopulationEnum.numerator, $perfMet, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $perfMet.startDate.toString());
+end
+
+/**
+define "Denominator Exception - G8433".org:
+  *
+  * Option ID: G8433
+  *
+    (   ["Clinical Activity": "MIPS; 134_DENOMINATOR_EXCEPTION_G8433"] G8433
+        with ("Latest Denominator Encounter".org) Encounter
+        such that   (   (   Encounter.stop_date is not null or empty
+                            and G8433.start_date during Interval[Encounter.start_date, Encounter.stop_date] )   
+                        or  (   Encounter.stop_date is null or empty
+                                and G8433.start_date = Encounter.start_date )                        
+                    )
+    )   P
+    ,
+    ExtendedMeasureResultV2(
+        P //return 1 record even if multiple exist
+        , 'Denominator Exception G8433' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Exception
+        , option_id = G8433
+    )
+*/
+rule 'Year2026.Mips134.Exception.G8433.Org'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134ExceptionG8433Org())
+    exists Year2026Mips134LatestDenominatorEncounterOrg(encounter.equals($encounter))
+    $exception: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "134_DENOMINATOR_EXCEPTION_G8433"),
+            ($encounter.stopDate != null && startsDuring($encounter)) ||
+            ($encounter.stopDate == null && $encounter.startDate == startDate)
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips134ExceptionG8433Org());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCEPTION, "G8433");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Exception G8433", "G8433", PopulationEnum.denominator_exception, $exception, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $exception.startDate.toString());
+end
+
+/**
+define "Denominator Exception - G8433".group:
+  *
+  * Option ID: G8433
+  *
+    (   ["Clinical Activity": "MIPS; 134_DENOMINATOR_EXCEPTION_G8433"] G8433
+        with ("Latest Denominator Encounter".group) Encounter
+        such that   (   (   Encounter.stop_date is not null or empty
+                            and G8433.start_date during Interval[Encounter.start_date, Encounter.stop_date] )   
+                        or  (   Encounter.stop_date is null or empty
+                                and G8433.start_date = Encounter.start_date )                        
+                    )
+    )   P
+    ,
+    ExtendedMeasureResultV2(
+        P //return 1 record even if multiple exist
+        , 'Denominator Exception G8433' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Exception
+        , option_id = G8433
+    )
+*/
+rule 'Year2026.Mips134.Exception.G8433.Group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134ExceptionG8433Group(encounter == $encounter))
+    exists Year2026Mips134LatestDenominatorEncounterGroup(encounter.equals($encounter))
+    $exception: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "134_DENOMINATOR_EXCEPTION_G8433"),
+            ($encounter.stopDate != null && startsDuring($encounter)) ||
+            ($encounter.stopDate == null && $encounter.startDate == startDate)
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips134ExceptionG8433Group($encounter));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.EXCEPTION, "G8433");
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Exception G8433", "G8433", PopulationEnum.denominator_exception, $exception, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $exception.startDate.toString());
+    }
+end
+
+
+/**
+define "Denominator Exception - G8433".provider:
+  *
+  * Option ID: G8433
+  *
+    (   ["Clinical Activity": "MIPS; 134_DENOMINATOR_EXCEPTION_G8433"] G8433
+        with ("Latest Denominator Encounter".provider) Encounter
+        such that   (   (   Encounter.stop_date is not null or empty
+                            and G8433.start_date during Interval[Encounter.start_date, Encounter.stop_date] )   
+                        or  (   Encounter.stop_date is null or empty
+                                and G8433.start_date = Encounter.start_date )                        
+                    )
+    )   P
+    ,
+    ExtendedMeasureResultV2(
+        P //return 1 record even if multiple exist
+        , 'Denominator Exception G8433' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Exception
+        , option_id = G8433
+    )
+*/
+rule 'Year2026.Mips134.Exception.G8433.Provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134ExceptionG8433Provider(encounter == $encounter))
+    exists Year2026Mips134LatestDenominatorEncounterProvider(encounter.equals($encounter))
+    $exception: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "134_DENOMINATOR_EXCEPTION_G8433"),
+            ($encounter.stopDate != null && startsDuring($encounter)) ||
+            ($encounter.stopDate == null && $encounter.startDate == startDate)
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips134ExceptionG8433Provider($encounter));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCEPTION, "G8433");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Exception G8433", "G8433", PopulationEnum.denominator_exception, $exception, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $exception.startDate.toString());
+end
+
+/**
+define "Numerator Performance Not Met - G8511".org:
+   *
+   * Option ID: G8511
+   *
+    (   ["Clinical Activity": "MIPS; 134_PERFORMANCE_NOT_MET_G8511"] G8511
+        with ("Latest Denominator Encounter".org) Encounter
+        such that   (   (   Encounter.stop_date is not null or empty
+                            and G8511.start_date during Interval[Encounter.start_date, Encounter.stop_date] )   
+                        or  (   Encounter.stop_date is null or empty
+                                and G8511.start_date = Encounter.start_date )                        
+                    )
+    ) P1
+    union "Positive Adolescent Screening Exists on Most Recent Day".org    P2
+    union "Positive Adult Screening Exists on Most Recent Day".org P3
+    ,
+    ExtendedMeasureResultV2(
+        Num //return 1 record even if multiple exist
+        , 'Numerator Performance Not Met G8511' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Performance Not Met
+        , option_id = G8511
+    )
+*/
+
+rule 'Year2026.Mips134.Gap.G8511.Org'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134GapG8511Org())
+    exists Year2026Mips134LatestDenominatorEncounterOrg(encounter.equals($encounter))
+    $gap: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "134_PERFORMANCE_NOT_MET_G8511"),
+            ($encounter.stopDate != null && startsDuring($encounter)) ||
+            ($encounter.stopDate == null && $encounter.startDate == startDate)
+        ),
+        latestClinicalActivity($c)
+    )
+    or $gap: ClinicalActivity() from accumulate(
+        Year2026Mips134PositiveAdolescentScreeningExistsOrg($c: screening),
+        latestClinicalActivity($c)
+    )
+    or $gap: ClinicalActivity() from accumulate(
+        Year2026Mips134PositiveAdultScreeningExistsOrg($c: screening),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips134GapG8511Org());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.GAP, "G8511");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Numerator Performance Not Met G8511", "G8511", PopulationEnum.numerator_performance_not_met, $gap, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $gap.startDate.toString());
+end
+
+
+/**
+define "Numerator Performance Not Met - G8511".group:
+  *
+  * Option ID: G8511
+  *
+    (   ["Clinical Activity": "MIPS; 134_PERFORMANCE_NOT_MET_G8511"] G8511
+        with ("Latest Denominator Encounter".group) Encounter
+        such that   (   (   Encounter.stop_date is not null or empty
+                            and G8511.start_date during Interval[Encounter.start_date, Encounter.stop_date] )   
+                        or  (   Encounter.stop_date is null or empty
+                                and G8511.start_date = Encounter.start_date )                        
+                    )
+    ) P1
+    union "Positive Adolescent Screening Exists on Most Recent Day".group    P2
+    union "Positive Adult Screening Exists on Most Recent Day".group P3
+    ,
+    ExtendedMeasureResultV2(
+        Num //return 1 record even if multiple exist
+        , 'Numerator Performance Not Met G8511' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Performance Not Met
+        , option_id = G8511
+    )
+*/
+rule 'Year2026.Mips134.Gap.G8511.Group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134GapG8511Group(encounter == $encounter))
+    exists Year2026Mips134LatestDenominatorEncounterGroup(encounter.equals($encounter))
+    $gap: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "134_PERFORMANCE_NOT_MET_G8511"),
+            ($encounter.stopDate != null && startsDuring($encounter)) ||
+            ($encounter.stopDate == null && $encounter.startDate == startDate)
+        ),
+        latestClinicalActivity($c)
+    )
+    or $gap: ClinicalActivity() from accumulate(
+        Year2026Mips134PositiveAdolescentScreeningExistsGroup($encounter == encounter, $c: screening),
+        latestClinicalActivity($c)
+    )
+    or $gap: ClinicalActivity() from accumulate(
+        Year2026Mips134PositiveAdultScreeningExistsGroup($encounter == encounter, $c: screening),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips134GapG8511Group($encounter));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.GAP, "G8511");
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Numerator Performance Not Met G8511", "G8511", PopulationEnum.numerator_performance_not_met, $gap, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $gap.startDate.toString());
+    }
+end
+
+/**
+define "Numerator Performance Not Met - G8511".provider:
+  *
+  * Option ID: G8511
+  *
+    (   ["Clinical Activity": "MIPS; 134_PERFORMANCE_NOT_MET_G8511"] G8511
+        with ("Latest Denominator Encounter".provider) Encounter
+        such that   (   (   Encounter.stop_date is not null or empty
+                            and G8511.start_date during Interval[Encounter.start_date, Encounter.stop_date] )   
+                        or  (   Encounter.stop_date is null or empty
+                                and G8511.start_date = Encounter.start_date )                        
+                    )
+    ) P1
+    union "Positive Adolescent Screening Exists on Most Recent Day".provider    P2
+    union "Positive Adult Screening Exists on Most Recent Day".provider P3
+    ,
+    ExtendedMeasureResultV2(
+        Num //return 1 record even if multiple exist
+        , 'Numerator Performance Not Met G8511' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Performance Not Met
+        , option_id = G8511
+    )
+*/
+rule 'Year2026.Mips134.Gap.G8511.Provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+    not(exists Year2026Mips134GapG8511Provider(encounter == $encounter))
+    exists Year2026Mips134LatestDenominatorEncounterProvider(encounter.equals($encounter))
+    $gap: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "134_PERFORMANCE_NOT_MET_G8511"),
+            ($encounter.stopDate != null && startsDuring($encounter)) ||
+            ($encounter.stopDate == null && $encounter.startDate == startDate)
+        ),
+        latestClinicalActivity($c)
+    )
+    or $gap: ClinicalActivity() from accumulate(
+        Year2026Mips134PositiveAdolescentScreeningExistsProvider($encounter == encounter, $c: screening),
+        latestClinicalActivity($c)
+    )
+    or $gap: ClinicalActivity() from accumulate(
+        Year2026Mips134PositiveAdultScreeningExistsProvider($encounter == encounter, $c: screening),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips134GapG8511Provider($encounter));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, "G8511");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Numerator Performance Not Met G8511", "G8511", PopulationEnum.numerator_performance_not_met, $gap, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $gap.startDate.toString());
+end
+
+/**
+define "Numerator Performance Not Met: G8432":
+   *
+   * Option ID: G8432
+   *
+  not "Denominator Exclusion - G9717"
+  and not "Numerator Performance Met - G8431"
+  and not "Numerator Performance Met - G8510"
+  and not "Denominator Exception - G8433"
+  and not "Numerator Performance Not Met - G8511"
+*/
+rule 'Year2026.Mips134.Gap.G8432'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips134')
+    $patient: Patient()
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.GAP, "G8432");
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, "G8432");
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.GAP, "G8432");
+end
+
+// Definitions 
+
+/**
+define "Positive Adolescent Screening Exists on Most Recent Day".org:
+    exists "Adolescent Screening Interpreted as Positive on Most Recent Day".org
+    or exists ( ("Adolescent Screening Positive by Score on Most Recent Day".org) AdolescentPositiveScoreScreening
+                and not exists ("Adolescent Screening Interpreted as Negative on Most Recent Day".org) AdolescentNegativeInterpretationScreening
+                such that AdolescentPositiveScoreScreening.start_datetime = AdolescentNegativeInterpretationScreening.start_datetime )
+
+define "Adolescent Screening Interpreted as Positive on Most Recent Day".org:
+    "Adolescent Screening" AdolescentScreen
+    where ( AdolescentScreen.result = 'positive'
+            or AdolescentScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_POSITIVE_FINDING"] )
+    with ("Most Recent Adolescent Screening Day".org)MostRecentAdolescentDay
+    such that AdolescentScreen.start_datetime = MostRecentAdolescentDay.start_datetime
+              
+define "Adolescent Screening Positive by Score on Most Recent Day".org:
+    (   (   ["Clinical Activity": "VSAC; PHQ_9_AND_PHQ_9M_TOOLS"] PHQ9
+            where PHQ9.result >= 5    )
+    union ( ["Clinical Activity": "MIPS; 134_PHQ2"] PHQ2
+            where PHQ2.result >= 3    )
+    union ( ["Clinical Activity": "ABLE; EDINBURGH_POSTNATAL_DEPRESSION_SCALE"] EPDS
+            where EPDS.result >= 9    )
+    ) AdolescentPositveScoreScreeningScore 
+    with ("Most Recent Adolescent Screening Day".org) MostRecentAdolescentDay
+    such that AdolescentPositveScoreScreeningScore.start_datetime = MostRecentAdolescentDay.start_datetime   
+
+define "Adolescent Screening Interpreted as Negative on Most Recent Day".org:
+    "Adolescent Screening" AdolescentScreen
+    where ( AdolescentScreen.result = 'negative'
+            or AdolescentScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_NEGATIVE_FINDING"] )
+    with ("Most Recent Adolescent Screening DAY".org) MostRecentAdolescentDay
+    such that AdolescentScreen.start_datetime = MostRecentAdolescentDay.start_datetime   
+*/
+rule 'Year2026.Mips134.PositiveAdolescentScreeningExists.Org'
+salience 25
+when
+    Year2026Mips134MostRecentAdolescentScreeningOrg($latestRecord: latestRecord)
+    (
+        //When there are same dates for the most recent date, it is needed to make sure to check if exists the correct one.
+        $screening: ClinicalActivity(
+            withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+            withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+            withValueSet("MipsYear2026", "134_PHQ2") ||
+            withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+            startDate == $latestRecord.startDate,
+            (result == 'positive' || 
+                withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_POSITIVE_FINDING"))
+        )
+        //Adolescent Screening Positive by Score on Most Recent Day
+        or (
+            (
+                $screening: ClinicalActivity(
+                    withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 5
+                ) or $screening: ClinicalActivity(
+                    withValueSet("MipsYear2026","134_PHQ2"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 3
+                ) or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 9
+                )
+            ) and not (
+                exists ClinicalActivity(
+                    withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+                    withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+                    withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+                    withValueSet("MipsYear2026", "134_PHQ2") ||
+                    withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDate == $latestRecord.startDate,
+                    (result == 'negative' || 
+                        withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_NEGATIVE_FINDING"))
+                )
+            )
+        )
+    )
+then
+    insert(new Year2026Mips134PositiveAdolescentScreeningExistsOrg($screening));
+end
+
+/**
+define "Positive Adolescent Screening Exists on Most Recent Day".group:
+    exists "Adolescent Screening Interpreted as Positive on Most Recent Day".group
+    or exists ( ("Adolescent Screening Positive by Score on Most Recent Day".group) AdolescentPositiveScoreScreening
+                and not exists ("Adolescent Screening Interpreted as Negative on Most Recent Day".group) AdolescentNegativeInterpretationScreening
+                such that AdolescentPositiveScoreScreening.start_datetime = AdolescentNegativeInterpretationScreening.start_datetime)
+
+define "Adolescent Screening Interpreted as Positive on Most Recent Day".group:
+    "Adolescent Screening" AdolescentScreen
+    where ( AdolescentScreen.result = 'positive'
+            or AdolescentScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_POSITIVE_FINDING"] )
+    with ("Most Recent Adolescent Screening Day".group) MostRecentAdolescentDay
+    such that (AdolescentScreen.start_datetime = MostRecentAdolescentDay.start_datetime   
+    return MostRecentAdolescentDay.group_id )
+              
+define "Adolescent Screening Positive by Score on Most Recent Day".group:
+    (   (   ["Clinical Activity": "VSAC; PHQ_9_AND_PHQ_9M_TOOLS"] PHQ9
+            where PHQ9.result >= 5    )
+    union ( ["Clinical Activity": "MIPS; 134_PHQ2"] PHQ2
+            where PHQ2.result >= 3    )
+    union ( ["Clinical Activity": "ABLE; EDINBURGH_POSTNATAL_DEPRESSION_SCALE"] EPDS
+            where EPDS.result >= 9    )
+    ) AdolescentPositveScoreScreeningScore 
+    with ("Most Recent Adolescent Screening Day".group) MostRecentAdolescentDay
+    such that AdultScreen.start_datetime = MostRecentAdolescentDay.start_datetime
+    return MostRecentAdolescentDay.group_id 
+
+define "Adolescent Screening Interpreted as Negative on Most Recent Day".group:
+    "Adolescent Screening" AdolescentScreen
+    where ( AdolescentScreen.result = 'negative'
+            or AdolescentScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_NEGATIVE_FINDING"] )
+    with ("Most Recent Adolescent Screening DAY".group) MostRecentAdolescentDay
+    such that AdolescentScreen.start_datetime = MostRecentAdolescentDay.start_datetime 
+    return MostRecentAdolescentDay.group_id
+*/
+rule 'Year2026.Mips134.PositiveAdolescentScreeningExists.Group'
+salience 25
+when
+    Year2026Mips134MostRecentAdolescentScreeningGroup($latestRecord: latestRecord, $encounter: encounter)
+    (
+        //When there are same dates for the most recent date, it is needed to make sure to check if exists the correct one.
+        $screening: ClinicalActivity(
+            withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+            withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+            withValueSet("MipsYear2026", "134_PHQ2") ||
+            withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+            startDate == $latestRecord.startDate,
+            (result == 'positive' || 
+                withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_POSITIVE_FINDING"))
+        )
+        //Adolescent Screening Positive by Score on Most Recent Day
+        or (
+            (
+                $screening: ClinicalActivity(
+                    withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 5
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("MipsYear2026","134_PHQ2"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 3
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 9
+                )
+            ) and not (
+                exists ClinicalActivity(
+                    withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+                    withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+                    withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+                    withValueSet("MipsYear2026", "134_PHQ2") ||
+                    withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDate == $latestRecord.startDate,
+                    (result == 'negative' || 
+                        withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_NEGATIVE_FINDING"))
+                )
+            )
+        )
+    )
+then
+    insert(new Year2026Mips134PositiveAdolescentScreeningExistsGroup($encounter, $screening));
+end
+
+
+/**
+define "Positive Adolescent Screening Exists on Most Recent Day".provider:
+    exists "Adolescent Screening Interpreted as Positive on Most Recent Day".provider
+    or exists ( ("Adolescent Screening Positive by Score on Most Recent Day".provider) AdolescentPositiveScoreScreening
+                and not exists ("Adolescent Screening Interpreted as Negative on Most Recent Day".provider) AdolescentNegativeInterpretationScreening
+                such that AdolescentPositiveScoreScreening.start_datetime = AdolescentNegativeInterpretationScreening.start_datetime)
+
+define "Adolescent Screening Interpreted as Positive on Most Recent Day".provider:
+    "Adolescent Screening" AdolescentScreen
+    where ( AdolescentScreen.result = 'positive'
+            or AdolescentScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_POSITIVE_FINDING"] )
+    with ("Most Recent Adolescent Screening Day".provider) MostRecentAdolescentDay
+    such that (AdolescentScreen.start_datetime = MostRecentAdolescentDay.start_datetime 
+    return MostRecentAdolescentDay.provider_id )
+              
+define "Adolescent Screening Positive by Score on Most Recent Day".provider:
+    (   (   ["Clinical Activity": "VSAC; PHQ_9_AND_PHQ_9M_TOOLS"] PHQ9
+            where PHQ9.result >= 5    )
+    union ( ["Clinical Activity": "MIPS; 134_PHQ2"] PHQ2
+            where PHQ2.result >= 3    )
+    union ( ["Clinical Activity": "ABLE; EDINBURGH_POSTNATAL_DEPRESSION_SCALE"] EPDS
+            where EPDS.result >= 9    )
+    ) AdolescentPositveScoreScreeningScore 
+    with ("Most Recent Adolescent Screening Day".provider) MostRecentAdolescentDay
+    such that AdolescentPositveScoreScreeningScore.start_datetime = MostRecentAdolescentDay.start_datetime 
+    return MostRecentAdolescentDay.provider_id
+
+define "Adolescent Screening Interpreted as Negative on Most Recent Day".provider:
+    "Adolescent Screening" AdolescentScreen
+    where ( AdolescentScreen.result = 'negative'
+            or AdolescentScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_NEGATIVE_FINDING"] )
+    with ("Most Recent Adolescent Screening DAY".provider) MostRecentAdolescentDay
+    such that AdolescentScreen.start_datetime = MostRecentAdolescentDay.start_datetime 
+    return MostRecentAdolescentDay.provider_id
+*/
+rule 'Year2026.Mips134.PositiveAdolescentScreeningExists.Provider'
+salience 25
+when
+    Year2026Mips134MostRecentAdolescentScreeningProvider($latestRecord: latestRecord, $encounter: encounter)
+    (
+        //When there are same dates for the most recent date, it is needed to make sure to check if exists the correct one.
+        $screening: ClinicalActivity(
+            withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+            withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+            withValueSet("MipsYear2026", "134_PHQ2") ||
+            withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+            startDate == $latestRecord.startDate,
+            (result == 'positive' || 
+                withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_POSITIVE_FINDING"))
+        )
+        //Adolescent Screening Positive by Score on Most Recent Day
+        or (
+            (
+                $screening: ClinicalActivity(
+                    withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 5
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("MipsYear2026","134_PHQ2"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 3
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 9
+                )
+            ) and not (
+                exists ClinicalActivity(
+                    withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+                    withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+                    withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+                    withValueSet("MipsYear2026", "134_PHQ2") ||
+                    withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDate == $latestRecord.startDate,
+                    (result == 'negative' || 
+                        withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_NEGATIVE_FINDING"))
+                )
+            )
+        )
+    )
+then
+    insert(new Year2026Mips134PositiveAdolescentScreeningExistsProvider($encounter, $screening));
+end
+
+/**
+define "Positive Adult Screening Exists on Most Recent Day".org:
+    exists "Adult Screening Interpreted as Positive on Most Recent Day".org
+    or exists ( ("Adult Screening Positive by Score on Most Recent Day".org) AdultPositiveScoreScreening
+                and not exists ("Adult Screening Interpreted as Negative on Most Recent Day".org )AdultNegativeInterpretationScreening
+                such that AdultPositiveScoreScreening.start_datetime =  AdultNegativeInterpretationScreening.start_datetime )
+
+define "Adult Screening Interpreted as Positive on Most Recent Day".org:
+    "Adult Screening" AdultScreen
+    where ( AdultScreen.result = 'positive'
+            or AdultScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_POSITIVE_FINDING"] ))
+    with ("Most Recent Adult Screening DAY".org) MostRecentAdultDay
+    such that AdultScreen.start_datetime = MostRecentAdultDay.start_datetime        
+
+define "Adult Screening Positive by Score on Most Recent Day".org:
+    (   (   ["Clinical Activity": "ABLE; PHQ_9_TOOL_ADULT"] PHQ9
+            where PHQ9.result >= 5  )
+        union ( ["Clinical Activity": "MIPS; 134_PHQ2"] PHQ2
+                where PHQ2.result >= 3    )
+        union ( ["Clinical ACtivity": "ABLE; EDINBURGH_POSTNATAL_DEPRESSION_SCALE"] EPDS
+                where EPDS.result >= 9    )
+        union ( ["Clinical Activity": "ABLE; GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION"] GDSshort
+                where GDSshort.result > 5 ) 
+        union ( ["Clinical Activity": "ABLE; GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL"] GDSlong
+                where GDSlong.result > 9  ) 
+    ) AdultPositveScoreScreening
+    with ("Most Recent Adult Screening DAY".org) MostRecentAdultDay
+    such that AdultPositveScoreScreening.start_datetime = MostRecentAdultDay.start_datetime 
+ 
+define "Adult Screening Interpreted as Negative on Most Recent Day".org:
+   ("Adult Screening" AdultScreen
+    where ( AdultScreen.result = 'negative'
+            or AdultScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_NEGATIVE_FINDING"] ))
+    with ("Most Recent Adult Screening DAY".org) MostRecentAdultDay
+    such that AdultScreen.start_datetime = MostRecentAdultDay.start_datetime 
+*/
+rule 'Year2026.Mips134.PositiveAdultScreeningExists.Org'
+salience 25
+when
+    Year2026Mips134MostRecentAdultScreeningOrg($latestRecord: latestRecord)
+    (
+        //When there are same dates for the most recent date, it is needed to make sure to check if exists the correct one.
+        $screening: ClinicalActivity(
+            withValueSet("AbleYear2026", "ADULT_DEPRESSION_SCREENING") ||
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADULT_DEPRESSION_SCREENING_ASSESSMENT") ||
+            withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION") ||
+            withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL") ||
+            withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE") ||
+            withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT") ||
+            withValueSet("MipsYear2026", "134_PHQ2"),
+            startDate == $latestRecord.startDate,
+            (result == 'positive' ||
+                withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_POSITIVE_FINDING"))
+        )
+        or (
+            (
+                $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 5
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("MipsYear2026","134_PHQ2"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 3
+                )  
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 9
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal > 5
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal > 9
+                )
+            ) and not (
+                exists ClinicalActivity (
+                    withValueSet("AbleYear2026", "ADULT_DEPRESSION_SCREENING") ||
+                    withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADULT_DEPRESSION_SCREENING_ASSESSMENT") ||
+                    withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION") ||
+                    withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL") ||
+                    withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE") ||
+                    withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT") ||
+                    withValueSet("MipsYear2026", "134_PHQ2"),
+                    startDate == $latestRecord.startDate,
+                    (result == 'negative' ||
+                        withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_NEGATIVE_FINDING"))
+                )
+            )
+        )
+    )
+then
+    insert(new Year2026Mips134PositiveAdultScreeningExistsOrg($screening));
+end
+
+
+/**
+define "Positive Adult Screening Exists on Most Recent Day".group:
+    exists "Adult Screening Interpreted as Positive on Most Recent Day".group
+    or exists ( ("Adult Screening Positive by Score on Most Recent Day".group) AdultPositiveScoreScreening
+                and not exists ("Adult Screening Interpreted as Negative on Most Recent Day".group )AdultNegativeInterpretationScreening
+                such that AdultPositiveScoreScreening.start_datetime =  AdultNegativeInterpretationScreening.start_datetime)
+
+define "Adult Screening Interpreted as Positive on Most Recent Day".group:
+    "Adult Screening" AdultScreen
+    where ( AdultScreen.result = 'positive'
+            or AdultScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_POSITIVE_FINDING"] ))
+    with ("Most Recent Adult Screening DAY".group) MostRecentAdultDay
+    such that AdultScreen.start_datetime = MostRecentAdultDay.start_datetime 
+    return MostRecentAdultDay.group_id  
+
+define "Adult Screening Positive by Score on Most Recent Day".group:
+    (   (   ["Clinical Activity": "ABLE; PHQ_9_TOOL_ADULT"] PHQ9
+            where PHQ9.result >= 5  )
+        union ( ["Clinical Activity": "MIPS; 134_PHQ2"] PHQ2
+                where PHQ2.result >= 3    )
+        union ( ["Clinical ACtivity": "ABLE; EDINBURGH_POSTNATAL_DEPRESSION_SCALE"] EPDS
+                where EPDS.result >= 9    )
+        union ( ["Clinical Activity": "ABLE; GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION"] GDSshort
+                where GDSshort.result > 5 ) 
+        union ( ["Clinical Activity": "ABLE; GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL"] GDSlong
+                where GDSlong.result > 9  ) 
+    ) AdultPositveScoreScreening
+    with ("Most Recent Adult Screening DAY".group) MostRecentAdultDay
+    such that AdultPositveScoreScreening.start_datetime = MostRecentAdultDay.start_datetime 
+    return MostRecentAdultDay.group_id
+ 
+define "Adult Screening Interpreted as Negative on Most Recent Day".group:
+    ("Adult Screening" AdultScreen
+    where ( AdultScreen.result = 'negative'
+            or AdultScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_NEGATIVE_FINDING"] ))
+    with ("Most Recent Adult Screening DAY".group) MostRecentAdultDay
+    such that AdultScreen.start_datetime = MostRecentAdultDay.start_datetime 
+    return MostRecentAdultDay.group_id
+*/
+rule 'Year2026.Mips134.PositiveAdultScreeningExists.Group'
+salience 25
+when
+    Year2026Mips134MostRecentAdultScreeningGroup($latestRecord: latestRecord, $encounter: encounter)
+    (
+        //When there are same dates for the most recent date, it is needed to make sure to check if exists the correct one.
+        $screening: ClinicalActivity(
+            withValueSet("AbleYear2026", "ADULT_DEPRESSION_SCREENING") ||
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADULT_DEPRESSION_SCREENING_ASSESSMENT") ||
+            withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION") ||
+            withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL") ||
+            withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE") ||
+            withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT") ||
+            withValueSet("MipsYear2026", "134_PHQ2"),
+            startDate == $latestRecord.startDate,
+            (result == 'positive' ||
+                withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_POSITIVE_FINDING"))
+        )
+        or (
+            (
+                $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 5
+                )
+                or $screening: ClinicalActivity(
+                    withValueSet("MipsYear2026","134_PHQ2"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 3
+                )
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 9
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal > 5
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal > 9
+                )
+            ) and not (
+                exists ClinicalActivity (
+                    withValueSet("AbleYear2026", "ADULT_DEPRESSION_SCREENING") ||
+                    withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADULT_DEPRESSION_SCREENING_ASSESSMENT") ||
+                    withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION") ||
+                    withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL") ||
+                    withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE") ||
+                    withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT") ||
+                    withValueSet("MipsYear2026", "134_PHQ2"),
+                    startDate == $latestRecord.startDate,
+                    (result == 'negative' ||
+                        withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_NEGATIVE_FINDING"))
+                )
+            )
+        )
+    )
+then
+    insert(new Year2026Mips134PositiveAdultScreeningExistsGroup($encounter, $screening));
+end
+
+/**
+define "Positive Adult Screening Exists on Most Recent Day".provider:
+    exists "Adult Screening Interpreted as Positive on Most Recent Day".provider
+    or exists ( ("Adult Screening Positive by Score on Most Recent Day".provider) AdultPositiveScoreScreening
+                and not exists ("Adult Screening Interpreted as Negative on Most Recent Day".provider )AdultNegativeInterpretationScreening
+                such that AdultPositiveScoreScreening.start_datetime =  AdultNegativeInterpretationScreening.start_datetime     )
+
+define "Adult Screening Interpreted as Positive on Most Recent Day".provider:
+    "Adult Screening" AdultScreen
+    where ( AdultScreen.result = 'positive'
+            or AdultScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_POSITIVE_FINDING"] ))
+    with ("Most Recent Adult Screening DAY".provider) MostRecentAdultDay
+    such that AdultScreen.start_datetime = MostRecentAdultDay.start_datetime
+    return MostRecentAdultDay.provider_id 
+
+define "Adult Screening Positive by Score on Most Recent Day".provider:
+    (   (   ["Clinical Activity": "ABLE; PHQ_9_TOOL_ADULT"] PHQ9
+            where PHQ9.result >= 5  )
+        union ( ["Clinical Activity": "MIPS; 134_PHQ2"] PHQ2
+                where PHQ2.result >= 3    )
+        union ( ["Clinical ACtivity": "ABLE; EDINBURGH_POSTNATAL_DEPRESSION_SCALE"] EPDS
+                where EPDS.result >= 9    )
+        union ( ["Clinical Activity": "ABLE; GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION"] GDSshort
+                where GDSshort.result > 5 ) 
+        union ( ["Clinical Activity": "ABLE; GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL"] GDSlong
+                where GDSlong.result > 9  ) 
+    ) AdultPositveScoreScreening
+    with ("Most Recent Adult Screening DAY".provider) MostRecentAdultDay
+    such that AdultPositveScoreScreening.start_datetime = MostRecentAdultDay.start_datetime 
+    return MostRecentAdultDay.provider_id
+ 
+define "Adult Screening Interpreted as Negative on Most Recent Day".provider:
+    ("Adult Screening" AdultScreen
+    where ( AdultScreen.result = 'negative'
+            or AdultScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_NEGATIVE_FINDING"] ))
+    with ("Most Recent Adult Screening DAY".provider) MostRecentAdultDay
+    such that AdultScreen.start_datetime = MostRecentAdultDay.start_datetime  
+    return MostRecentAdultDay.provider_id 
+*/
+rule 'Year2026.Mips134.PositiveAdultScreeningExists.Provider'
+salience 25
+when
+    Year2026Mips134MostRecentAdultScreeningProvider($latestRecord: latestRecord, $encounter: encounter)
+    (
+        //When there are same dates for the most recent date, it is needed to make sure to check if exists the correct one.
+        $screening: ClinicalActivity(
+            withValueSet("AbleYear2026", "ADULT_DEPRESSION_SCREENING") ||
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADULT_DEPRESSION_SCREENING_ASSESSMENT") ||
+            withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION") ||
+            withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL") ||
+            withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE") ||
+            withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT") ||
+            withValueSet("MipsYear2026", "134_PHQ2"),
+            startDate == $latestRecord.startDate,
+            (result == 'positive' ||
+                withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_POSITIVE_FINDING"))
+        )
+        or (
+           (
+                $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 5
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("MipsYear2026","134_PHQ2"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 3
+                )  
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal >= 9
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal > 5
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal > 9
+                )
+            ) and not (
+                exists ClinicalActivity (
+                    withValueSet("AbleYear2026", "ADULT_DEPRESSION_SCREENING") ||
+                    withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADULT_DEPRESSION_SCREENING_ASSESSMENT") ||
+                    withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION") ||
+                    withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL") ||
+                    withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE") ||
+                    withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT") ||
+                    withValueSet("MipsYear2026", "134_PHQ2"),
+                    startDate == $latestRecord.startDate,
+                    (result == 'negative' ||
+                        withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_NEGATIVE_FINDING"))
+                )
+            )
+        )
+    )
+then
+    insert(new Year2026Mips134PositiveAdultScreeningExistsProvider($encounter, $screening));
+end
+
+/**
+define "Negative Adolescent Screening Exists on Most Recent Day".org:
+    exists "Adolescent Screening Interpreted as Negative on Most Recent Day".org
+    or (    exists ("Adolescent Screening Negative by Score on Most Recent Day".org) AdolescentNegativeScoreScreening
+            and not exists ("Adolescent Screening Interpreted as Positive on Most Recent Day".org) AdolescentPositiveInterpretationScreening
+            such that AdolescentNegativeScoreScreening.start_datetime =  AdolescentPositiveInterpretationScreening.start_datetime )   
+
+define "Adolescent Screening Interpreted as Negative on Most Recent Day".org:
+    "Adolescent Screening" AdolescentScreen
+    where ( AdolescentScreen.result = 'negative'
+            or AdolescentScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_NEGATIVE_FINDING"] )
+    with ("Most Recent Adolescent Screening DAY".org) MostRecentAdolescentDay
+    such that AdolescentScreen.start_datetime = MostRecentAdolescentDay.start_datetime   
+    
+define "Adolescent Screening Negative by Score on Most Recent Day".org             
+    (   (   ["Clinical Activity": "VSAC; PHQ_9_AND_PHQ_9M_TOOLS"] PHQ9
+            where   PHQ9.result < 5 )
+    union ( ["Clinical Activity": "MIPS; 134_PHQ2"] PHQ2
+            where PHQ2.result < 3   )
+    union ( ["Clinical Activity": "ABLE; EDINBURGH_POSTNATAL_DEPRESSION_SCALE"] EPDS
+            where   EPDS.result < 9 )
+    ) AdolescentNegativeScreeningScore
+    with ("Most Recent Adolescent Screening Day".org) MostRecentAdolescentDay
+    such that AdolescentNegativeScreeningScore.start_datetime = MostRecentAdolescentDay.start_datetime 
+*/
+rule 'Year2026.Mips134.NegativeAdolescentScreeningExists.Org'
+salience 25
+when
+    Year2026Mips134MostRecentAdolescentScreeningOrg($latestRecord: latestRecord)
+    (
+        $screening: ClinicalActivity(
+            withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+            withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+            withValueSet("MipsYear2026", "134_PHQ2") ||
+            withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+            startDate == $latestRecord.startDate,
+            (result == 'negative' ||
+                withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_NEGATIVE_FINDING"))
+        )
+        or (
+            (
+                //When there are same dates for the most recent date, it is needed to make sure to check if exists the correct one.
+                $screening: ClinicalActivity(
+                    withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal < 5
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("MipsYear2026","134_PHQ2"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal < 3
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal < 9
+                )
+            ) and not (
+                exists ClinicalActivity(
+                    withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+                    withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+                    withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+                    withValueSet("MipsYear2026", "134_PHQ2") ||
+                    withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDate == $latestRecord.startDate,
+                    (result == 'positive' ||
+                        withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_POSITIVE_FINDING"))
+                )
+            )
+        )
+    )
+then
+    insert(new Year2026Mips134NegativeAdolescentScreeningExistsOrg($screening));
+end
+
+/**
+define "Negative Adolescent Screening Exists on Most Recent Day".group:
+    exists "Adolescent Screening Interpreted as Negative on Most Recent Day".group
+    or (    exists ("Adolescent Screening Negative by Score on Most Recent Day".group) AdolescentNegativeScoreScreening
+            and not exists ("Adolescent Screening Interpreted as Positive on Most Recent Day".group) AdolescentPositiveInterpretationScreening
+            such that AdolescentNegativeScoreScreening.start_datetime =  AdolescentPositiveInterpretationScreening.start_datetime  )
+
+define "Adolescent Screening Interpreted as Negative on Most Recent Day".group:
+    "Adolescent Screening" AdolescentScreen
+    where ( AdolescentScreen.result = 'negative'
+            or AdolescentScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_NEGATIVE_FINDING"] )
+    with ("Most Recent Adolescent Screening DAY".group) MostRecentAdolescentDay
+    such that AdolescentScreen.start_datetime = MostRecentAdolescentDay.start_datetime 
+    return MostRecentAdolescentDay.group_id
+    
+define "Adolescent Screening Negative by Score on Most Recent Day".group             
+    (   (   ["Clinical Activity": "VSAC; PHQ_9_AND_PHQ_9M_TOOLS"] PHQ9
+            where   PHQ9.result < 5 )
+    union ( ["Clinical Activity": "MIPS; 134_PHQ2"] PHQ2
+            where PHQ2.result < 3   )
+    union ( ["Clinical Activity": "ABLE; EDINBURGH_POSTNATAL_DEPRESSION_SCALE"] EPDS
+            where   EPDS.result < 9 )
+    ) AdolescentNegativeScreeningScore
+    with ("Most Recent Adolescent Screening Day".group) MostRecentAdolescentDay
+    such that AdolescentNegativeScreeningScore.start_datetime = MostRecentAdolescentDay.start_datetime 
+    return MostRecentAdolescentDay.group_id
+*/
+rule 'Year2026.Mips134.NegativeAdolescentScreeningExists.Group'
+salience 25
+when
+    Year2026Mips134MostRecentAdolescentScreeningGroup($latestRecord: latestRecord, $encounter: encounter)
+    (
+        $screening: ClinicalActivity(
+            withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+            withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+            withValueSet("MipsYear2026", "134_PHQ2") ||
+            withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+            startDate == $latestRecord.startDate,
+            (result == 'negative' ||
+                withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_NEGATIVE_FINDING"))
+        )
+        or (
+            (
+                //When there are same dates for the most recent date, it is needed to make sure to check if exists the correct one.
+                $screening: ClinicalActivity (
+                    withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal < 5
+                ) 
+                or $screening: ClinicalActivity (
+                    withValueSet("MipsYear2026","134_PHQ2"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal < 3
+                )
+                or $screening: ClinicalActivity (
+                    withValueSet("AbleYear2026","EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal < 9
+                )
+            ) and not (
+                exists ClinicalActivity(
+                    withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+                    withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+                    withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+                    withValueSet("MipsYear2026", "134_PHQ2") ||
+                    withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDate == $latestRecord.startDate,
+                    (result == 'positive' ||
+                        withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_POSITIVE_FINDING"))
+                )
+            )
+        )
+    )
+then
+    insert(new Year2026Mips134NegativeAdolescentScreeningExistsGroup($encounter, $screening));
+end
+
+/**
+define "Negative Adolescent Screening Exists on Most Recent Day".provider:
+    exists "Adolescent Screening Interpreted as Negative on Most Recent Day".provider
+    or (    exists ("Adolescent Screening Negative by Score on Most Recent Day".provider) AdolescentNegativeScoreScreening
+            and not exists ("Adolescent Screening Interpreted as Positive on Most Recent Day".provider) AdolescentPositiveInterpretationScreening
+            such that AdolescentNegativeScoreScreening.start_datetime =  AdolescentPositiveInterpretationScreening.start_datetime )
+
+define "Adolescent Screening Interpreted as Negative on Most Recent Day".provider:
+    "Adolescent Screening" AdolescentScreen
+    where ( AdolescentScreen.result = 'negative'
+            or AdolescentScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_NEGATIVE_FINDING"] )
+    with ("Most Recent Adolescent Screening DAY".provider) MostRecentAdolescentDay
+    such that AdolescentScreen.start_datetime = MostRecentAdolescentDay.start_datetime 
+    return MostRecentAdolescentDay.provider_id
+    
+define "Adolescent Screening Negative by Score on Most Recent Day".provider             
+    (   (   ["Clinical Activity": "VSAC; PHQ_9_AND_PHQ_9M_TOOLS"] PHQ9
+            where   PHQ9.result < 5 )
+    union ( ["Clinical Activity": "MIPS; 134_PHQ2"] PHQ2
+            where PHQ2.result < 3   )
+    union ( ["Clinical Activity": "ABLE; EDINBURGH_POSTNATAL_DEPRESSION_SCALE"] EPDS
+            where   EPDS.result < 9 )
+    ) AdolescentNegativeScreeningScore
+    with ("Most Recent Adolescent Screening Day".provider) MostRecentAdolescentDay
+    such that AdolescentNegativeScreeningScore.start_datetime = MostRecentAdolescentDay.start_datetime
+    return MostRecentAdolescentDay.provider_id 
+*/
+rule 'Year2026.Mips134.NegativeAdolescentScreeningExists.Provider'
+salience 25
+when
+    Year2026Mips134MostRecentAdolescentScreeningProvider($latestRecord: latestRecord, $encounter: encounter)
+    (
+        $screening: ClinicalActivity(
+            withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+            withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+            withValueSet("MipsYear2026", "134_PHQ2") ||
+            withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+            startDate == $latestRecord.startDate,
+            (result == 'negative' ||
+                withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_NEGATIVE_FINDING"))
+        )
+        or (
+            $screening: ClinicalActivity(
+                withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS"),
+                startDatetime == $latestRecord.startDatetime,
+                resultAsDecimal < 5
+            ) 
+            and not (
+                exists ClinicalActivity(
+                    withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+                    withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+                    withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+                    withValueSet("MipsYear2026", "134_PHQ2") ||
+                    withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDate == $latestRecord.startDate,
+                    (result == 'positive' ||
+                        withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_POSITIVE_FINDING"))
+                )
+            )
+        )
+        or (
+            $screening: ClinicalActivity(
+                withValueSet("MipsYear2026","134_PHQ2"),
+                startDatetime == $latestRecord.startDatetime,
+                resultAsDecimal < 3
+            ) 
+            and not (
+                exists ClinicalActivity(
+                    withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+                    withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+                    withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+                    withValueSet("MipsYear2026", "134_PHQ2") ||
+                    withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDate == $latestRecord.startDate,
+                    (result == 'positive' ||
+                        withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_POSITIVE_FINDING"))
+                )
+            )
+        )
+        or (
+            $screening: ClinicalActivity(
+                withValueSet("AbleYear2026","EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                startDatetime == $latestRecord.startDatetime,
+                resultAsDecimal < 9
+            ) 
+            and not (
+                exists ClinicalActivity(
+                    withValueSet("AbleYear2026", "ADOLESCENT_DEPRESSION_SCREENING") ||
+                    withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADOLESCENT_DEPRESSION_SCREENING_ASSESSMENT") ||
+                    withValueSet("VsacYear2026", "PHQ_9_AND_PHQ_9M_TOOLS") ||
+                    withValueSet("MipsYear2026", "134_PHQ2") ||
+                    withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDate == $latestRecord.startDate,
+                    (result == 'positive' ||
+                        withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_POSITIVE_FINDING"))
+                )
+            )
+        )
+    )
+then
+    insert(new Year2026Mips134NegativeAdolescentScreeningExistsProvider($encounter, $screening));
+end
+
+/**
+define "Negative Adult Screening Exists on Most Recent Day".org:
+    exists "Adult Screening Interpreted as Negative on Most Recent Day".org
+    or (    exists ("Adult Screening Negative by Score on Most Recent Day".org) AdultNegativeScoreScreening
+            and not exists ("Adult Screening Interpreted as Positive on Most Recent Day".org) AdultPostiveInterpretationScreening
+            such that AdultNegativeScoreScreening.start_datetime = AdultPostiveInterpretationScreening.start_datetime )
+
+define "Adult Screening Interpreted as Negative on Most Recent Day".org:
+   ("Adult Screening" AdultScreen
+    where ( AdultScreen.result = 'negative'
+            or AdultScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_NEGATIVE_FINDING"] ))
+    with ("Most Recent Adult Screening DAY".org) MostRecentAdultDay
+    such that AdultScreen.start_datetime = MostRecentAdultDay.start_datetime 
+
+define "Adult Screening Negative by Score on Most Recent Day".org             
+    (   (   ["Clinical Activity": "ABLE; PHQ_9_TOOL_ADULT"] PHQ9
+            where PHQ9.result < 5   )
+    union ( ["Clinical ACtivity": "MIPS; 134_PHQ2"] PHQ2
+            where PHQ2.result < 3   )   
+    union ( ["Clinical Activity": "ABLE; EDINBURGH_POSTNATAL_DEPRESSION_SCALE"] EPDS
+            where EPDS.result < 9   ) 
+    union ( ["Clinical Activity": "ABLE; GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION"] GDSshort
+            where GDSshort.result <= 5  ) 
+    union ( ["Clinical Activity": "ABLE; GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL"] GDSlong
+            where GDSlong.result <= 9   )
+    ) AdultNegativeScoreScreening
+    with ("Most Recent Adult Screening DAY".org) MostRecentAdultDay
+    such that AdultNegativeScoreScreening.start_datetime = MostRecentAdultDay.start_datetime  
+*/
+rule 'Year2026.Mips134.NegativeAdultScreeningExists.Org'
+salience 25
+when
+    Year2026Mips134MostRecentAdultScreeningOrg($latestRecord: latestRecord)
+    (
+        //When there are same dates for the most recent date, it is needed to make sure to check if exists the correct one.
+        $screening: ClinicalActivity(
+            withValueSet("AbleYear2026", "ADULT_DEPRESSION_SCREENING") ||
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADULT_DEPRESSION_SCREENING_ASSESSMENT") ||
+            withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION") ||
+            withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL") ||
+            withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE") ||
+            withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT") ||
+            withValueSet("MipsYear2026", "134_PHQ2"),
+            startDate == $latestRecord.startDate,
+            (result == 'negative' ||
+                withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_NEGATIVE_FINDING"))
+        )
+        or (
+            (
+                $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal < 5
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("MipsYear2026","134_PHQ2"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal < 3
+                )
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal < 9
+                )
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal <= 5
+                )
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal <= 9
+                )
+            ) and not (
+                exists ClinicalActivity(
+                    withValueSet("AbleYear2026", "ADULT_DEPRESSION_SCREENING") ||
+                    withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADULT_DEPRESSION_SCREENING_ASSESSMENT") ||
+                    withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION") ||
+                    withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL") ||
+                    withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE") ||
+                    withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT") ||
+                    withValueSet("MipsYear2026", "134_PHQ2"),
+                    startDate == $latestRecord.startDate,
+                    (result == 'positive' ||
+                        withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_POSITIVE_FINDING"))
+                )
+            )
+        )
+    )
+then
+    insert(new Year2026Mips134NegativeAdultScreeningExistsOrg($screening));
+end
+
+/**
+define "Negative Adult Screening Exists on Most Recent Day".group:
+    exists "Adult Screening Interpreted as Negative on Most Recent Day".group
+    or (    exists ("Adult Screening Negative by Score on Most Recent Day".group) AdultNegativeScoreScreening
+            and not exists ("Adult Screening Interpreted as Positive on Most Recent Day".group) AdultPostiveInterpretationScreening
+            such that AdultNegativeScoreScreening.start_datetime = AdultPostiveInterpretationScreening.start_datetime )
+
+define "Adult Screening Interpreted as Negative on Most Recent Day".group:
+    ("Adult Screening" AdultScreen
+    where ( AdultScreen.result = 'negative'
+            or AdultScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_NEGATIVE_FINDING"] ))
+    with ("Most Recent Adult Screening DAY".group) MostRecentAdultDay
+    such that AdultScreen.start_datetime = MostRecentAdultDay.start_datetime 
+    return MostRecentAdultDay.group_id
+
+define "Adult Screening Negative by Score on Most Recent Day".group             
+    (   (   ["Clinical Activity": "ABLE; PHQ_9_TOOL_ADULT"] PHQ9
+            where PHQ9.result < 5   )
+    union ( ["Clinical ACtivity": "MIPS; 134_PHQ2"] PHQ2
+            where PHQ2.result < 3   )   
+    union ( ["Clinical Activity": "ABLE; EDINBURGH_POSTNATAL_DEPRESSION_SCALE"] EPDS
+            where EPDS.result < 9   ) 
+    union ( ["Clinical Activity": "ABLE; GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION"] GDSshort
+            where GDSshort.result <= 5  ) 
+    union ( ["Clinical Activity": "ABLE; GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL"] GDSlong
+            where GDSlong.result <= 9   )
+    ) AdultNegativeScoreScreening
+    with ("Most Recent Adult Screening DAY".group) MostRecentAdultDay
+    such that AdultNegativeScoreScreening.start_datetime = MostRecentAdultDay.start_datetime
+    return MostRecentAdultDay.group_id
+*/
+rule 'Year2026.Mips134.NegativeAdultScreeningExists.Group'
+salience 25
+when
+    Year2026Mips134MostRecentAdultScreeningGroup($latestRecord: latestRecord, $encounter: encounter)
+    (
+        //When there are same dates for the most recent date, it is needed to make sure to check if exists the correct one.
+        $screening: ClinicalActivity(
+            withValueSet("AbleYear2026", "ADULT_DEPRESSION_SCREENING") ||
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADULT_DEPRESSION_SCREENING_ASSESSMENT") ||
+            withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION") ||
+            withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL") ||
+            withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE") ||
+            withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT") ||
+            withValueSet("MipsYear2026", "134_PHQ2"),
+            startDate == $latestRecord.startDate,
+            (result == 'negative' ||
+                withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_NEGATIVE_FINDING"))
+        )
+        or (
+            (
+                $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal < 5
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("MipsYear2026","134_PHQ2"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal < 3
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal < 9
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal <= 5
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal <= 9
+                )
+            ) and not (
+                exists ClinicalActivity(
+                    withValueSet("AbleYear2026", "ADULT_DEPRESSION_SCREENING") ||
+                    withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADULT_DEPRESSION_SCREENING_ASSESSMENT") ||
+                    withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION") ||
+                    withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL") ||
+                    withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE") ||
+                    withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT") ||
+                    withValueSet("MipsYear2026", "134_PHQ2"),
+                    startDate == $latestRecord.startDate,
+                    (result == 'positive' ||
+                        withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_POSITIVE_FINDING"))
+                )
+            )
+        )
+    )
+then
+    insert(new Year2026Mips134NegativeAdultScreeningExistsGroup($encounter, $screening));
+end
+
+/**
+define "Negative Adult Screening Exists on Most Recent Day".provider:
+    exists "Adult Screening Interpreted as Negative on Most Recent Day".provider
+    or (    exists ("Adult Screening Negative by Score on Most Recent Day".provider) AdultNegativeScoreScreening
+            and not exists ("Adult Screening Interpreted as Positive on Most Recent Day".provider) AdultPostiveInterpretationScreening
+            such that AdultNegativeScoreScreening.start_datetime = AdultPostiveInterpretationScreening.start_datetime )
+
+define "Adult Screening Interpreted as Negative on Most Recent Day".provider:
+    ("Adult Screening" AdultScreen
+    where ( AdultScreen.result = 'negative'
+            or AdultScreen.result in ["eCQM Direct Reference Codes; DEPRESSION_SCREENING_NEGATIVE_FINDING"] ))
+    with ("Most Recent Adult Screening DAY".provider) MostRecentAdultDay
+    such that AdultScreen.start_datetime = MostRecentAdultDay.start_datetime  
+    return MostRecentAdultDay.provider_id 
+
+define "Adult Screening Negative by Score on Most Recent Day".provider             
+    (   (   ["Clinical Activity": "ABLE; PHQ_9_TOOL_ADULT"] PHQ9
+            where PHQ9.result < 5   )
+    union ( ["Clinical ACtivity": "MIPS; 134_PHQ2"] PHQ2
+            where PHQ2.result < 3   )   
+    union ( ["Clinical Activity": "ABLE; EDINBURGH_POSTNATAL_DEPRESSION_SCALE"] EPDS
+            where EPDS.result < 9   ) 
+    union ( ["Clinical Activity": "ABLE; GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION"] GDSshort
+            where GDSshort.result <= 5  ) 
+    union ( ["Clinical Activity": "ABLE; GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL"] GDSlong
+            where GDSlong.result <= 9   )
+    ) AdultNegativeScoreScreening
+    with ("Most Recent Adult Screening DAY".provider) MostRecentAdultDay
+    such that AdultNegativeScoreScreening.start_datetime = MostRecentAdultDay.start_datetime 
+    return MostRecentAdultDay.provider_id 
+*/
+rule 'Year2026.Mips134.NegativeAdultScreeningExists.Provider'
+salience 25
+when
+    Year2026Mips134MostRecentAdultScreeningProvider($latestRecord: latestRecord, $encounter: encounter)
+    (
+        //When there are same dates for the most recent date, it is needed to make sure to check if exists the correct one.
+        $screening: ClinicalActivity(
+            withValueSet("AbleYear2026", "ADULT_DEPRESSION_SCREENING") ||
+            withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADULT_DEPRESSION_SCREENING_ASSESSMENT") ||
+            withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION") ||
+            withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL") ||
+            withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE") ||
+            withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT") ||
+            withValueSet("MipsYear2026", "134_PHQ2"),
+            startDate == $latestRecord.startDate,
+            (result == 'negative' ||
+                withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_NEGATIVE_FINDING"))
+        )
+        or (
+            (
+                $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal < 5
+                ) 
+                or $screening: ClinicalActivity(
+                    withValueSet("MipsYear2026","134_PHQ2"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal < 3
+                )
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","EDINBURGH_POSTNATAL_DEPRESSION_SCALE"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal < 9
+                )
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal <= 5
+                )
+                or $screening: ClinicalActivity(
+                    withValueSet("AbleYear2026","GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL"),
+                    startDatetime == $latestRecord.startDatetime,
+                    resultAsDecimal <= 9
+                )
+            ) and not (
+                exists ClinicalActivity(
+                    withValueSet("AbleYear2026", "ADULT_DEPRESSION_SCREENING") ||
+                    withValueSet("Ecqm_Direct_Reference_CodesYear2026", "ADULT_DEPRESSION_SCREENING_ASSESSMENT") ||
+                    withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_SHORT_VERSION") ||
+                    withValueSet("AbleYear2026", "GERIATRIC_DEPRESSION_SCALE_PANEL_TOTAL") ||
+                    withValueSet("AbleYear2026", "EDINBURGH_POSTNATAL_DEPRESSION_SCALE") ||
+                    withValueSet("AbleYear2026", "PHQ_9_TOOL_ADULT") ||
+                    withValueSet("MipsYear2026", "134_PHQ2"),
+                    startDate == $latestRecord.startDate,
+                    (result == 'positive' ||
+                        withValueSetInResult("Ecqm_Direct_Reference_CodesYear2026", "DEPRESSION_SCREENING_POSITIVE_FINDING"))
+                )
+            )
+        )
+    )
+then
+    insert(new Year2026Mips134NegativeAdultScreeningExistsProvider($encounter, $screening));
+end
+
+/**
+//this is the same for org/group/provider, the only thing that changes between each attribution is the parameter that receives the encounter
+define "Adolescent Follow-Up Exists".org:
+    (   "Adolescent Follow-Up Procedure" P
+        with ("Latest Denominator Encounter".org) Encounter
+        such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date + 2 days]  )
+    union ( "Adolescent Follow-Up Medication" M
+            with ("Latest Denominator Encounter".org) Encounter
+            such that Interval[M.start_date, M.stop_date] overlaps Interval[Encounter.start_date, Encounter.stop_date + 2 days] )
+        
+define "Adolescent Follow-Up Procedure":
+    ["Clinical Activity": "VSAC; FOLLOW_UP_FOR_ADOLESCENT_DEPRESSION"]
+    union ["Clinical Activity": "VSAC; REFERRAL_FOR_ADOLESCENT_DEPRESSION"]
+
+  define "Adolescent Follow-Up Medication"
+    ["Medication": "VSAC; ADOLESCENT_DEPRESSION_MEDICATIONS"]
+*/
+query queryYear2026Mips134AdolescentFollowUpExists(ClinicalActivity $encounter, QdmDatatype $followUp)
+    (
+        $followUp:= ClinicalActivity(
+            withValueSet("VsacYear2026", "FOLLOW_UP_FOR_ADOLESCENT_DEPRESSION") ||
+            withValueSet("VsacYear2026", "REFERRAL_FOR_ADOLESCENT_DEPRESSION"),
+            startsDuring($encounter)
+        ) 
+        or $followUp:= Medication(
+            withValueSet("VsacYear2026", "ADOLESCENT_DEPRESSION_MEDICATIONS"),
+            overlaps($encounter)
+        )
+    )
+end
+
+/**
+//this is the same for org/group/provider, the only thing that changes between each attribution is the parameter that receives the encounter
+define "Adult Follow-Up Exists".org:
+    (   "Adult Follow-Up Procedure" P
+        with ("Latest Denominator Encounter".org) Encounter
+        such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date + 2 days]  )
+    union ( "Adult Follow-Up Medication" M
+            with ("Latest Denominator Encounter".org) Encounter
+            such that Interval[M.start_date, M.stop_date] overlaps Interval[Encounter.start_date, Encounter.stop_date + 2 days] )
+        
+define "Adult Follow-Up Procedure":
+    ["Clinical Activity": "VSAC; FOLLOW_UP_FOR_ADULT_DEPRESSION"]
+    union ["Clinical Activity": "VSAC; REFERRAL_FOR_ADULT_DEPRESSION"]
+
+define "Adult Follow-Up Medication"
+    ["Medication": "VSAC; ADULT_DEPRESSION_MEDICATIONS"]
+*/
+query queryYear2026Mips134AdultFollowUpExists(ClinicalActivity $encounter, QdmDatatype $followUp)
+    (
+        $followUp:= ClinicalActivity(
+            withValueSet("VsacYear2026", "FOLLOW_UP_FOR_ADULT_DEPRESSION") ||
+            withValueSet("VsacYear2026", "REFERRAL_FOR_ADULT_DEPRESSION"), 
+            startsDuring($encounter)
+        )
+        or $followUp:= Medication(
+            withValueSet("VsacYear2026", "ADULT_DEPRESSION_MEDICATIONS"),
+            overlaps($encounter)
+        )
+    )
+end

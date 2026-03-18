@@ -1,0 +1,425 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+import com.ablehealth.enums.extendedmeaures.*;
+
+import accumulate com.ablehealth.functions.LatestClinicalActivityAccumulateFunction latestClinicalActivity;
+
+global PatientResults controlSet;
+
+declare Year2026Mips047Success1124FOrgEMR
+end
+declare Year2026Mips047Success1124FGroupEMR
+end
+declare Year2026Mips047Success1124FProviderEMR
+end
+declare Year2026Mips047Success1123FOrgEMR
+end
+declare Year2026Mips047Success1123FGroupEMR
+end
+declare Year2026Mips047Success1123FProviderEMR
+end
+declare Year2026Mips047ExclusionG9692FOrgEMR
+end
+declare Year2026Mips047ExclusionG9692FGroupEMR
+end
+declare Year2026Mips047ExclusionG9692FProviderEMR
+end
+declare Year2026Mips047DenominatorOrgEMR
+end
+declare Year2026Mips047DenominatorGroupEMR
+end
+declare Year2026Mips047DenominatorProviderEMR
+end
+declare Year2026Mips047Success1123FClinical
+    record: ClinicalActivity
+end
+declare Year2026Mips047Success1124FClinical
+    record: ClinicalActivity
+end
+/*
+define "Denominator":
+  exists("Denominator Encounter") Encounter
+  ,
+  if exists "Denominator"
+  return
+    ExtendedMeasureResultV2(
+        Encounter //return 1 record even if multiple exist
+        , 'Denominator Encounter' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+    )
+  
+//Definitions
+define "Denominator Encounter":
+  ["Clinical Activity": "MIPS; 047_ENCOUNTER"] Encounter
+    where Encounter.start_date during "Measurement Period"
+      and AgeInYearsAt(Encounter.start_date) >= 65
+      and Encounter.provider_id.hasMeasureMembership = true
+      and not Encounter.place_of_service in {'23'}
+*/
+rule 'Year2026.Mips047.Denominator'
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips047')
+    $patient: Patient()
+    $encounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "047_ENCOUNTER"),
+        startsDuring($program.measurementPeriod),
+        withPlaceOfServiceNotIn('23'),
+        $patient.getAgeInYearsAt(startDate) >= 65
+    )
+then
+    insert(new EncounterDenominator($program, $encounter, "Year2026.Mips047"));
+end
+
+rule 'Year2026.Mips047.Denominator.Org.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips047")
+    $patient: Patient()
+    and not (
+        exists Year2026Mips047DenominatorOrgEMR()
+    )
+then
+    insert (new Year2026Mips047DenominatorOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "G9692", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "1123F", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "1124F", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "1123F-8P", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end
+
+rule 'Year2026.Mips047.Denominator.Group.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips047",
+    $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    and not (
+        exists Year2026Mips047DenominatorGroupEMR()
+    )
+then
+    insert (new Year2026Mips047DenominatorGroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Encounter", "G9692", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Encounter", "1123F", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Encounter", "1124F", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Denominator Encounter", "1123F-8P", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips047.Denominator.Provider.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips047", 
+    $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    and not (
+        exists Year2026Mips047DenominatorProviderEMR()
+    )
+then
+    insert (new Year2026Mips047DenominatorProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter", "G9692", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter", "1123F", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter", "1124F", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Denominator Encounter", "1123F-8P", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion":
+  *  Option ID: G9692  *
+  exists(sharedHospice."Has Hospice") Hospice
+    , 
+    ExtendedMeasureResultV2(
+        Hospice //return 1 record even if multiple exist
+        , 'Evidence of Hospice' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Exclusion
+        , option_id = G9692
+    )
+*/
+rule 'Year2026.Mips047.Exclusion.G9692'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips047")
+    $patient: Patient()
+    exists queryYear2026MipsSharedHashospiceInMeasurementPeriod($program, $result;)
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, "G9692");
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, "G9692");
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.EXCLUSION, "G9692");
+end
+
+rule 'Year2026.Mips047.Exclusion.G9692.Org.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips047")
+    $patient: Patient()
+    Year2026MipsSharedHasHospice($program==program, $hospice:hospice)
+    and not (
+        exists Year2026Mips047ExclusionG9692FOrgEMR()
+    )
+then
+    insert (new Year2026Mips047ExclusionG9692FOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Evidence of Hospice", "G9692", PopulationEnum.denominator_exclusion, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end
+
+rule 'Year2026.Mips047.Exclusion.G9692.Group.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips047",
+    $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    Year2026MipsSharedHasHospice($program==program, $hospice:hospice)
+    and not (
+        exists Year2026Mips047ExclusionG9692FGroupEMR()
+    )
+then
+    insert (new Year2026Mips047ExclusionG9692FGroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Evidence of Hospice", "G9692", PopulationEnum.denominator_exclusion, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips047.Exclusion.G9692.Provider.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips047", 
+    $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    Year2026MipsSharedHasHospice($program==program, $hospice:hospice)
+    and not (
+        exists Year2026Mips047ExclusionG9692FProviderEMR()
+    )
+then
+    insert (new Year2026Mips047ExclusionG9692FProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Evidence of Hospice", "G9692", PopulationEnum.denominator_exclusion, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met 1123F":
+   *
+   * Option ID: 1123F
+   *
+  exists(((["Clinical Activity": "MIPS; 047_PERFORMANCE_MET_1123F"] 1123F 
+            where 1123F.code_modifier not in {'8P'})
+         union ["Clinical Activity": "ABLE; ADVANCE_DIRECTIVE"]) AdvDir
+    where AdvDir.start_date during "Measurement Period") AdvDirPeriod
+    ,
+    return
+      ExtendedMeasureResultV2(
+          AdvDirPeriod //return 1 record even if multiple exist
+          , 'Advanced Directive' as name
+          , display_date = start_date
+          , calculated_record = false
+          , population = Numerator
+          ,option_id = 1123F
+      ) 
+*/
+rule 'Year2026.Mips047.Success.1123F'
+salience 20
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips047")
+    $patient: Patient()
+    exists(
+        Year2026Mips047Success1123FClinical()
+    )
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "1123F");
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "1123F");
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.SUCCESS, "1123F");
+end
+
+rule 'Year2026.Mips047.Success.1123F.Clinical'
+salience 30
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips047")
+    $patient: Patient()
+    $clinical: ClinicalActivity(
+        withValueSet("MipsYear2026", "047_PERFORMANCE_MET_1123F"),
+        withCodeModifiersNotIn("8P"),
+        startsDuring($program.measurementPeriod)
+    )
+    or $clinical: ClinicalActivity(
+        withValueSet("AbleYear2026", "ADVANCE_DIRECTIVE"),
+        startsDuring($program.measurementPeriod)
+    )
+then
+    insert (new Year2026Mips047Success1123FClinical($clinical));
+end
+
+rule 'Year2026.Mips047.Success.1123F.Org.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips047")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate (
+        Year2026Mips047Success1123FClinical($clinical: record),
+        latestClinicalActivity($clinical)
+    )
+    and not (
+        exists Year2026Mips047Success1123FOrgEMR()
+    )
+then
+    insert (new Year2026Mips047Success1123FOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Advanced Directive", "1123F", PopulationEnum.numerator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end
+
+rule 'Year2026.Mips047.Success.1123F.Group.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $encounter.isPresent($encounter.groupExternalIds), 
+        $measure: measure, measure == "Year2026.Mips047")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate (
+        Year2026Mips047Success1123FClinical($clinical: record),
+        latestClinicalActivity($clinical)
+    )
+    and not (
+        exists Year2026Mips047Success1123FGroupEMR()
+    )
+then
+    insert (new Year2026Mips047Success1123FGroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Advanced Directive", "1123F", PopulationEnum.numerator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips047.Success.1123F.Provider.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $encounter.isPresent($encounter.providerExternalId), 
+        $measure: measure, measure == "Year2026.Mips047")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate (
+        Year2026Mips047Success1123FClinical($clinical: record),
+        latestClinicalActivity($clinical)
+    )
+    and not (
+        exists Year2026Mips047Success1123FProviderEMR()
+    )
+then
+    insert (new Year2026Mips047Success1123FProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Advanced Directive", "1123F", PopulationEnum.numerator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met 1124F":
+   *
+   * Option ID: 1124F
+   *
+  exists(((["Clinical Activity": "MIPS; 047_PERFORMANCE_MET_1124F"] 1124F 
+            where 1124F.code_modifiers not in {'8P'})
+        union ["Clinical Activity": "ABLE; ADVANCE_DIRECTIVE_DISCUSSED"]) AdvDirDisc
+    where AdvDirDisc.start_date during "Measurement Period") AdvDirDiscPeriod
+    ,
+    return
+      ExtendedMeasureResultV2(
+          AdvDirDiscPeriod //return 1 record even if multiple exist
+          , 'Advanced Directive Discussed' as name
+          , display_date = start_date
+          , calculated_record = false
+          , population = Numerator
+          ,option_id = 1124F
+      )
+*/
+rule 'Year2026.Mips047.Success.1124F'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips047")
+    $patient: Patient()
+    exists(
+        Year2026Mips047Success1124FClinical($clinical: record)
+    )
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "1124F");
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "1124F");
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.SUCCESS, "1124F");
+end
+
+rule 'Year2026.Mips047.Success.1124F.Clinical'
+salience 30
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips047")
+    $patient: Patient()
+    $clinical: ClinicalActivity(
+        withValueSet("MipsYear2026", "047_PERFORMANCE_MET_1124F"),
+        withCodeModifiersNotIn("8P"),
+        startsDuring($program.measurementPeriod)
+    )
+    or $clinical: ClinicalActivity(
+        withValueSet("AbleYear2026", "ADVANCE_DIRECTIVE_DISCUSSED"),
+        startsDuring($program.measurementPeriod)
+    )
+then
+    insert (new Year2026Mips047Success1124FClinical($clinical));
+end
+
+rule 'Year2026.Mips047.Success.1124F.Org.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips047")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate (
+        Year2026Mips047Success1124FClinical($clinical: record),
+        latestClinicalActivity($clinical)
+    )
+    and not (
+        exists Year2026Mips047Success1124FOrgEMR()
+    )
+then
+    insert (new Year2026Mips047Success1124FOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Advanced Directive Discussed", "1124F", PopulationEnum.numerator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end
+
+rule 'Year2026.Mips047.Success.1124F.Group.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity,$encounter.isPresent($encounter.groupExternalIds),
+    $measure: measure, measure == "Year2026.Mips047")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate (
+        Year2026Mips047Success1124FClinical($clinical: record),
+        latestClinicalActivity($clinical)
+    )
+    and not (
+        exists Year2026Mips047Success1124FGroupEMR()
+    )
+then
+    insert (new Year2026Mips047Success1124FGroupEMR());
+    for (String groupExternalId : $encounter.groupExternalIds) {
+        controlSet.addPatientEMR($program, $patient, $measure, groupExternalId, "Advanced Directive Discussed", "1124F", PopulationEnum.numerator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    }
+end
+
+rule 'Year2026.Mips047.Success.1124F.Provider.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity,$encounter.isPresent($encounter.providerExternalId),
+    $measure: measure, measure == "Year2026.Mips047")
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate (
+        Year2026Mips047Success1124FClinical($clinical: record),
+        latestClinicalActivity($clinical)
+    )
+    and not (
+        exists Year2026Mips047Success1124FProviderEMR()
+    )
+then
+    insert (new Year2026Mips047Success1124FProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Advanced Directive Discussed", "1124F", PopulationEnum.numerator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end
+
+/*
+define "Numerator Performance Not Met 1123F-8P":
+  *
+  * Option ID: 1123F-8P
+  *
+  not "Denominator Exclusion"
+  and not "Numerator Performance Met 1123F"
+  and not "Numerator Performance Met 1124F"
+*/
+rule 'Year2026.Mips047.Gap.1123F-8P'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips047")
+    $patient: Patient()
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.GAP, "1123F-8P");
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, "1123F-8P");
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.GAP, "1123F-8P");
+end

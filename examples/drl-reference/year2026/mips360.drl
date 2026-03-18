@@ -1,0 +1,121 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+import com.ablehealth.enums.extendedmeaures.*;
+
+import accumulate com.ablehealth.functions.LatestClinicalActivityAccumulateFunction latestClinicalActivity;
+
+global PatientResults controlSet;
+
+declare Year2026Mips360DenominatorEMR
+end
+
+declare Year2026Mips360SuccessG9321EMR
+end
+
+/*
+
+define "Denominator":
+  "Denominator Procedure" Procedure
+  ,
+  ExtendedMeasureResultV2(
+      Procedure //return 1 record even if multiple exist
+      , 'Denominator Procedure' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator
+      , option_id = all
+  )
+
+define "Denominator Procedure":
+    ["Clinical Activity": "MIPS; 360_PROCEDURE"] Encounter
+      where Encounter.start_date during "Measurement Period"
+        and not Encounter.modifier in {'GQ', 'GT', '95'}
+        and not Encounter.place_of_service in {'02', '10'}
+        and Encounter.provider_id.hasMeasureMembership = true
+*/
+rule 'Year2026.Mips360.Denominator'
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips360')
+    $encounter: ClinicalActivity(
+        startsDuring($program.measurementPeriod),
+        withCodeModifiersNotIn('GQ','GT','95'),
+        withPlaceOfServiceNotIn("02", "10"),
+        withValueSet("MipsYear2026", "360_PROCEDURE")
+    )
+then
+    insert(new EncounterDenominator($program, $encounter, 'Year2026.Mips360'));
+end
+
+rule 'Year2026.Mips360.Denominator.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips360')
+    $patient: Patient()
+    not(exists Year2026Mips360DenominatorEMR())
+then
+    insert(new Year2026Mips360DenominatorEMR());
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Denominator Procedure", "G9321", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Denominator Procedure", "G9322", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met G9321":
+  * Option ID: G9321 *
+  exists(["Clinical Activity": "MIPS; 360_PERFORMANCE_MET_G9321"] P
+    with "Denominator Procedure" Procedure
+      such that P.start_date during Interval[Procedure.start_date, Procedure.stop_date])
+  ,
+  ExtendedMeasureResultV2(
+      P //return 1 record even if multiple exist
+      , 'Performance Met G9321' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Numerator
+      , option_id = G9321
+  )
+*/
+rule 'Year2026.Mips360.Success.G9321'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips360')
+    exists ClinicalActivity(
+        startsDuring($encounter),
+        withValueSet("MipsYear2026", "360_PERFORMANCE_MET_G9321")
+    )
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.SUCCESS, "G9321");
+end
+
+rule 'Year2026.Mips360.Success.G9321.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips360')
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $r: ClinicalActivity(
+            startsDuring($encounter),
+            withValueSet("MipsYear2026", "360_PERFORMANCE_MET_G9321")
+        ),
+        latestClinicalActivity($r)
+    )
+    not(exists Year2026Mips360SuccessG9321EMR())
+then
+    insert(new Year2026Mips360SuccessG9321EMR());
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Performance Met G9321", "G9321", PopulationEnum.numerator_performance_met, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Numerator Performance Not Met: G9322":
+  *
+  * Option ID: G9322
+  *
+  not "Numerator Performance Met: G9321"
+*/
+rule 'Year2026.Mips360.Gap.G9322'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == 'Year2026.Mips360')
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.GAP, "G9322");
+end

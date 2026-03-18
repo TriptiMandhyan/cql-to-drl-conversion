@@ -1,0 +1,668 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+import com.ablehealth.enums.extendedmeaures.*;
+
+import accumulate com.ablehealth.functions.LatestClinicalActivityAccumulateFunction latestClinicalActivity;
+import accumulate com.ablehealth.functions.LatestQdmDatatypeAccumulateFunction latestQdmDatatype;
+
+global PatientResults controlSet;
+
+declare Year2026Mips431SharedEncounterOrg
+    latestEncounter: ClinicalActivity
+end
+
+declare Year2026Mips431SharedEncounterGroup
+    latestEncounter: ClinicalActivity
+end
+
+declare Year2026Mips431SharedEncounterProvider
+    latestEncounter: ClinicalActivity
+end
+
+declare Year2026Mips431SharedExclusionHospiceOrg
+end
+
+declare Year2026Mips431SharedExclusionHospiceGroup
+    group: String
+end
+
+declare Year2026Mips431SharedExclusionHospiceProvider
+    provider: String
+end
+
+declare Year2026Mips431SharedExclusionDementiaOrg
+end
+
+declare Year2026Mips431SharedExclusionDementiaGroup
+    group: String
+end
+
+declare Year2026Mips431SharedExclusionDementiaProvider
+    provider: String
+end
+
+declare Year2026Mips431Groups
+    groupExternalId: String
+end
+
+declare Year2026Mips431Providers
+    providerExternalId: String
+end
+
+/*
+define "DenominatorRate1Rate3".org:
+    last(   (   (   "431 Encounter" P1
+                    with "431 Encounter" P2
+                    such that P1.start_date != P2.start_date    )
+                union "431 Preventive Encounter"
+                ) Denom
+        ) sort by Denom.start_date asc
+        
+define "431 Encounter"
+    ["Clinical Activity": "MIPS; 431_ENCOUNTER"] Encounter
+    where   Encounter.start_date during "Measurement Period"
+            and AgeInYearsAt(Encounter.start_date) >= 18
+            and Encounter.provider_id.hasMeasureMembership = true
+      
+define "431 Preventive Encounter"
+    ["Clinical Activity": "MIPS; 431_PREVENTIVE_ENCOUNTER"] Encounter
+    where   Encounter.start_date during "Measurement Period"
+            and AgeInYearsAt(Encounter.start_date) >= 18
+            and Encounter.provider_id.hasMeasureMembership = true
+*/
+rule 'Year2026.Mips431.Denominator.Shared.Org'
+salience 40
+when
+    $program: Program(
+        rules contains 'measure.Mips.2026.Mips431Rate1' ||
+        rules contains 'measure.Mips.2026.Mips431Rate2' ||
+        rules contains 'measure.Mips.2026.Mips431Rate3'
+    )
+    $patient: Patient()
+    $latestEncounter: ClinicalActivity() from accumulate (
+        queryYear2026Mips431SharedDenominatorOrg($program, $patient, $encounter;),
+        latestClinicalActivity($encounter)
+    )
+    and not(
+        exists Year2026Mips431SharedEncounterOrg($latestEncounter == latestEncounter)
+    )
+then
+    insert(new Year2026Mips431SharedEncounterOrg($latestEncounter));
+end
+
+query queryYear2026Mips431SharedDenominatorOrg(Program $program, Patient $patient, ClinicalActivity $encounter)
+    (
+        $encounter:= ClinicalActivity(
+            withValueSet("MipsYear2026", "431_ENCOUNTER"),
+            startsDuring($program.measurementPeriod),
+            $patient.getAgeInYearsAt(startDate) >= 18
+        ) and exists ClinicalActivity(
+            withValueSet("MipsYear2026", "431_ENCOUNTER"),
+            startsDuring($program.measurementPeriod),
+            startDate != $encounter.startDate,
+            $patient.getAgeInYearsAt(startDate) >= 18
+        )
+    )
+    or $encounter:= ClinicalActivity(
+        startsDuring($program.measurementPeriod),
+        withValueSet("MipsYear2026", "431_PREVENTIVE_ENCOUNTER"),
+        $patient.getAgeInYearsAt(startDate) >= 18
+    )
+end
+
+/**
+define "DenominatorRate1Rate3".group:
+    last(   (   (   "431 Encounter" P1
+                    with "431 Encounter" P2
+                    such that   P1.start_date != P2.start_date    
+                                and P1.group_id = P2.group_id   )
+                union "431 Preventive Encounter"
+                ) Denom
+        ) sort by Denom.start_date asc
+*/
+rule 'Year2026.Mips431.FindGroups.P1'
+salience 150
+when
+    $program: Program(
+        rules contains 'measure.Mips.2026.Mips431Rate1' ||
+        rules contains 'measure.Mips.2026.Mips431Rate2' ||
+        rules contains 'measure.Mips.2026.Mips431Rate3'
+    )
+    $patient: Patient()
+    $encounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "431_ENCOUNTER"),
+        startsDuring($program.measurementPeriod),
+        $patient.getAgeInYearsAt(startDate) >= 18,
+        isPresent(groupExternalIds)
+    )
+    $groupId: String() from $encounter.groupExternalIds
+    exists ClinicalActivity(
+        withValueSet("MipsYear2026", "431_ENCOUNTER"),
+        startsDuring($program.measurementPeriod),
+        startDate != $encounter.startDate,
+        $patient.getAgeInYearsAt(startDate) >= 18,
+        isPresent(groupExternalIds),
+        groupExternalIds.contains($groupId)
+    )
+    not (exists Year2026Mips431Groups(groupExternalId == $groupId))
+then
+    insert(new Year2026Mips431Groups($groupId));
+end
+
+rule 'Year2026.Mips431.FindGroups.P2'
+salience 150
+when
+    $program: Program(
+        rules contains 'measure.Mips.2026.Mips431Rate1' ||
+        rules contains 'measure.Mips.2026.Mips431Rate2' ||
+        rules contains 'measure.Mips.2026.Mips431Rate3'
+    )
+    $patient: Patient()
+    $encounter: ClinicalActivity(
+        startsDuring($program.measurementPeriod),
+        withValueSet("MipsYear2026", "431_PREVENTIVE_ENCOUNTER"),
+        $patient.getAgeInYearsAt(startDate) >= 18
+    )
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists Year2026Mips431Groups(groupExternalId == $groupId))
+then
+    insert(new Year2026Mips431Groups($groupId));
+end
+
+rule 'Year2026.Mips431.Denominator.Shared.Group'
+salience 40
+when
+    $program: Program(
+        rules contains 'measure.Mips.2026.Mips431Rate1' ||
+        rules contains 'measure.Mips.2026.Mips431Rate2' ||
+        rules contains 'measure.Mips.2026.Mips431Rate3'
+    )
+    $patient: Patient()
+    Year2026Mips431Groups($groupId: groupExternalId)
+    $latestEncounter: ClinicalActivity() from accumulate (
+        queryYear2026Mips431SharedDenominatorGroup($program, $patient, $groupId, $encounter;),
+        latestClinicalActivity($encounter)
+    )
+    and not(
+        exists Year2026Mips431SharedEncounterGroup($latestEncounter == latestEncounter)
+    )
+then
+    insert(new Year2026Mips431SharedEncounterGroup($latestEncounter));
+end
+
+query queryYear2026Mips431SharedDenominatorGroup(Program $program, Patient $patient, String $group, ClinicalActivity $encounter)
+    (
+        $encounter:= ClinicalActivity(
+            withValueSet("MipsYear2026", "431_ENCOUNTER"),
+            startsDuring($program.measurementPeriod),
+            $patient.getAgeInYearsAt(startDate) >= 18,
+            isPresent(groupExternalIds),
+            groupExternalIds.contains($group)
+        ) and exists ClinicalActivity(
+            withValueSet("MipsYear2026", "431_ENCOUNTER"),
+            startsDuring($program.measurementPeriod),
+            startDate != $encounter.startDate,
+            $patient.getAgeInYearsAt(startDate) >= 18,
+            isPresent(groupExternalIds),
+            groupExternalIds.contains($group)
+        )
+    )
+    or $encounter:= ClinicalActivity(
+        startsDuring($program.measurementPeriod),
+        withValueSet("MipsYear2026", "431_PREVENTIVE_ENCOUNTER"),
+        $patient.getAgeInYearsAt(startDate) >= 18,
+        isPresent(groupExternalIds),
+        groupExternalIds.contains($group)
+    )
+end
+
+/**
+define "DenominatorRate1Rate3".provider:
+    last(   (   (   "431 Encounter" P1
+                    with "431 Encounter" P2
+                    such that   P1.start_date != P2.start_date    
+                                and P1.provider_id = P2.provider_id   )
+                union "431 Preventive Encounter"
+                ) Denom
+        ) sort by Denom.start_date asc
+*/
+rule 'Year2026.Mips431.FindProviders.P1'
+salience 150
+when
+    $program: Program(
+        rules contains 'measure.Mips.2026.Mips431Rate1' ||
+        rules contains 'measure.Mips.2026.Mips431Rate2' ||
+        rules contains 'measure.Mips.2026.Mips431Rate3'
+    )
+    $patient: Patient()
+    $encounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "431_ENCOUNTER"),
+        startsDuring($program.measurementPeriod),
+        $patient.getAgeInYearsAt(startDate) >= 18,
+        isPresent(providerExternalId)
+    )
+    exists ClinicalActivity(
+        withValueSet("MipsYear2026", "431_ENCOUNTER"),
+        startsDuring($program.measurementPeriod),
+        startDate != $encounter.startDate,
+        $patient.getAgeInYearsAt(startDate) >= 18,
+        providerExternalId == $encounter.providerExternalId
+    )
+    not (exists Year2026Mips431Providers(providerExternalId == $encounter.providerExternalId))
+then
+    insert(new Year2026Mips431Providers($encounter.providerExternalId));
+end
+
+rule 'Year2026.Mips431.FindProviders.P2'
+salience 150
+when
+    $program: Program(
+        rules contains 'measure.Mips.2026.Mips431Rate1' ||
+        rules contains 'measure.Mips.2026.Mips431Rate2' ||
+        rules contains 'measure.Mips.2026.Mips431Rate3'
+    )
+    $patient: Patient()
+    $encounter: ClinicalActivity(
+        startsDuring($program.measurementPeriod),
+        withValueSet("MipsYear2026", "431_PREVENTIVE_ENCOUNTER"),
+        $patient.getAgeInYearsAt(startDate) >= 18,
+        isPresent(providerExternalId)
+    )
+    not (exists Year2026Mips431Providers(providerExternalId == $encounter.providerExternalId))
+then
+    insert(new Year2026Mips431Providers($encounter.providerExternalId));
+end
+
+rule 'Year2026.Mips431.Denominator.Shared.Provider'
+salience 40
+when
+    $program: Program(
+        rules contains 'measure.Mips.2026.Mips431Rate1' ||
+        rules contains 'measure.Mips.2026.Mips431Rate2' ||
+        rules contains 'measure.Mips.2026.Mips431Rate3'
+    )
+    $patient: Patient()
+    Year2026Mips431Providers($provider: providerExternalId)
+    $latestEncounter: ClinicalActivity() from accumulate (
+        queryYear2026Mips431SharedDenominatorProvider($program, $patient, $provider, $encounter;),
+        latestClinicalActivity($encounter)
+    )
+    and not(exists Year2026Mips431SharedEncounterProvider($latestEncounter.providerExternalId == latestEncounter.providerExternalId))
+then
+    insert(new Year2026Mips431SharedEncounterProvider($latestEncounter));
+end
+
+query queryYear2026Mips431SharedDenominatorProvider(Program $program, Patient $patient, String $provider, ClinicalActivity $encounter)
+    (
+        $encounter:= ClinicalActivity(
+            withValueSet("MipsYear2026", "431_ENCOUNTER"),
+            startsDuring($program.measurementPeriod),
+            $patient.getAgeInYearsAt(startDate) >= 18,
+            isPresent(providerExternalId),
+            providerExternalId == $provider
+        ) and exists ClinicalActivity(
+            withValueSet("MipsYear2026", "431_ENCOUNTER"),
+            startsDuring($program.measurementPeriod),
+            startDate != $encounter.startDate,
+            providerExternalId == $encounter.providerExternalId,
+            $patient.getAgeInYearsAt(startDate) >= 18
+        )
+    )
+    or $encounter:= ClinicalActivity(
+        startsDuring($program.measurementPeriod),
+        withValueSet("MipsYear2026", "431_PREVENTIVE_ENCOUNTER"),
+        $patient.getAgeInYearsAt(startDate) >= 18,
+        isPresent(providerExternalId),
+        providerExternalId == $provider
+    )
+end
+
+/*
+It will recieve the latest encounter depending on where it is being called
+
+define "Most Recent Alcohol Screening Datetime".encounter
+    (   last(   (   ["Clinical Activity": "ABLE; AUDIT_SCREENING"]
+                    union ["Clinical Activity": "ABLE; AUDIT_C_SCREENING"]
+                    union ["Clinical Activity": "VSAC; SINGLE_QUESTION_ALCOHOL_SCREENING"]
+                    union "Quality Codes Indicating Unhealthy Alcohol Use"
+                    union "Quality Codes Indicating No or Minimal Alcohol Use"
+                )   AlcoholScreening
+                where   AlcoholScreening.start_datetime during Interval[encounter.start_date - 12 months, encounter.start_date]
+           )
+        sort by AlcoholScreening.start_datetime 
+    ) MostRecentAlcoholScreening
+    return MostRecentAlcoholScreening.start_datetime
+
+define "Quality Codes Indicating Unhealthy Alcohol Use"
+    ["Clinical Activity": "MIPS; 431_PERFORMANCE_MET_G2196"]
+    union ["Clinical Activity": "MIPS; 431_PERFORMANCE_MET_G9621"]
+    union ["Clinical Activity": "MIPS; 431_PERFORMANCE_MET_G2200"]
+    union ["Clinical Activity": "MIPS; 431_PERFORMANCE_NOT_MET_G2202"]
+
+define "Quality Codes Indicating No or Minimal Alcohol Use"
+    ["Clinical Activity": "MIPS; 431_PERFORMANCE_MET_G2197"]
+    union ["Clinical Activity": "MIPS; 431_PERFORMANCE_MET_G9622"]
+
+*/
+query queryYear2026Mips431SharedMostRecentScreening(ClinicalActivity $latestEncounter, ClinicalActivity $mostRecentScreening)
+    $mostRecentScreening:= ClinicalActivity() from accumulate (
+        $screening: ClinicalActivity(
+            withValueSet("AbleYear2026", "AUDIT_SCREENING") ||
+            withValueSet("AbleYear2026", "AUDIT_C_SCREENING") ||
+            withValueSet("VsacYear2026", "SINGLE_QUESTION_ALCOHOL_SCREENING") ||
+            withValueSet("MipsYear2026", "431_PERFORMANCE_MET_G2196") ||
+            withValueSet("MipsYear2026", "431_PERFORMANCE_MET_G9621") ||
+            withValueSet("MipsYear2026", "431_PERFORMANCE_MET_G2200") ||
+            withValueSet("MipsYear2026", "431_PERFORMANCE_NOT_MET_G2202") ||
+            withValueSet("MipsYear2026", "431_PERFORMANCE_MET_G2197") ||
+            withValueSet("MipsYear2026", "431_PERFORMANCE_MET_G9622"),
+            startsDuring($latestEncounter.startDate.minusMonths(12), $latestEncounter.startDate)
+        ),
+        latestClinicalActivity($screening)
+    )
+end
+
+/*
+define "Most Recent Alcohol Screening Indicates Alcohol User".org:
+    (   ["Clinical Activity": "ABLE; AUDIT_SCREENING"] A
+            where A.result >= 8
+            union   ["Clinical Activity": "ABLE; AUDIT_C_SCREENING"] A
+                    where   A.result >= 4
+                            and "Patient Characteristic Sex" = "Male"
+            union   ["Clinical Activity": "ABLE; AUDIT_C_SCREENING"] A
+                    where   A.result >= 3
+                            and "Patient Characteristic Sex" = "Female"
+            union   ["Clinical Activity": "VSAC; SINGLE_QUESTION_ALCOHOL_SCREENING"] S 
+                    where S.result >=1  
+            union  "Quality Codes Indicating Unhealthy Alcohol Use"
+        ) PositiveAlcoholScreening
+        where   PositiveAlcoholScreening.start_datetime = "Most Recent Alcohol Screening Datetime".org.start_datetime
+        and not exists "Most Recent Alcohol Screening Indicates Alcohol Non User".org
+    
+define "Quality Codes Indicating Unhealthy Alcohol Use"
+    ["Clinical Activity": "MIPS; 431_PERFORMANCE_MET_G2196"]
+    union ["Clinical Activity": "MIPS; 431_PERFORMANCE_MET_G9621"]
+    union ["Clinical Activity": "MIPS; 431_PERFORMANCE_MET_G2200"]
+    union ["Clinical Activity": "MIPS; 431_PERFORMANCE_NOT_MET_G2202"]
+*/
+query queryYear2026Mips431SharedMostRecentAlcoholScreeningIndicatesAlcoholUser(Patient $patient, ClinicalActivity $mostRecentScreening, ClinicalActivity $result)
+    // "Most Recent Alcohol Screening Indicates Alcohol User"
+    $result:= ClinicalActivity(
+        withValueSet("AbleYear2026", "AUDIT_SCREENING"),
+        resultAsDecimal >= 8,
+        startDatetime != null && startDatetime.equals($mostRecentScreening.startDatetime)
+    )
+    or $result:= ClinicalActivity(
+        withValueSet("AbleYear2026", "AUDIT_C_SCREENING"),
+        $patient.isMale(),
+        resultAsDecimal >= 4,
+        startDatetime != null && startDatetime.equals($mostRecentScreening.startDatetime)
+    )
+    or $result:= ClinicalActivity(
+        withValueSet("AbleYear2026", "AUDIT_C_SCREENING"),
+        $patient.isFemale(),
+        resultAsDecimal >= 3,
+        startDatetime != null && startDatetime.equals($mostRecentScreening.startDatetime)
+    )
+    or $result:= ClinicalActivity(
+        withValueSet("VsacYear2026", "SINGLE_QUESTION_ALCOHOL_SCREENING"),
+        resultAsDecimal >= 1,
+        startDatetime != null && startDatetime.equals($mostRecentScreening.startDatetime)
+    )
+    or $result:= ClinicalActivity(
+        withValueSet("MipsYear2026", "431_PERFORMANCE_MET_G2196") || 
+        withValueSet("MipsYear2026", "431_PERFORMANCE_MET_G9621") || 
+        withValueSet("MipsYear2026", "431_PERFORMANCE_MET_G2200") || 
+        withValueSet("MipsYear2026", "431_PERFORMANCE_NOT_MET_G2202"),
+        startDatetime != null && startDatetime.equals($mostRecentScreening.startDatetime)
+    )
+end
+
+/*
+define "Most Recent Alcohol Screening Indicates Alcohol Non User".org:
+     (   ["Clinical Activity": "ABLE; AUDIT_SCREENING"] A
+            where A.result < 8
+            union   ["Clinical Activity": "ABLE; AUDIT_C_SCREENING"] A
+                    where   A.result < 4
+                            and "Patient Characteristic Sex" = "Male"
+            union   ["Clinical Activity": "ABLE; AUDIT_C_SCREENING"] A
+                    where   A.result < 3
+                            and "Patient Characteristic Sex" = "Female"
+            union   ["Clinical Activity": "VSAC; SINGLE_QUESTION_ALCOHOL_SCREENING"] S 
+                    where S.result = 0
+           union  "Quality Codes Indicating No or Minimal Alcohol Use"
+        ) NegativeAlcoholScreening
+        where NegativeAlcoholScreening.start_datetime = "Most Recent Alcohol Screening Datetime".org.start_datetime
+
+define "Quality Codes Indicating No or Minimal Alcohol Use"
+    ["Clinical Activity": "MIPS; 431_PERFORMANCE_MET_G2197"]
+    union ["Clinical Activity": "MIPS; 431_PERFORMANCE_MET_G9622"]
+*/
+query queryYear2026Mips431SharedMostRecentAlcoholScreeningIndicatesAlcoholNonUser(Patient $patient, ClinicalActivity $mostRecentScreening, ClinicalActivity $result)
+    // "Most Recent Alcohol Screening Indicates Alcohol User"
+    $result:= ClinicalActivity(
+        withValueSet("AbleYear2026", "AUDIT_SCREENING"),
+        resultAsDecimal < 8,
+        startDatetime != null && startDatetime.equals($mostRecentScreening.startDatetime)
+    )
+    or $result:= ClinicalActivity(
+        withValueSet("AbleYear2026", "AUDIT_C_SCREENING"),
+        $patient.isMale(),
+        resultAsDecimal < 4,
+        startDatetime != null && startDatetime.equals($mostRecentScreening.startDatetime)
+    )
+    or $result:= ClinicalActivity(
+        withValueSet("AbleYear2026", "AUDIT_C_SCREENING"),
+        $patient.isFemale(),
+        resultAsDecimal < 3,
+        startDatetime != null && startDatetime.equals($mostRecentScreening.startDatetime)
+	)
+    or $result:= ClinicalActivity(
+        withValueSet("VsacYear2026", "SINGLE_QUESTION_ALCOHOL_SCREENING"),
+        resultAsDecimal == 0,
+        startDatetime != null && startDatetime.equals($mostRecentScreening.startDatetime)
+    )
+    or $result:= ClinicalActivity(
+        withValueSet("MipsYear2026", "431_PERFORMANCE_MET_G2197") || 
+        withValueSet("MipsYear2026", "431_PERFORMANCE_MET_G9622"),
+        startDatetime != null && startDatetime.equals($mostRecentScreening.startDatetime)
+    )
+end
+
+/*
+define "Denominator Exclusion M1165":
+  *
+  * Option ID: M1165
+  *
+    (sharedHospice."Has Hospice"
+    and exists "Denominator".org) HospiceOrg
+    ,
+    return
+    ExtendedMeasureResultV2(
+        HospiceOrg
+        , 'Evidence of Hospice' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator Exclusion
+        , option_id = M1165  
+    )
+*/
+rule 'Year2026.Mips431.Exclusion.M1165.Org'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity,
+        measure == 'Year2026.Mips431Rate1' ||
+        measure == 'Year2026.Mips431Rate2' ||
+        measure == 'Year2026.Mips431Rate3',
+        $measure: measure, 
+        type == EncounterDenominatorType.ORG
+    )
+    $patient: Patient()
+    not (exists Year2026Mips431SharedExclusionHospiceOrg())
+    $result: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedHashospiceInMeasurementPeriod($program, $hospiceResult;),
+        latestQdmDatatype($hospiceResult)
+    )
+then
+    insert(new Year2026Mips431SharedExclusionHospiceOrg());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, "M1165");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Evidence of Hospice", "M1165", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips431.Exclusion.M1165.Group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity,
+        measure == 'Year2026.Mips431Rate1' ||
+        measure == 'Year2026.Mips431Rate2' ||
+        measure == 'Year2026.Mips431Rate3',
+        $measure: measure, 
+        type == EncounterDenominatorType.GROUP
+    )
+    $patient: Patient()
+    not (exists Year2026Mips431SharedExclusionHospiceGroup($encounter.groupExternalId == group))
+    $result: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedHashospiceInMeasurementPeriod($program, $hospiceResult;),
+        latestQdmDatatype($hospiceResult)
+    )
+then
+    insert(new Year2026Mips431SharedExclusionHospiceGroup($encounter.groupExternalId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalId, $measure, MeasureStatusValue.EXCLUSION, "M1165");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.groupExternalId, "Evidence of Hospice", "M1165", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips431.Exclusion.M1165.Provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity,
+        measure == 'Year2026.Mips431Rate1' ||
+        measure == 'Year2026.Mips431Rate2' ||
+        measure == 'Year2026.Mips431Rate3',
+        $measure: measure,
+        type == EncounterDenominatorType.PROVIDER
+    )
+    $patient: Patient()
+    not (exists Year2026Mips431SharedExclusionHospiceProvider($encounter.providerExternalId == provider))
+    $result: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedHashospiceInMeasurementPeriod($program, $hospiceResult;),
+        latestQdmDatatype($hospiceResult)
+    )
+then
+    insert(new Year2026Mips431SharedExclusionHospiceProvider($encounter.providerExternalId));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, "M1165");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Evidence of Hospice", "M1165", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion M1164"
+  *
+  * Option ID: M1164
+  *
+    ((["Clinical Activity": "MIPS; 383_431_DEMENTIA"] D
+        where D.start_date on or before end of the "Measurement Period"
+    union ["Clinical Activity": "MIPS; 431_DENOMINATOR_EXCLUSION_M1164"] Exclusion
+        where Exclusion.start_date during "Measurement Period")
+    and exists "Denominator".org) DementiaOrg
+    ,
+    return
+    ExtendedMeasureResultV2(
+        DementiaOrg
+        , 'Evidence of Dementia' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator Exclusion
+        , option_id = M1164  
+    )
+*/
+rule 'Year2026.Mips431.Exclusion.M1164.Org'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity,
+        measure == 'Year2026.Mips431Rate1' ||
+        measure == 'Year2026.Mips431Rate2' ||
+        measure == 'Year2026.Mips431Rate3',
+        $measure: measure,
+        type == EncounterDenominatorType.ORG
+    )
+    $patient: Patient()
+    not (exists Year2026Mips431SharedExclusionDementiaOrg())
+    $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "383_431_DEMENTIA"),
+            startsOnOrBefore($program.measurementPeriod.end)
+        ),
+        latestClinicalActivity($c)
+    )
+    or $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "431_DENOMINATOR_EXCLUSION_M1164"),
+            startsDuring($program.measurementPeriod)
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips431SharedExclusionDementiaOrg());
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, "M1164");
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Evidence of Dementia", "M1164", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips431.Exclusion.M1164.Group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity,
+        measure == 'Year2026.Mips431Rate1' ||
+        measure == 'Year2026.Mips431Rate2' ||
+        measure == 'Year2026.Mips431Rate3',
+        $measure: measure,
+        type == EncounterDenominatorType.GROUP
+    )
+    $patient: Patient()
+    not (exists Year2026Mips431SharedExclusionDementiaGroup($encounter.groupExternalId == group))
+    $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "383_431_DEMENTIA"),
+            startsOnOrBefore($program.measurementPeriod.end)
+        ),
+        latestClinicalActivity($c)
+    )
+    or $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "431_DENOMINATOR_EXCLUSION_M1164"),
+            startsDuring($program.measurementPeriod)
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips431SharedExclusionDementiaGroup($encounter.groupExternalId));
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalId, $measure, MeasureStatusValue.EXCLUSION, "M1164");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.groupExternalId, "Evidence of Dementia", "M1164", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips431.Exclusion.M1164.Provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity,
+        measure == 'Year2026.Mips431Rate1' ||
+        measure == 'Year2026.Mips431Rate2' ||
+        measure == 'Year2026.Mips431Rate3',
+        $measure: measure,
+        type == EncounterDenominatorType.PROVIDER
+    )
+    $patient: Patient()
+    not(Year2026Mips431SharedExclusionHospiceProvider($encounter.providerExternalId == provider))
+    $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "383_431_DEMENTIA"),
+            startsOnOrBefore($program.measurementPeriod.end)
+        ),
+        latestClinicalActivity($c)
+    )
+    or $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "431_DENOMINATOR_EXCLUSION_M1164"),
+            startsDuring($program.measurementPeriod)
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips431SharedExclusionHospiceProvider($encounter.providerExternalId));
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, "M1164");
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Evidence of Dementia", "M1164", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end

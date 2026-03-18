@@ -1,0 +1,148 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+
+global PatientResults controlSet;
+
+/*
+define "Exclusion Hospice or Palliative Care".org:
+   *
+   * Option ID: M1450
+   *
+  (exists  ( ["Clinical Activity": "VSAC; HOSPICE_ENCOUNTER"]
+            union ["Clinical Activity": "VSAC; HOSPICE_CARE_AMBULATORY"]
+            union ["Clinical Activity": "VSAC; HOSPICE_DIAGNOSIS"]
+            union ["Clinical Activity": "VSAC; PALLIATIVE_CARE_ENCOUNTER"]
+            union ["Clinical Activity": "VSAC; PALLIATIVE_CARE_INTERVENTION"]
+            union ["Clinical Activity": "VSAC; PALLIATIVE_CARE_DIAGNOSIS"]
+            union ["Diagnosis": "VSAC; HOSPICE_ENCOUNTER"]
+            union ["Diagnosis": "VSAC; HOSPICE_CARE_AMBULATORY"]
+            union ["Diagnosis": "VSAC; HOSPICE_DIAGNOSIS"]
+            union ["Diagnosis": "VSAC; PALLIATIVE_CARE_ENCOUNTER"]
+            union ["Diagnosis": "VSAC; PALLIATIVE_CARE_INTERVENTION"]
+            union ["Diagnosis": "VSAC; PALLIATIVE_CARE_DIAGNOSIS"] ) HosPallCare
+      where ( (HosPallCare.start_date during Interval[start of "Measurement Period" - 14 months, end of "Measure Assessment Period".org]  )
+                or  (   HosPallCare.stop_date is not null or empty
+                        and Interval[HosPallCare.start_date, HosPallCare.stop_date] overlaps Interval[start of "Measurement Period" - 14 months, end of "Measure Assessment Period".org]))
+  or exists( ["Clinical Activity": "MIPS; 370_DENOMINATOR_EXCLUSION_M1450_HOSPICE_OR_PALLIATIVE_CARE"] QC
+                where QC.start_date during "Measurement Period" ) ) HosPallCareExclOrg
+
+define "Measure Assessment Period":
+  "Earliest Index Visit" Index
+  return Interval[Index.start_date, Index.start_date + 14 months] 
+  
+*/
+query queryMips370Shared2026HospiceOrPalliativeCare(Program $program, ClinicalActivity $encounter, QdmDatatype $result)
+    $result:= ClinicalActivity(
+        withValueSet("VsacYear2026", "HOSPICE_ENCOUNTER") ||
+        withValueSet("VsacYear2026", "HOSPICE_CARE_AMBULATORY") ||
+        withValueSet("VsacYear2026", "HOSPICE_DIAGNOSIS") ||
+        withValueSet("VsacYear2026", "PALLIATIVE_CARE_ENCOUNTER") ||
+        withValueSet("VsacYear2026", "PALLIATIVE_CARE_INTERVENTION") ||
+        withValueSet("VsacYear2026", "PALLIATIVE_CARE_DIAGNOSIS"),
+        (
+            (overlaps($program.measurementPeriod.start.minusMonths(14), $encounter.startDate.plusMonths(14)) && stopDate != null) ||
+            startsDuring($program.measurementPeriod.start.minusMonths(14), $encounter.startDate.plusMonths(14))
+        )
+    )
+    or $result:= Diagnosis(
+        withValueSet("VsacYear2026", "HOSPICE_ENCOUNTER") ||
+        withValueSet("VsacYear2026", "HOSPICE_CARE_AMBULATORY") ||
+        withValueSet("VsacYear2026", "HOSPICE_DIAGNOSIS") ||
+        withValueSet("VsacYear2026", "PALLIATIVE_CARE_ENCOUNTER") ||
+        withValueSet("VsacYear2026", "PALLIATIVE_CARE_INTERVENTION") ||
+        withValueSet("VsacYear2026", "PALLIATIVE_CARE_DIAGNOSIS"),
+        (
+            (overlaps($program.measurementPeriod.start.minusMonths(14), $encounter.startDate.plusMonths(14)) && stopDate != null) ||
+            startsDuring($program.measurementPeriod.start.minusMonths(14), $encounter.startDate.plusMonths(14))
+        )
+    )
+    or $result:= ClinicalActivity(
+        withValueSet("MipsYear2026", "370_DENOMINATOR_EXCLUSION_M1450_HOSPICE_OR_PALLIATIVE_CARE"),
+        startsDuring($program.measurementPeriod)
+    )
+end
+
+/*
+exists( ["Diagnosis": "MIPS; 370_BIPOLAR_DISORDER"] D
+                where D.start_date before end of "Measure Assessment Period".org 
+          union ["Clinical Activity": "MIPS; 370_DENOMINATOR_EXCLUSION_M1447_BIPOLAR"] QC
+                where QC.start_date during "Measurement Period" ) BipolarExclOrg
+*/
+query queryYear2026Mips370SharedExclusionBipolar(Program $program, ClinicalActivity $encounter, QdmDatatype $result)
+    $result:=Diagnosis(
+        withValueSet("MipsYear2026", "370_BIPOLAR_DISORDER"),
+        startsBefore($encounter.startDate.plusMonths(14))
+    ) or $result:=ClinicalActivity(
+        withValueSet("MipsYear2026", "370_DENOMINATOR_EXCLUSION_M1447_BIPOLAR"),
+        startsDuring($program.measurementPeriod)
+    )
+end
+
+/*
+["Diagnosis": "MIPS; 370_PERSONALITY_DISORDER"] D
+                where D.start_date before end of "Measure Assessment Period".org 
+           union ["Clinical Activity": "MIPS; 370_DENOMINATOR_EXCLUSION_M1448_PERSONALITY_DISORDER"] QC
+                where QC.start_date during "Measurement Period" ) PersonalityExclOrg
+*/
+query queryYear2026Mips370SharedExclusionPersonality(Program $program, ClinicalActivity $encounter, QdmDatatype $result)
+    $result:=Diagnosis(
+        withValueSet("MipsYear2026", "370_PERSONALITY_DISORDER"),
+        startsBefore($encounter.startDate.plusMonths(14))
+    ) or $result:=ClinicalActivity(
+        withValueSet("MipsYear2026", "370_DENOMINATOR_EXCLUSION_M1448_PERSONALITY_DISORDER"),
+        startsDuring($program.measurementPeriod)
+    )
+end
+
+/*
+["Diagnosis": "MIPS; 370_SCHIZOPHRENIA"]
+                where D.start_date before end of "Measure Assessment Period".org
+          union ["Clinical Activity": "MIPS; 370_DENOMINATOR_EXCLUSION_M1449_SCHIZOPHRENIA"] QC
+                where QC.start_date during "Measurement Period" ) SchizophreniaExclOrg
+*/
+query queryYear2026Mips370SharedExclusionSchizophrenia(Program $program, ClinicalActivity $encounter, QdmDatatype $result)
+    $result:=Diagnosis(
+        withValueSet("MipsYear2026", "370_SCHIZOPHRENIA"),
+        startsBefore($encounter.startDate.plusMonths(14))
+    ) or $result:=ClinicalActivity(
+        withValueSet("MipsYear2026", "370_DENOMINATOR_EXCLUSION_M1449_SCHIZOPHRENIA"),
+        startsDuring($program.measurementPeriod)
+    )
+end
+
+/*
+["Diagnosis": "MIPS; 370_PERVASIVE_DEVELOPMENT_DISORDER"] D
+              where D.start_date before end of "Measure Assessment Period".org
+          union ["Clinical Activity": "MIPS; 370_DENOMINATOR_EXCLUSION_M1451_PERVASIVE_DEVELOPMENTAL_DISORDER"] QC
+                where QC.start_date during "Measurement Period" ) PervasiveExclOrg
+*/
+query queryYear2026Mips370SharedExclusionPervasive(Program $program, ClinicalActivity $encounter, QdmDatatype $result)
+    $result:=Diagnosis(
+        withValueSet("MipsYear2026", "370_PERVASIVE_DEVELOPMENT_DISORDER"),
+        startsBefore($encounter.startDate.plusMonths(14))
+    ) or $result:=ClinicalActivity(
+        withValueSet("MipsYear2026", "370_DENOMINATOR_EXCLUSION_M1451_PERVASIVE_DEVELOPMENTAL_DISORDER"),
+        startsDuring($program.measurementPeriod)
+    )
+end
+
+/*
+["Diagnosis": "ABLE; EXPIRED"] 
+            union ["Clinical Activity": "ABLE; EXPIRED"])
+                  where D.start_date before end of "Measure Assessment Period".org )
+            union ["Clinical Activity": "MIPS; 370_DENOMINATOR_EXCLUSION_M1446_DECEASED"] QC
+                  where QC.start_date during "Measurement Period" ) DeathExclOrg
+*/
+query queryYear2026Mips370SharedExclusionDeath(Program $program, ClinicalActivity $encounter, QdmDatatype $result)
+    $result:=Diagnosis(
+        withValueSet("AbleYear2026", "EXPIRED"),
+        startsBefore($encounter.startDate.plusMonths(14))
+    ) or $result:=ClinicalActivity(
+        withValueSet("MipsYear2026", "370_DENOMINATOR_EXCLUSION_M1446_DECEASED"),
+        startsDuring($program.measurementPeriod)
+    )
+end
+

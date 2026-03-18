@@ -1,0 +1,380 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+import com.ablehealth.enums.extendedmeaures.*;
+
+import accumulate com.ablehealth.functions.LatestQdmDatatypeAccumulateFunction latestQdmDataType;
+
+global PatientResults controlSet;
+
+declare Year2026Mips039DenominatorEMR
+end
+
+declare Year2026Mips039PerformanceMet
+    encounter: QdmDatatype
+end
+
+declare Year2026Mips039ExclusionHospiceEMROrg
+end
+
+declare Year2026Mips039ExclusionHospiceEMRGroup
+    groupExternalId: String
+end
+
+declare Year2026Mips039ExclusionHospiceEMRProvider
+    providerExternalId: String
+end
+
+declare Year2026Mips039ExclusionOsteoporosisEMROrg
+end
+declare Year2026Mips039ExclusionOsteoporosisEMRGroup
+    groupExternalId: String
+end
+declare Year2026Mips039ExclusionOsteoporosisEMRProvider
+    providerExternalId: String
+end
+declare Year2026Mips039PerformanceMetEMROrg
+end
+declare Year2026Mips039PerformanceMetEMRGroup
+    groupExternalId: String
+end
+declare Year2026Mips039PerformanceMetEMRProvider
+    providerExternalId: String
+end
+
+/*
+define "Denominator":
+  exists ("Denominator Encounter") Encounter
+  ,
+  if exists "Denominator"
+  from ("Denominator Encounter") Encounter
+  return
+  ExtendedMeasureResultV2(
+      Encounter //return 1 record even if multiple exist
+      , 'Denominator Encounter' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Denominator
+      , option_id = all
+  )
+*/
+rule 'Year2026.Mips039.Denominator'
+when
+    $program: Program(rules contains "measure.Mips.2026.Mips039")
+    $encounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "039_ENCOUNTER"),
+        startsDuring($program.measurementPeriod)
+    )
+    Patient(
+        isFemale(),
+        getAgeInYearsAt($encounter.startDate) >= 65 &&
+        getAgeInYearsAt($encounter.startDate) < 85
+    )
+then
+    insert(new EncounterDenominator($program, $encounter, "Year2026.Mips039"));
+end
+
+rule 'Year2026.Mips039.Denominator.EMR'
+salience -100
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips039")
+    $patient: Patient()
+    and not (
+        exists Year2026Mips039DenominatorEMR()
+    )
+then
+    insert(new Year2026Mips039DenominatorEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "G9690", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "M1153", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "G8399", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Denominator Encounter", "G8400", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion Hospice":
+  * Option ID: G9690 *
+  exists (sharedHospice."Has Hospice") HospiceEvidence
+  ,
+  if exists "Denominator Exclusion Hospice" return
+  ExtendedMeasureResultV2(
+      HospiceEvidence
+      , 'Evidence of Hospice' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Exclusion
+      , option_id = G9690
+  )
+*/
+
+rule 'Year2026.Mips039.Exclusion.Hospice'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips039")
+    $patient: Patient()
+    exists queryYear2026MipsSharedHashospiceInMeasurementPeriod($program, $hospice;)
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, "G9690");
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, "G9690");
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalId, $measure, MeasureStatusValue.EXCLUSION, "G9690");
+end
+
+rule 'Year2026.Mips039.Exclusion.Hospice.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips039")
+    $patient: Patient()
+    Year2026MipsSharedHasHospice($program == program, $hospice: hospice)
+    and not (
+        exists Year2026Mips039ExclusionHospiceEMROrg()
+    )
+then
+    insert(new Year2026Mips039ExclusionHospiceEMROrg());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Evidence of Hospice", "G9690", PopulationEnum.denominator_exclusion, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end
+
+rule 'Year2026.Mips039.Exclusion.Hospice.Group.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips039",
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    Year2026MipsSharedHasHospice($program == program, $hospice: hospice)
+    and not (
+        exists Year2026Mips039ExclusionHospiceEMRGroup(groupExternalId == $groupId)
+    )
+then
+    insert(new Year2026Mips039ExclusionHospiceEMRGroup($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Evidence of Hospice", "G9690", PopulationEnum.denominator_exclusion, $hospice, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $hospice.startDate.toString());
+end
+
+rule 'Year2026.Mips039.Exclusion.Hospice.Provider.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips039",
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    Year2026MipsSharedHasHospice($program == program, $hospice: hospice)
+    and not (
+        exists Year2026Mips039ExclusionHospiceEMRProvider(providerExternalId == $encounter.providerExternalId)
+    )
+then
+    insert(new Year2026Mips039ExclusionHospiceEMRProvider($encounter.providerExternalId));
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Evidence of Hospice", "G9690", PopulationEnum.denominator_exclusion, $hospice, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $hospice.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion Osteoporosis":
+  * Option ID: M1153 *
+  ("Denominator Encounter" Encounter
+        with (["Diagnosis": "MIPS; 039_OSTEOPOROSIS"]
+        union ["Clinical Activity": "MIPS; 039_DENOMINATOR_EXCLUSION_M1153_OSTEOPOROSIS"]) Osteo
+            such that (Osteo.stop_date !=null
+                and Encounter.start_date during Interval[Osteo.start_date, Osteo.stop_date])
+            or (Osteo.stop_date = null
+                and Osteo.start_date starts on or before Encounter.start_date)) ExclusionEncounter
+  ,
+  if exists "Denominator Exclusion Osteoporosis" return
+  ExtendedMeasureResultV2(
+      ExclusionEncounter
+      , 'Osteoporosis Diagnosis' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Exclusion
+      , option_id = M1153
+  )
+*/
+query queryYear2026Mips039ExclusionOsteoporosisOrgEMR(ClinicalActivity $encounter, QdmDatatype $result)
+    $result:=Diagnosis(
+        withValueSet("MipsYear2026", "039_OSTEOPOROSIS"),
+        (stopDate != null && $encounter.startsDuring(this)) ||
+        (stopDate == null && startsOnOrBefore($encounter.startDate))
+    ) or $result:=ClinicalActivity(
+        withValueSet("MipsYear2026", "039_DENOMINATOR_EXCLUSION_M1153_OSTEOPOROSIS"),
+        (stopDate != null && $encounter.startsDuring(this)) ||
+        (stopDate == null && startsOnOrBefore($encounter.startDate))
+    )
+end
+
+rule 'Year2026.Mips039.Exclusion.Osteoporosis'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips039")
+    $patient: Patient()
+    exists queryYear2026Mips039ExclusionOsteoporosisOrgEMR($encounter, $result;);
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, "M1153");
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, "M1153");
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalId, $measure, MeasureStatusValue.EXCLUSION, "M1153");
+end
+
+rule 'Year2026.Mips039.Exclusion.Osteoporosis.Org.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips039")
+    $patient: Patient()
+    $latestRecord: QdmDatatype() from accumulate (
+        queryYear2026Mips039ExclusionOsteoporosisOrgEMR($encounter, $result;),
+        latestQdmDataType($result)
+    )
+    and not (
+        exists Year2026Mips039ExclusionOsteoporosisEMROrg()
+    )
+then
+    insert(new Year2026Mips039ExclusionOsteoporosisEMROrg());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Osteoporosis Diagnosis", "M1153", PopulationEnum.denominator_exclusion, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+end
+
+rule 'Year2026.Mips039.Exclusion.Osteoporosis.Group.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips039",
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    $latestRecord: QdmDatatype() from accumulate (
+        queryYear2026Mips039ExclusionOsteoporosisOrgEMR($encounter, $result;),
+        latestQdmDataType($result)
+    )
+    and not (
+        exists Year2026Mips039ExclusionOsteoporosisEMRGroup($groupId == groupExternalId)
+    )
+then
+    insert(new Year2026Mips039ExclusionOsteoporosisEMRGroup($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Osteoporosis Diagnosis", "M1153", PopulationEnum.denominator_exclusion, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+end
+
+rule 'Year2026.Mips039.Exclusion.Osteoporosis.Provider.EMR'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips039",
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    $latestRecord: QdmDatatype() from accumulate (
+        queryYear2026Mips039ExclusionOsteoporosisOrgEMR($encounter, $result;),
+        latestQdmDataType($result)
+    )
+    and not (
+        exists Year2026Mips039ExclusionOsteoporosisEMRProvider($encounter.providerExternalId == providerExternalId)
+    )
+then
+    insert(new Year2026Mips039ExclusionOsteoporosisEMRProvider($encounter.providerExternalId));
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Osteoporosis Diagnosis", "M1153", PopulationEnum.denominator_exclusion, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met G8399":
+   * Option ID: G8399 *
+  (["Clinical Activity": "MIPS; 039_PERFORMANCE_MET_G8399"]
+         union ["Clinical Activity": "Able; AXIAL_DUAL_ENERGY_X_RAY_ABSORPTIOMETRY_DXA"]
+         union ["Clinical Activity": "VSAC; CENTRAL_DXA_OF_HIP_OR_SPINE"]
+         union ["LaboratoryTestPerformed": "VSAC; CENTRAL_DXA_OF_HIP_OR_SPINE"]) DXA
+    where DXA.start_date before end of "Measurement Period"
+  ,
+  if exists "Numerator Performance Met G8399" return
+  ExtendedMeasureResultV2(
+      DXA //return 1 record even if multiple exist
+      , 'Osteoporosis Screening' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Numerator
+      , option_id = G8399
+  )
+*/
+rule 'Year2026.Mips039.Success.G8399.ClinicalActivity'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips039")
+    $patient: Patient()
+    $dxa: ClinicalActivity(
+        withValueSet("MipsYear2026", "039_PERFORMANCE_MET_G8399") ||
+        withValueSet("AbleYear2026", "AXIAL_DUAL_ENERGY_X_RAY_ABSORPTIOMETRY_DXA") ||
+        withValueSet("VsacYear2026", "CENTRAL_DXA_OF_HIP_OR_SPINE"),
+        startsBefore($program.measurementPeriod.end)
+    )
+then
+    insert(new Year2026Mips039PerformanceMet($dxa));
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "G8399");
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "G8399");
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalId, $measure, MeasureStatusValue.SUCCESS, "G8399");
+end
+
+rule 'Year2026.Mips039.Success.G8399.LaboratoryTestPerformed'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips039")
+    $patient: Patient()
+    $dxa: LaboratoryTestPerformed(
+        withValueSet("VsacYear2026", "CENTRAL_DXA_OF_HIP_OR_SPINE"),
+        startsBefore($program.measurementPeriod.end)
+    )
+then
+    insert(new Year2026Mips039PerformanceMet($dxa));
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.SUCCESS, "G8399");
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "G8399");
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalId, $measure, MeasureStatusValue.SUCCESS, "G8399");
+end
+
+rule 'Year2026.Mips039.Success.G8399.EMR.Org'
+salience -100
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips039")
+    $patient: Patient()
+    $latestRecord: QdmDatatype() from accumulate (
+        Year2026Mips039PerformanceMet($dxa: encounter),
+        latestQdmDataType($dxa)
+    )
+    and not (
+        exists Year2026Mips039PerformanceMetEMROrg()
+    )
+then
+    insert(new Year2026Mips039PerformanceMetEMROrg());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Osteoporosis Screening", "G8399", PopulationEnum.numerator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+end
+
+rule 'Year2026.Mips039.Success.G8399.EMR.Group'
+salience -100
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips039",
+        $encounter.isPresent($encounter.groupExternalIds))
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    $latestRecord: QdmDatatype() from accumulate (
+        Year2026Mips039PerformanceMet($dxa: encounter),
+        latestQdmDataType($dxa)
+    )
+    and not (
+        exists Year2026Mips039PerformanceMetEMRGroup(groupExternalId == $groupId)
+    )
+then
+    insert(new Year2026Mips039PerformanceMetEMRGroup($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Osteoporosis Screening", "G8399", PopulationEnum.numerator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+end
+
+rule 'Year2026.Mips039.Success.G8399.EMR.Provider'
+salience -100
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips039",
+        $encounter.isPresent($encounter.providerExternalId))
+    $patient: Patient()
+    $latestRecord: QdmDatatype() from accumulate (
+        Year2026Mips039PerformanceMet($dxa: encounter),
+        latestQdmDataType($dxa)
+    )
+    and not (
+        exists Year2026Mips039PerformanceMetEMRProvider(providerExternalId == $encounter.providerExternalId)
+    )
+then
+    insert(new Year2026Mips039PerformanceMetEMRProvider($encounter.providerExternalId));
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Osteoporosis Screening", "G8399", PopulationEnum.numerator, $latestRecord, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $latestRecord.startDate.toString());
+end
+
+/*
+define "Numerator Performance Not Met G8400".all:
+  *
+  * Option ID: G8400
+  *
+   not "Denominator Exclusion"
+   and not "Numerator Performance Met G8399"
+*/
+rule 'Year2026.Mips039.Gap.G8400'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure, measure == "Year2026.Mips039")
+    $patient: Patient()
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.GAP, "G8400");
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, "G8400");
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalId, $measure, MeasureStatusValue.GAP, "G8400");
+end

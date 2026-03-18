@@ -1,0 +1,2957 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+import com.ablehealth.enums.extendedmeaures.*;
+import com.google.common.base.Strings;
+
+import accumulate com.ablehealth.functions.EarliestMedicationAccumulateFunction earliestMedication;
+import accumulate com.ablehealth.functions.LatestQdmDatatypeAccumulateFunction latestQdmDataType;
+import accumulate com.ablehealth.functions.LatestMedicationAccumulateFunction latestMedication;
+
+global PatientResults controlSet;
+
+declare Year2026Mips238Rate2SchizophreniaOrBipolar
+end
+
+declare Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGAD
+end
+
+declare Year2026Mips238Rate2SchizophreniaOrBipolarOrgEMR
+end
+declare Year2026Mips238Rate2SchizophreniaOrBipolarGroupEMR
+    groupId: String
+end
+declare Year2026Mips238Rate2SchizophreniaOrBipolarProviderEMR
+end
+
+declare Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGADOrgEMR
+end
+declare Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGADGroupEMR
+    groupId: String
+end
+declare Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGADProviderEMR
+end
+
+declare Year2026Mips238Rate2ExclusionHospiceOrgEMR
+end
+declare Year2026Mips238Rate2ExclusionHospiceGroupEMR
+    groupId: String
+end
+declare Year2026Mips238Rate2ExclusionHospiceProviderEMR
+end
+
+declare Year2026Mips238Rate2ExclusionPalliativeCareOrgEMR
+end
+declare Year2026Mips238Rate2ExclusionPalliativeCareGroupEMR
+    groupId: String
+end
+declare Year2026Mips238Rate2ExclusionPalliativeCareProviderEMR
+end
+
+declare Year2026Mips238Rate2SuccessG9367OrgEMR
+end
+declare Year2026Mips238Rate2SuccessG9367GroupEMR
+    groupId: String
+end
+declare Year2026Mips238Rate2SuccessG9367ProviderEMR
+end
+
+declare Year2026Mips238Rate2GapG0032OrgEMR
+end
+declare Year2026Mips238Rate2GapG0032GroupEMR
+    groupId: String
+end
+declare Year2026Mips238Rate2GapG0032ProviderEMR
+end
+
+declare Year2026Mips238Rate2GapG0033OrgEMR
+end
+declare Year2026Mips238Rate2GapG0033GroupEMR
+    groupId: String
+end
+declare Year2026Mips238Rate2GapG0033ProviderEMR
+end
+
+declare Year2026Mips238Rate2GapG0032G0033OrgEMR
+end
+declare Year2026Mips238Rate2GapG0032G0033GroupEMR
+    groupId: String
+end
+declare Year2026Mips238Rate2GapG0032G0033ProviderEMR
+end
+
+declare Year2026Mips238Rate2GapG9368OrgEMR
+end
+declare Year2026Mips238Rate2GapG9368GroupEMR
+    groupId: String
+end
+declare Year2026Mips238Rate2GapG9368ProviderEMR
+end
+
+/*
+define "Denominator Exclusion G9741 Hospice":
+   *
+   * Option ID: G9741
+   *
+   "Denominator".all
+ 	and exists(sharedHospice."Has Hospice") HospiceEvidence
+  ,
+  if exists "Denominator Exclusion G9741 Hospice" return
+  ExtendedMeasureResultV2(
+      HospiceEvidence
+      , 'Evidence of Hospice' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Exclusion
+      , option_id = G9741
+  )
+*/
+rule 'Year2026.Mips238Rate2.Exclusion.Hospice'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    exists queryYear2026MipsSharedHashospiceInMeasurementPeriod($program, $hospice;)
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, "G9741");
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, "G9741");
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.EXCLUSION, "G9741");
+end
+
+rule 'Year2026.Mips238Rate2.Exclusion.Hospice.Org.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $hospice: QdmDatatype() from accumulate (
+        queryYear2026MipsSharedHashospiceInMeasurementPeriod($program, $result;),
+        latestQdmDataType($result)
+    )
+    and not (
+        exists Year2026Mips238Rate2ExclusionHospiceOrgEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2ExclusionHospiceOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Evidence of Hospice", "G9741", PopulationEnum.denominator_exclusion, $hospice, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $hospice.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Exclusion.Hospice.Group.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $hospice: QdmDatatype() from accumulate (
+        queryYear2026MipsSharedHashospiceInMeasurementPeriod($program, $result;),
+        latestQdmDataType($result)
+    )
+    $groupId: String() from $encounter.groupExternalIds
+    and not (
+        exists Year2026Mips238Rate2ExclusionHospiceGroupEMR(groupId == $groupId)
+    )
+then
+    insert (new Year2026Mips238Rate2ExclusionHospiceGroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Evidence of Hospice", "G9741", PopulationEnum.denominator_exclusion, $hospice, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $hospice.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Exclusion.Hospice.Provider.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $hospice: QdmDatatype() from accumulate (
+        queryYear2026MipsSharedHashospiceInMeasurementPeriod($program, $result;),
+        latestQdmDataType($result)
+    )
+    and not (
+        exists Year2026Mips238Rate2ExclusionHospiceProviderEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2ExclusionHospiceProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Evidence of Hospice", "G9741", PopulationEnum.denominator_exclusion, $hospice, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $hospice.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion G0034 Palliative Care":
+   *
+   * Option ID: G0034
+   *
+   "Denominator".all
+ 	and exists(sharedPalliativeCare.""Has Palliative Care"") PalliativeEvidence
+  ,
+  if exists "Denominator Exclusion G0034 Palliative Care" return
+  ExtendedMeasureResultV2(
+      PalliativeEvidence
+      , 'Evidence of Palliative Care' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Exclusion
+      , option_id = G0034
+  )
+*/
+rule 'Year2026.Mips238Rate2.Exclusion.PalliativeCare'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    exists queryYear2026MipsSharedPalliativeCareInMeasurementPeriod($program, $palliative;)
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.EXCLUSION, "G0034");
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.EXCLUSION, "G0034");
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.EXCLUSION, "G0034");
+end
+
+rule 'Year2026.Mips238Rate2.Exclusion.PalliativeCare.Org.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $palliative: QdmDatatype() from accumulate (
+        queryYear2026MipsSharedPalliativeCareInMeasurementPeriod($program, $result;),
+        latestQdmDataType($result)
+    )
+    and not (
+        exists Year2026Mips238Rate2ExclusionPalliativeCareOrgEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2ExclusionPalliativeCareOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Evidence of Palliative Care", "G0034", PopulationEnum.denominator_exclusion, $palliative, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $palliative.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Exclusion.PalliativeCare.Group.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $palliative: QdmDatatype() from accumulate (
+        queryYear2026MipsSharedPalliativeCareInMeasurementPeriod($program, $result;),
+        latestQdmDataType($result)
+    )
+    $groupId: String() from $encounter.groupExternalIds
+    and not (
+        exists Year2026Mips238Rate2ExclusionPalliativeCareGroupEMR(groupId == $groupId)
+    )
+then
+    insert (new Year2026Mips238Rate2ExclusionPalliativeCareGroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Evidence of Palliative Care", "G0034", PopulationEnum.denominator_exclusion, $palliative, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $palliative.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Exclusion.PalliativeCare.Provider.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $palliative: QdmDatatype() from accumulate (
+        queryYear2026MipsSharedPalliativeCareInMeasurementPeriod($program, $result;),
+        latestQdmDataType($result)
+    )
+    and not (
+        exists Year2026Mips238Rate2ExclusionPalliativeCareProviderEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2ExclusionPalliativeCareProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Evidence of Palliative Care", "G0034", PopulationEnum.denominator_exclusion, $palliative, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $palliative.startDate.toString());
+end
+
+/*
+define "Schizophrenia or Bipolar on or between Jan 1 year prior to MY up to IPSD"
+    (   ["Diagnosis": "MIPS; 238_SCHIZOPHRENIA"]
+        union ["Diagnosis": "VSAC; SCHIZOPHRENIA_OR_PSYCHOTIC_DISORDER"]
+        union ["Diagnosis": "VSAC; BIPOLAR_DISORDER"]   ) Disorder
+    with (  (   "First Antipsychotic Medication Ordered"    ) Rx    )
+    such that Disorder.start_date during Interval [start of "Measurement Period" - 1 year, Rx.start_date]
+ ,
+ if exists ( "Schizophrenia or Bipolar on or between Jan 1 year prior to MY up to IPSD" ) Diagnosis
+    return
+    ExtendedMeasureResultV2(
+        Diagnosis
+        , 'Schizophrenia or Bipolar Diagnosis' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+
+define "First Antipsychotic Medication Ordered":
+    first(  ["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"] AntipsychoticMedication
+            where AntipsychoticMedication.start_date during "Measurement Period"    )   sort by AntipsychoticMedication.start_date asc
+    return AntipsychoticMedication.start_date
+*/
+rule 'Year2026.Mips238Rate2.SchizophreniaOrBipolar'
+salience 20
+when
+    exists (EncounterDenominator(measure == 'Year2026.Mips238Rate2'))
+    $program: Program()
+    //define "First POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC Medication Ordered"
+    $firstMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        earliestMedication($med)
+    )
+    and exists Diagnosis(
+        withValueSet("MipsYear2026", "238_SCHIZOPHRENIA") ||
+        withValueSet("VsacYear2026", "SCHIZOPHRENIA_OR_PSYCHOTIC_DISORDER") ||
+        withValueSet("VsacYear2026", "BIPOLAR_DISORDER"),
+        startsDuring($program.measurementPeriod.start.minusYears(1), $firstMed.startDate)
+    )
+then
+    insert(new Year2026Mips238Rate2SchizophreniaOrBipolar());
+end
+
+rule 'Year2026.Mips238Rate2.SchizophreniaOrBipolar.Org.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    exists Year2026Mips238Rate2SchizophreniaOrBipolar()
+    $firstMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        earliestMedication($med)
+    )
+    $diagnosis: Diagnosis(
+        withValueSet("MipsYear2026", "238_SCHIZOPHRENIA") ||
+        withValueSet("VsacYear2026", "SCHIZOPHRENIA_OR_PSYCHOTIC_DISORDER") ||
+        withValueSet("VsacYear2026", "BIPOLAR_DISORDER"),
+        startsDuring($program.measurementPeriod.start.minusYears(1), $firstMed.startDate)
+    )
+    and not (exists Year2026Mips238Rate2SchizophreniaOrBipolarOrgEMR())
+then
+    insert(new Year2026Mips238Rate2SchizophreniaOrBipolarOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Schizophrenia or Bipolar Diagnosis", "G9367", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Schizophrenia or Bipolar Diagnosis", "G0032", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Schizophrenia or Bipolar Diagnosis", "G9368", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.SchizophreniaOrBipolar.Group.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    exists Year2026Mips238Rate2SchizophreniaOrBipolar()
+    $firstMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        earliestMedication($med)
+    )
+    $diagnosis: Diagnosis(
+        withValueSet("MipsYear2026", "238_SCHIZOPHRENIA") ||
+        withValueSet("VsacYear2026", "SCHIZOPHRENIA_OR_PSYCHOTIC_DISORDER") ||
+        withValueSet("VsacYear2026", "BIPOLAR_DISORDER"),
+        startsDuring($program.measurementPeriod.start.minusYears(1), $firstMed.startDate)
+    )
+    and not (exists Year2026Mips238Rate2SchizophreniaOrBipolarGroupEMR(groupId == $groupId))
+then
+    insert(new Year2026Mips238Rate2SchizophreniaOrBipolarGroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Schizophrenia or Bipolar Diagnosis", "G9367", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Schizophrenia or Bipolar Diagnosis", "G0032", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Schizophrenia or Bipolar Diagnosis", "G9368", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.SchizophreniaOrBipolar.Provider.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    exists Year2026Mips238Rate2SchizophreniaOrBipolar()
+    $firstMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        earliestMedication($med)
+    )
+    $diagnosis: Diagnosis(
+        withValueSet("MipsYear2026", "238_SCHIZOPHRENIA") ||
+        withValueSet("VsacYear2026", "SCHIZOPHRENIA_OR_PSYCHOTIC_DISORDER") ||
+        withValueSet("VsacYear2026", "BIPOLAR_DISORDER"),
+        startsDuring($program.measurementPeriod.start.minusYears(1), $firstMed.startDate)
+    )
+    and not (exists Year2026Mips238Rate2SchizophreniaOrBipolarProviderEMR())
+then
+    insert(new Year2026Mips238Rate2SchizophreniaOrBipolarProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Schizophrenia or Bipolar Diagnosis", "G9367", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Schizophrenia or Bipolar Diagnosis", "G0032", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Schizophrenia or Bipolar Diagnosis", "G9368", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+end
+
+/*
+define "Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD"
+    (   ["Diagnosis": "VSAC; SEIZURE_DISORDER"]
+        union ["Diagnosis":  "VSAC; REM_SLEEP_BEHAVIOR_DISORDER"]
+        union ["Diagnosis": "VSAC; BENZODIAZEPINE_WITHDRAWAL"]
+        union ["Diagnosis":  "VSAC; ALCOHOL_WITHDRAWAL"]
+        union ["Diagnosis": " VSAC; GENERALIZED_ANXIETY_DISORDER"] ) Disorder
+    with "First Benzodiazepine Medication Ordered" Rx
+    such that Disorder.start_date during Interval [start of "Measurement Period" - 1 year, Rx.start_date]
+,
+    if exists ( "Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD" ) Diagnosis
+    return
+    ExtendedMeasureResultV2(
+        Diagnosis
+        , 'Seizure, REM, Sleep Disorder, Withdrawal, or GAD Diagnosis' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Denominator
+        , option_id = all
+    )
+
+define "First Benzodiazepine Medication Ordered":
+    first(  ["Medication": "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"] BenzodiazepineMedication
+            where BenzodiazepineMedication.start_date during "Measurement Period"   )   sort by BenzodiazepineMedication.start_date asc
+    return BenzodiazepineMedication.start_date
+               
+*/
+rule 'Year2026.Mips238Rate2.SeizureREMSleepDisorderWithdrawalGAD'
+salience 20
+when
+    exists (EncounterDenominator(measure == 'Year2026.Mips238Rate2'))
+    $program: Program()
+    //define "First POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC Medication Ordered"
+    $firstMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        earliestMedication($med)
+    )
+    and exists Diagnosis(
+        withValueSet("VsacYear2026", "SEIZURE_DISORDER") ||
+        withValueSet("VsacYear2026", "REM_SLEEP_BEHAVIOR_DISORDER") ||
+        withValueSet("VsacYear2026", "BENZODIAZEPINE_WITHDRAWAL") ||
+        withValueSet("VsacYear2026", "ALCOHOL_WITHDRAWAL") ||
+        withValueSet("VsacYear2026", "GENERALIZED_ANXIETY_DISORDER"),
+        startsDuring($program.measurementPeriod.start.minusYears(1), $firstMed.startDate)
+    )
+then
+    insert(new Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGAD());
+end
+
+rule 'Year2026.Mips238Rate2.SeizureREMSleepDisorderWithdrawalGAD.Org.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    exists Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGAD()
+    $firstMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        earliestMedication($med)
+    )
+    $diagnosis: Diagnosis(
+        withValueSet("VsacYear2026", "SEIZURE_DISORDER") ||
+        withValueSet("VsacYear2026", "REM_SLEEP_BEHAVIOR_DISORDER") ||
+        withValueSet("VsacYear2026", "BENZODIAZEPINE_WITHDRAWAL") ||
+        withValueSet("VsacYear2026", "ALCOHOL_WITHDRAWAL") ||
+        withValueSet("VsacYear2026", "GENERALIZED_ANXIETY_DISORDER"),
+        startsDuring($program.measurementPeriod.start.minusYears(1), $firstMed.startDate)
+    )
+    and not (exists Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGADOrgEMR())
+then
+    insert(new Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGADOrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Seizure, REM, Sleep Disorder, Withdrawal, or GAD Diagnosis", "G9367", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Seizure, REM, Sleep Disorder, Withdrawal, or GAD Diagnosis", "G0033", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Seizure, REM, Sleep Disorder, Withdrawal, or GAD Diagnosis", "G9368", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.SeizureREMSleepDisorderWithdrawalGAD.Group.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    exists Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGAD()
+    $firstMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        earliestMedication($med)
+    )
+    $diagnosis: Diagnosis(
+        withValueSet("VsacYear2026", "SEIZURE_DISORDER") ||
+        withValueSet("VsacYear2026", "REM_SLEEP_BEHAVIOR_DISORDER") ||
+        withValueSet("VsacYear2026", "BENZODIAZEPINE_WITHDRAWAL") ||
+        withValueSet("VsacYear2026", "ALCOHOL_WITHDRAWAL") ||
+        withValueSet("VsacYear2026", "GENERALIZED_ANXIETY_DISORDER"),
+        startsDuring($program.measurementPeriod.start.minusYears(1), $firstMed.startDate)
+    )
+    and not (exists Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGADGroupEMR(groupId == $groupId))
+then
+    insert(new Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGADGroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Seizure, REM, Sleep Disorder, Withdrawal, or GAD Diagnosis", "G9367", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Seizure, REM, Sleep Disorder, Withdrawal, or GAD Diagnosis", "G0033", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Seizure, REM, Sleep Disorder, Withdrawal, or GAD Diagnosis", "G9368", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.SeizureREMSleepDisorderWithdrawalGAD.Provider.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    exists Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGAD()
+    $firstMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        earliestMedication($med)
+    )
+    $diagnosis: Diagnosis(
+        withValueSet("VsacYear2026", "SEIZURE_DISORDER") ||
+        withValueSet("VsacYear2026", "REM_SLEEP_BEHAVIOR_DISORDER") ||
+        withValueSet("VsacYear2026", "BENZODIAZEPINE_WITHDRAWAL") ||
+        withValueSet("VsacYear2026", "ALCOHOL_WITHDRAWAL") ||
+        withValueSet("VsacYear2026", "GENERALIZED_ANXIETY_DISORDER"),
+        startsDuring($program.measurementPeriod.start.minusYears(1), $firstMed.startDate)
+    )
+    and not (exists Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGADProviderEMR())
+then
+    insert(new Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGADProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Seizure, REM, Sleep Disorder, Withdrawal, or GAD Diagnosis", "G9367", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Seizure, REM, Sleep Disorder, Withdrawal, or GAD Diagnosis", "G0033", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Seizure, REM, Sleep Disorder, Withdrawal, or GAD Diagnosis", "G9368", PopulationEnum.denominator, $diagnosis, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $diagnosis.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met G9367".org:
+* Option ID: G9367 *
+    (   "Denominator".all   Encounter
+  	    and exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_MET_G9367"] P
+      				where P.start_date during "Measurement Period"  )   
+    )
+	or  (   "Denominator".all   Encounter
+		    and exists("More than One Benzodiazepine Order".org) BO	
+		    and not exists "Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD"  
+        ) 
+	or  (   "Denominator".all    Encounter
+		    and exists("More than One Antipsychotic Order".org) AO 
+		    and not exists "Schizophrenia or Bipolar on or between Jan 1 year prior to MY up to IPSD"   ) 
+  ,
+  if exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_MET_G9367"] P
+              where P.start_date during "Measurement Period"  ) QualityCode
+  return
+  ExtendedMeasureResultV2(
+      QualityCode
+      , 'Performance Met Quality Code' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if exists ( "More than One Benzodiazepine Order".org ) BenzoOrder
+  return
+  ExtendedMeasureResultV2(
+      BenzoOrder.med1
+      , 'Benzodiazepine Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      BenzoOrder.med2
+      , 'Benzodiazepine Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if exists ( "More than One Antipsychotic Order".org ) AntiOrder
+  return
+  ExtendedMeasureResultV2(
+      AntiOrder.med1
+      , 'Antipsychotic Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      AntiOrder.med2
+      , 'Antipsychotic Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+
+
+define "More than One Benzodiazepine Order".org:
+    exists "More Than One of Same Medication Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"])
+
+define "More than One Antipsychotic Order".org:
+    exists "More Than One of Same Medication Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"])
+*/
+rule 'Year2026.Mips238Rate2.Success.G9367.org'
+when
+    $program: Program()
+    $patient: Patient()
+    exists (EncounterDenominator(measure == 'Year2026.Mips238Rate2'))
+    and exists (
+	    ClinicalActivity(
+            withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+            startsDuring($program.measurementPeriod)
+        )
+        or (
+            //exists "More than One POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC Order".org
+            exists queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+            and not(
+                //and not exists "Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD"
+                exists Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGAD()
+            )
+        )
+        or (
+            //exists "More than One POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC Order".org
+            exists queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+            and not(
+                //and not exists "Schizophrenia or Bipolar on or between Jan 1 year prior to MY up to IPSD"
+                exists Year2026Mips238Rate2SchizophreniaOrBipolar()
+            ) 
+        )
+    )
+then
+    controlSet.addPatientMeasureStatus($program, $patient, 'Year2026.Mips238Rate2', MeasureStatusValue.SUCCESS, "G9367");
+end
+
+rule 'Year2026.Mips238Rate2.Success.G9367.Org.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $qualityCode: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod)
+    )
+    and not (
+        exists Year2026Mips238Rate2SuccessG9367OrgEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2SuccessG9367OrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Performance Met Quality Code", "G9367", PopulationEnum.numerator_performance_met, $qualityCode, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qualityCode.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Success.G9367.Org.EMR.Benzo1'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod)
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        earliestMedication($med)
+    )
+    and not (
+        exists Year2026Mips238Rate2SuccessG9367OrgEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2SuccessG9367OrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Benzodiazepine Order 1", "G9367", PopulationEnum.numerator_performance_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Success.G9367.Org.EMR.Benzo2'
+salience -12
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod)
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2SuccessG9367OrgEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Benzodiazepine Order 2", "G9367", PopulationEnum.numerator_performance_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Success.G9367.Org.EMR.Anti1'
+salience -13
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod)
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        earliestMedication($med)
+    )
+    and exists Year2026Mips238Rate2SuccessG9367OrgEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Antipsychotic Order 1", "G9367", PopulationEnum.numerator_performance_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Success.G9367.Org.EMR.Anti2'
+salience -14
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod)
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2SuccessG9367OrgEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Antipsychotic Order 2", "G9367", PopulationEnum.numerator_performance_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met G9367".group:
+* Option ID: G9367 *
+    (   "Denominator".all Encounter
+  		and exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_MET_G9367"] P
+      				where   P.start_date during "Measurement Period"
+					        and Encounter.group_id = P.group_id    )	
+    )
+	or  (   "Denominator".all Encounter
+		    and exists("More than One Benzodiazepine Order".group) BO	
+			    such that Encounter.group_id = BO.group_id
+		    and not exists "Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD"  
+        )
+	or  (   "Denominator".all Encounter
+		    and exists("More than One Antipsychotic Order".group) AO
+			    such that Encounter.group_id = AO.group_id
+		    and not exists "Schizophrenia or Bipolar on or between Jan 1 year prior to MY up to IPSD"   ) 
+  ,
+  if exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_MET_G9367"] P
+              where P.start_date during "Measurement Period"  ) QualityCode
+  return
+  ExtendedMeasureResultV2(
+      QualityCode
+      , 'Performance Met Quality Code' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if exists ( "More than One Benzodiazepine Order".group ) BenzoOrder
+  return
+  ExtendedMeasureResultV2(
+      BenzoOrder.med1
+      , 'Benzodiazepine Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      BenzoOrder.med2
+      , 'Benzodiazepine Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if exists ( "More than One Antipsychotic Order".group ) AntiOrder
+  return
+  ExtendedMeasureResultV2(
+      AntiOrder.med1
+      , 'Antipsychotic Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      AntiOrder.med2
+      , 'Antipsychotic Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+
+define "More than One Benzodiazepine Order".group:
+    exists "More Than One of Same Medication Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"])
+
+define "More than One Antipsychotic Order".group:
+    exists "More Than One of Same Medication Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"])
+*/
+rule 'Year2026.Mips238Rate2.Success.G9367.group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    )
+    or (
+        //exists "More than One POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC Order".group
+        exists queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+        and not(
+            //and not exists "Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD"
+            exists Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGAD()
+        )
+    )
+    or (
+        //exists "More than One POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC Order".group)
+        exists queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+        and not(
+            //and not exists "Schizophrenia or Bipolar on or between Jan 1 year prior to MY up to IPSD"
+            exists Year2026Mips238Rate2SchizophreniaOrBipolar()
+        ) 
+    ) 
+then
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.SUCCESS, "G9367");
+end
+
+rule 'Year2026.Mips238Rate2.Success.G9367.Group.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    $qualityCode: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    )
+    and not (
+        exists Year2026Mips238Rate2SuccessG9367GroupEMR(groupId == $groupId)
+    )
+then
+    insert (new Year2026Mips238Rate2SuccessG9367GroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Performance Met Quality Code", "G9367", PopulationEnum.numerator_performance_met, $qualityCode, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qualityCode.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Success.G9367.Group.EMR.Benzo1'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        ),
+        earliestMedication($med)
+    )
+    and not (
+        exists Year2026Mips238Rate2SuccessG9367GroupEMR(groupId == $groupId)
+    )
+then
+    insert (new Year2026Mips238Rate2SuccessG9367GroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Benzodiazepine Order 1", "G9367", PopulationEnum.numerator_performance_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Success.G9367.Group.EMR.Benzo2'
+salience -12
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2SuccessG9367GroupEMR(groupId == $groupId)
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Benzodiazepine Order 2", "G9367", PopulationEnum.numerator_performance_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Success.G9367.Group.EMR.Anti1'
+salience -13
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        ),
+        earliestMedication($med)
+    )
+    and exists Year2026Mips238Rate2SuccessG9367GroupEMR(groupId == $groupId)
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Antipsychotic Order 1", "G9367", PopulationEnum.numerator_performance_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Success.G9367.Group.EMR.Anti2'
+salience -14
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2SuccessG9367GroupEMR(groupId == $groupId)
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Antipsychotic Order 2", "G9367", PopulationEnum.numerator_performance_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met G9367".provider:
+* Option ID: G9367 *
+    (   "Denominator".all Encounter
+  		and exists  (   ["Clinical Activity": "MIPS; 238_PERFORMANCE_MET_G9367"] P
+      				    where   P.start_date during "Measurement Period"
+					            and Encounter.provider_id = P.provider_id	)
+    )	
+	or  (   "Denominator".all Encounter
+		    and exists("More than One Benzodiazepine Order".provider) BO
+			    such that Encounter.provider_id = BO.provider_id 	
+		    and not exists "Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD"  
+        ) 
+	or  (   "Denominator".all   Encounter
+		    and exists("More than One Antipsychotic Order".provider) AO
+			    such that Encounter.provider_id = AO.provider_id
+		    and not exists "Schizophrenia or Bipolar on or between Jan 1 year prior to MY up to IPSD"   )
+  ,
+  if exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_MET_G9367"] P
+              where P.start_date during "Measurement Period"  ) QualityCode
+  return
+  ExtendedMeasureResultV2(
+      QualityCode
+      , 'Performance Met Quality Code' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if exists ( "More than One Benzodiazepine Order".provider ) BenzoOrder
+  return
+  ExtendedMeasureResultV2(
+      BenzoOrder.med1
+      , 'Benzodiazepine Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      BenzoOrder.med2
+      , 'Benzodiazepine Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  else if exists ( "More than One Antipsychotic Order".provider ) AntiOrder
+  return
+  ExtendedMeasureResultV2(
+      AntiOrder.med1
+      , 'Antipsychotic Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+  ,
+  ExtendedMeasureResultV2(
+      AntiOrder.med2
+      , 'Antipsychotic Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Met
+      , option_id = G9367
+  )
+
+define "More than One Benzodiazepine Order".provider:
+    exists "More Than One of Same Medication Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"])
+
+define "More than One Antipsychotic Order".provider:
+    exists "More Than One of Same Medication Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"])
+*/
+rule 'Year2026.Mips238Rate2.Success.G9367.provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    )
+    or (
+        //exists "More than One POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC Order".provider
+        exists queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+        and not(
+            //and not exists "Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD"
+            exists Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGAD()
+        )
+    )
+    or (
+        //exists "More than One POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC Order".provider
+        exists queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+        and not(
+            //and not exists "Schizophrenia or Bipolar on or between Jan 1 year prior to MY up to IPSD"
+            exists Year2026Mips238Rate2SchizophreniaOrBipolar()
+        ) 
+    ) 
+then
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.SUCCESS, "G9367");
+end
+
+rule 'Year2026.Mips238Rate2.Success.G9367.Provider.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $qualityCode: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    )
+    and not (
+        exists Year2026Mips238Rate2SuccessG9367ProviderEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2SuccessG9367ProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Performance Met Quality Code", "G9367", PopulationEnum.numerator_performance_met, $qualityCode, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qualityCode.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Success.G9367.Provider.EMR.Benzo1'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        ),
+        earliestMedication($med)
+    )
+    and not (
+        exists Year2026Mips238Rate2SuccessG9367ProviderEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2SuccessG9367ProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Benzodiazepine Order 1", "G9367", PopulationEnum.numerator_performance_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Success.G9367.Provider.EMR.Benzo2'
+salience -12
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2SuccessG9367ProviderEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Benzodiazepine Order 2", "G9367", PopulationEnum.numerator_performance_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Success.G9367.Provider.EMR.Anti1'
+salience -13
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        ),
+        earliestMedication($med)
+    )
+    and exists Year2026Mips238Rate2SuccessG9367ProviderEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Antipsychotic Order 1", "G9367", PopulationEnum.numerator_performance_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Success.G9367.Provider.EMR.Anti2'
+salience -14
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_MET_G9367"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2SuccessG9367ProviderEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Antipsychotic Order 2", "G9367", PopulationEnum.numerator_performance_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+/**
+define "Numerator Performance Not Met G0032".org:
+* Option ID: G0032 *
+   (   "Denominator".all Encounter
+	    and exists("More than One Antipsychotic With Appropriate Diagnosis".org) AO
+	    and not exists("More than One Benzodiazepine Order".org) BO
+	)
+	or (    "Denominator".all Encounter
+	        and exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0032"] P
+    					where P.start_date during "Measurement Period"  )
+	        and not exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0033"] P2
+    					where P2.start_date during "Measurement Period"  )   )
+  ,
+  if exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0032"] P
+              where P.start_date during "Measurement Period"  ) QualityCode
+  return
+  ExtendedMeasureResultV2(
+      QualityCode
+      , 'Performance Not Met Quality Code' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032
+  )
+  else if exists ( "More than One Antipsychotic Order".org ) AntiOrder
+  return
+  ExtendedMeasureResultV2(
+      AntiOrder.med1
+      , 'Antipsychotic Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032
+  )
+  ,
+  ExtendedMeasureResultV2(
+      AntiOrder.med2
+      , 'Antipsychotic Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032
+  )
+*/
+rule 'Year2026.Mips238Rate2.Gap.G0032.org'
+when
+    $program: Program()
+    $patient: Patient()
+    exists (EncounterDenominator(measure == 'Year2026.Mips238Rate2'))
+    and exists (
+        //define "More than One POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC With Appropriate Diagnosis".org"
+        (
+            exists queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+            and exists Year2026Mips238Rate2SchizophreniaOrBipolar()
+            and not (
+                exists queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed3, $pairMed4;)
+            )
+        )
+        or (
+            exists ClinicalActivity(
+                withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+                startsDuring($program.measurementPeriod)
+            )
+            and not (exists ClinicalActivity(
+                withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+                startsDuring($program.measurementPeriod)
+            ))
+        )
+    )
+then
+    controlSet.addPatientMeasureStatus($program, $patient, 'Year2026.Mips238Rate2', MeasureStatusValue.GAP, "G0032");
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032.Org.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $qualityCode: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod)
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0032OrgEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0032OrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Performance Not Met Quality Code", "G0032", PopulationEnum.numerator_performance_not_met, $qualityCode, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qualityCode.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032.Org.EMR.Anti1'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod)
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        earliestMedication($med)
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0032OrgEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0032OrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Antipsychotic Order 1", "G0032", PopulationEnum.numerator_performance_not_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032.Org.EMR.Anti2'
+salience -12
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod)
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2GapG0032OrgEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Antipsychotic Order 2", "G0032", PopulationEnum.numerator_performance_not_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+/*
+define "Numerator Performance Not Met G0032".group:
+* Option ID: G0032 *
+   (   "Denominator".all Encounter
+	    and exists("More than One Antipsychotic With Appropriate Diagnosis".group) AO
+		    such that Encounter.group_id = AO.group_id
+	    and not exists( "More than One Benzodiazepine Order".group ) BO
+			    such that Encounter.group_id = BO.group_id
+	)
+	or (    "Denominator".all Encounter
+	        and exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0032"] P
+    					where   P.start_date during "Measurement Period"
+							    and Encounter.group_id = P.group_id )
+	        and not exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0033"] P2
+    					where   P2.start_date during "Measurement Period"
+							    and Encounter.group_id = P2.group_id )   )
+  ,
+  if exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0032"] P
+              where P.start_date during "Measurement Period"  ) QualityCode
+  return
+  ExtendedMeasureResultV2(
+      QualityCode
+      , 'Performance Not Met Quality Code' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032
+  )
+  else if exists ( "More than One Antipsychotic Order".group ) AntiOrder
+  return
+  ExtendedMeasureResultV2(
+      AntiOrder.med1
+      , 'Antipsychotic Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032
+  )
+  ,
+  ExtendedMeasureResultV2(
+      AntiOrder.med2
+      , 'Antipsychotic Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032
+  )
+
+define "More than One Antipsychotic With Appropriate Diagnosis".group:  
+    exists "More than One Antipsychotic Order".group
+    and exists "Schizophrenia or Bipolar on or between Jan 1 year prior to MY up to IPSD"
+
+define "More than One Antipsychotic Order".group:
+    exists "More Than One of Same Medication Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"])
+
+define "More than One Benzodiazepine Order".group:
+    exists "More Than One of Same Medication Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"])
+*/
+rule 'Year2026.Mips238Rate2.Gap.G0032.group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    //define "More than One POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC With Appropriate Diagnosis".group"
+    (
+        exists queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+        and exists Year2026Mips238Rate2SchizophreniaOrBipolar()
+        and not (
+            //"More than One POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC Order".group
+            exists queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed3, $pairMed4;)
+        )
+    )
+    or (
+        exists ClinicalActivity(
+            withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        )
+        and not (exists ClinicalActivity(
+            withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        ))
+    )
+then
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.GAP, "G0032");
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032.Group.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    $qualityCode: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0032GroupEMR(groupId == $groupId)
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0032GroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Performance Not Met Quality Code", "G0032", PopulationEnum.numerator_performance_not_met, $qualityCode, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qualityCode.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032.Group.EMR.Anti1'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        ),
+        earliestMedication($med)
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0032GroupEMR(groupId == $groupId)
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0032GroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Antipsychotic Order 1", "G0032", PopulationEnum.numerator_performance_not_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032.Group.EMR.Anti2'
+salience -12
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2GapG0032GroupEMR(groupId == $groupId)
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Antipsychotic Order 2", "G0032", PopulationEnum.numerator_performance_not_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+
+/*
+define "Numerator Performance Not Met G0032".provider:
+* Option ID: G0032 *
+   (   "Denominator".all   Encounter
+	    and exists("More than One Antipsychotic With Appropriate Diagnosis".provider) AO
+		    such that Encounter.provider_id = AO.provider_id
+	    and not exists( "More than One Benzodiazepine Order".provider ) BO
+			    such that Encounter.provider_id = BO.provider_id
+	)
+	or  (   "Denominator".all Encounter
+	        and exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0032"] P
+    					where   P.start_date during "Measurement Period"
+								and Encounter.provider_id = P.provider_id )
+	        and not exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0033"] P2
+    					where   P2.start_date during "Measurement Period"
+								and Encounter.provider_id = P2.provider_id )   )
+  ,
+  if exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0032"] P
+              where P.start_date during "Measurement Period"  ) QualityCode
+  return
+  ExtendedMeasureResultV2(
+      QualityCode
+      , 'Performance Not Met Quality Code' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032
+  )
+  else if exists ( "More than One Antipsychotic Order".provider ) AntiOrder
+  return
+  ExtendedMeasureResultV2(
+      AntiOrder.med1
+      , 'Antipsychotic Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032
+  )
+  ,
+  ExtendedMeasureResultV2(
+      AntiOrder.med2
+      , 'Antipsychotic Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032
+  )
+
+
+define "More than One Antipsychotic With Appropriate Diagnosis".provider:
+    exists "More than One Antipsychotic Order".provider
+    and exists "Schizophrenia or Bipolar on or between Jan 1 year prior to MY up to IPSD"
+
+define "More than One Antipsychotic Order".provider:
+    exists "More Than One of Same Medication Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"])
+
+define "More than One Benzodiazepine Order".provider:
+    exists "More Than One of Same Medication Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"])
+*/
+rule 'Year2026.Mips238Rate2.Gap.G0032.provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    //define "More than One POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC With Appropriate Diagnosis".provider"
+    (
+        exists queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+        and exists Year2026Mips238Rate2SchizophreniaOrBipolar()
+        and not (
+            //"More than One POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC Order".provider
+            exists queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed3, $pairMed4;)
+        )
+    )
+    or (
+        exists ClinicalActivity(
+            withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        )
+        and not (exists ClinicalActivity(
+            withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        ))
+    )
+then
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, "G0032");
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032.Provider.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $qualityCode: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0032ProviderEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0032ProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Performance Not Met Quality Code", "G0032", PopulationEnum.numerator_performance_not_met, $qualityCode, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qualityCode.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032.Provider.EMR.Anti1'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        ),
+        earliestMedication($med)
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0032ProviderEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0032ProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Antipsychotic Order 1", "G0032", PopulationEnum.numerator_performance_not_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032.Provider.EMR.Anti2'
+salience -12
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2GapG0032ProviderEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Antipsychotic Order 2", "G0032", PopulationEnum.numerator_performance_not_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+
+/*
+define "Numerator Performance Not Met G0033".org:
+* Option ID: G0033 *
+    (   "Denominator".all Encounter
+	    and exists("More than One Benzodiazepine With Appropriate Diagnosis".org)
+		and not	exists( "More than One Antipsychotic Order".org )	
+	)
+	or (    "Denominator".all Encounter
+	        and exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0033"] P
+    					where P.start_date during "Measurement Period"	)
+	        and not exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0032"] P2
+    					where P2.start_date during "Measurement Period"	)   )
+  ,
+  if exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0033"] P
+              where P.start_date during "Measurement Period"  ) QualityCode
+  return
+  ExtendedMeasureResultV2(
+      QualityCode
+      , 'Performance Not Met Quality Code' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0033
+  )
+  else if exists ( "More than One Benzodiazepine Order".org ) BenzoOrder
+  return
+  ExtendedMeasureResultV2(
+      BenzoOrder.med1
+      , 'Benzodiazepine Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0033
+  )
+  ,
+  ExtendedMeasureResultV2(
+      BenzoOrder.med2
+      , 'Benzodiazepine Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0033
+  )
+
+define "More than One Benzodiazepine With Appropriate Diagnosis"org:
+    exists "More than One Benzodiazepine Order".org
+    and exists  "Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD"
+
+define "More than One Benzodiazepine Order".org:
+    exists "More Than One of Same Medication Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"])
+
+define "More than One Antipsychotic Order".org:
+    exists "More Than One of Same Medication Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"])
+*/
+rule 'Year2026.Mips238Rate2.Gap.G0033.org'
+when
+    $program: Program()
+    $patient: Patient()
+    exists (EncounterDenominator(measure == 'Year2026.Mips238Rate2'))
+    and exists (
+        (
+            //exists ("More than One POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC With Appropriate Diagnosis".org)
+            exists queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+            //"Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD"
+            and exists Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGAD()
+            and not (
+                //"More than One POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC Order".org
+                exists queryYear2026Mips238SharedMedicationMoreThanOneOrg($program, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed3, $pairMed4;)
+            )
+        )
+        or (
+            exists ClinicalActivity(
+                withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+                startsDuring($program.measurementPeriod)
+            )
+            and not (exists ClinicalActivity(
+                withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+                startsDuring($program.measurementPeriod)
+            ))
+        )
+    )  
+then
+    controlSet.addPatientMeasureStatus($program, $patient, 'Year2026.Mips238Rate2', MeasureStatusValue.GAP, "G0033");
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0033.Org.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $qualityCode: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+        startsDuring($program.measurementPeriod)
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0033OrgEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0033OrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Performance Not Met Quality Code", "G0033", PopulationEnum.numerator_performance_not_met, $qualityCode, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qualityCode.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0033.Org.EMR.Benzo1'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+        startsDuring($program.measurementPeriod)
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        earliestMedication($med)
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0033OrgEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0033OrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Benzodiazepine Order 1", "G0033", PopulationEnum.numerator_performance_not_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0033.Org.EMR.Benzo2'
+salience -12
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+        startsDuring($program.measurementPeriod)
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2GapG0033OrgEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Benzodiazepine Order 2", "G0033", PopulationEnum.numerator_performance_not_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+/*
+define "Numerator Performance Not Met G0033".group:
+* Option ID: G0033 *
+   (   "Denominator".all Encounter
+	    and exists("More than One Benzodiazepine With Appropriate Diagnosis".group)BO
+			such that Encounter.group_id = BO.group_id
+		and not exists( "More than One Antipsychotic Order".group )	AO
+			    such that Encounter.group_id = AO.group_id
+	)
+	or (    "Denominator".all Encounter
+	        and exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0033"] P
+    					where   P.start_date during "Measurement Period"
+						        and Encounter.group_id = P.group_id	)
+	        and not exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0032"] P2
+    					where   P2.start_date during "Measurement Period"
+						        and Encounter.group_id = P2.group_id	)   )
+  ,
+  if exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0033"] P
+              where P.start_date during "Measurement Period"  ) QualityCode
+  return
+  ExtendedMeasureResultV2(
+      QualityCode
+      , 'Performance Not Met Quality Code' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0033
+  )
+  else if exists ( "More than One Benzodiazepine Order".group ) BenzoOrder
+  return
+  ExtendedMeasureResultV2(
+      BenzoOrder.med1
+      , 'Benzodiazepine Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0033
+  )
+  ,
+  ExtendedMeasureResultV2(
+      BenzoOrder.med2
+      , 'Benzodiazepine Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0033
+  )
+
+
+define "More than One Benzodiazepine With Appropriate Diagnosis".group:
+    exists "More than One Benzodiazepine Order".group
+    and exists  "Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD"
+
+define "More than One Benzodiazepine Order".group:
+    exists "More Than One of Same Medication Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"])
+
+define "More than One Antipsychotic Order".group:
+    exists "More Than One of Same Medication Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"])
+
+*/
+rule 'Year2026.Mips238Rate2.Gap.G0033.group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    (
+        //exists ("More than One POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC With Appropriate Diagnosis".group)
+        exists queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+        //"Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD"
+        and exists Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGAD()
+        and not (
+            //"More than One POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC Order".group
+            exists queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed3, $pairMed4;)
+        )
+    )
+    or (
+        exists ClinicalActivity(
+            withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        )
+        and not (exists ClinicalActivity(
+            withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        ))
+    )
+then
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.GAP, "G0033");
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0033.Group.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    $qualityCode: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0033GroupEMR(groupId == $groupId)
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0033GroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Performance Not Met Quality Code", "G0033", PopulationEnum.numerator_performance_not_met, $qualityCode, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qualityCode.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0033.Group.EMR.Benzo1'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        ),
+        earliestMedication($med)
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0033GroupEMR(groupId == $groupId)
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0033GroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Benzodiazepine Order 1", "G0033", PopulationEnum.numerator_performance_not_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0033.Group.EMR.Benzo2'
+salience -12
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2GapG0033GroupEMR(groupId == $groupId)
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Benzodiazepine Order 2", "G0033", PopulationEnum.numerator_performance_not_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+
+/*
+define "Numerator Performance Not Met G0033".provider:
+* Option ID: G0033 *
+    (   "Denominator".all Encounter
+	    and exists("More than One Benzodiazepine With Appropriate Diagnosis".provider) BO
+		    such that Encounter.provider_id = BO.provider_id
+		and not exists( "More than One Antipsychotic Order".provider )	AO
+			    such that Encounter.provider_id = AO.provider_id
+	)
+	or  (   "Denominator".all Encounter
+	        and exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0033"] P
+    					where   P.start_date during "Measurement Period"
+						    	and Encounter.provider_id = P.provider_id	)
+	        and not exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0032"] P2
+    					where   P2.start_date during "Measurement Period"
+						    	and Encounter.provider_id = P2.provider_id	)   )  
+  ,
+  if exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0033"] P
+              where P.start_date during "Measurement Period"  ) QualityCode
+  return
+  ExtendedMeasureResultV2(
+      QualityCode
+      , 'Performance Not Met Quality Code' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0033
+  )
+  else if exists ( "More than One Benzodiazepine Order".provider ) BenzoOrder
+  return
+  ExtendedMeasureResultV2(
+      BenzoOrder.med1
+      , 'Benzodiazepine Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0033
+  )
+  ,
+  ExtendedMeasureResultV2(
+      BenzoOrder.med2
+      , 'Benzodiazepine Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0033
+  )
+
+
+define "More than One Benzodiazepine With Appropriate Diagnosis".provider:
+    exists "More than One Benzodiazepine Order".provider
+    and exists  "Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD"
+
+define "More than One Benzodiazepine Order".provider:
+    exists "More Than One of Same Medication Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"])
+
+define "More than One Antipsychotic Order".provider:
+    exists "More Than One of Same Medication Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"])
+*/
+rule 'Year2026.Mips238Rate2.Gap.G0033.provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    (
+        //exists ("More than One POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC With Appropriate Diagnosis".provider)
+        exists queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+        //"Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD"
+        and exists Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGAD()
+        and not (
+            //"More than One POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC Order".provider
+            exists queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed3, $pairMed4;)
+        )
+    )
+    or (
+        exists ClinicalActivity(
+            withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        )
+        and not (exists ClinicalActivity(
+            withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        ))
+    )
+then
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, "G0033");
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0033.Provider.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $qualityCode: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0033ProviderEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0033ProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Performance Not Met Quality Code", "G0033", PopulationEnum.numerator_performance_not_met, $qualityCode, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qualityCode.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0033.Provider.EMR.Benzo1'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        ),
+        earliestMedication($med)
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0033ProviderEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0033ProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Benzodiazepine Order 1", "G0033", PopulationEnum.numerator_performance_not_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0033.Provider.EMR.Benzo2'
+salience -12
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2GapG0033ProviderEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Benzodiazepine Order 2", "G0033", PopulationEnum.numerator_performance_not_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+
+/*
+define "Numerator Performance Not Met G0032 and G0033".org: 
+* Option ID: G0032_G0033   *
+
+    "Denominator".all Encounter
+    ( exists (  ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0032"] P1
+                where P1.start_date during "Measurement Period" )
+        and exists (  ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0033"] P2
+                    where P2.start_date during "Measurement Period" )   
+    ) BothQualityCodes
+	or (    exists "More than One Benzodiazepine With Appropriate Diagnosis".org
+	        and exists "More than One Antipsychotic With Appropriate Diagnosis".org )
+  ,
+  if exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0032"] P
+              where P.start_date during "Measurement Period"  ) QC32
+      and exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0033"] P2
+              where P2.start_date during "Measurement Period"  ) QC33
+  return
+  ExtendedMeasureResultV2(
+      QC32
+      , 'Performance Not Met Quality Code G0032' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+  ,
+  ExtendedMeasureResultV2(
+      QC33
+      , 'Performance Not Met Quality Code G0033' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+  else if exists (  exists("More than One Benzodiazepine With Appropriate Diagnosis".org)
+                    and exists("More than One Antipsychotic With Appropriate Diagnosis".org) )
+  return
+  ExtendedMeasureResultV2(
+      BenzoOrder.med1
+      , 'Benzodiazepine Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+  ,
+  ExtendedMeasureResultV2(
+      BenzoOrder.med2
+      , 'Benzodiazepine Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+  ,
+  ExtendedMeasureResultV2(
+      AntiOrder.med1
+      , 'Antipsychotic Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+  ,
+  ExtendedMeasureResultV2(
+      AntiOrder.med2
+      , 'Antipsychotic Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+
+define "More than One Benzodiazepine With Appropriate Diagnosis".org:
+    exists "More than One Benzodiazepine Order".org
+    and exists  "Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD"
+
+define "More than One Benzodiazepine Order".org:
+    "More Than One of Same Medication Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"])
+define "More than One Antipsychotic With Appropriate Diagnosis".org:    
+    exists "More than One Antipsychotic Order".org
+    and exists "Schizophrenia or Bipolar on or between Jan 1 year prior to MY up to IPSD"
+
+define "More than One Antipsychotic Order".org:
+    "More Than One of Same Medication Order".org(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"])
+*/
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.org'
+when
+    $program: Program()
+    $patient: Patient()
+    exists (EncounterDenominator(measure == 'Year2026.Mips238Rate2'))
+    and (
+        ( // medication-based branch
+            exists queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+            and exists Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGAD()
+            and exists queryYear2026Mips238SharedMedicationMoreThanOneOrg($program,"AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed3, $pairMed4;)
+            and exists Year2026Mips238Rate2SchizophreniaOrBipolar()
+        )
+        or
+        ( // clinical-activity branch: both QC32 and QC33 exist during measurement period
+            exists ClinicalActivity(
+                withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+                startsDuring($program.measurementPeriod)
+            )
+            and exists ClinicalActivity(
+                withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+                startsDuring($program.measurementPeriod)
+            )
+        )
+    )
+then
+    controlSet.addPatientMeasureStatus($program, $patient, 'Year2026.Mips238Rate2', MeasureStatusValue.GAP, "G0032_G0033");
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Org.EMR.G0032'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $qc32: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod)
+    )
+    and exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+        startsDuring($program.measurementPeriod)
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0032G0033OrgEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0032G0033OrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Performance Not Met Quality Code G0032", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $qc32, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qc32.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Org.EMR.G0033'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod)
+    )
+    and $qc33: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+        startsDuring($program.measurementPeriod)
+    )
+    and exists Year2026Mips238Rate2GapG0032G0033OrgEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Performance Not Met Quality Code G0033", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $qc33, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qc33.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Org.Medication.EMR.Benzo1'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod)
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        earliestMedication($med)
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0032G0033OrgEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0032G0033OrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Benzodiazepine Order 1", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Org.Medication.EMR.Benzo2'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod)
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2GapG0032G0033OrgEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Benzodiazepine Order 2", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Org.Medication.EMR.Anti1'
+salience -12
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod)
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        earliestMedication($med)
+    )
+    and exists Year2026Mips238Rate2GapG0032G0033OrgEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Antipsychotic Order 1", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Org.Medication.EMR.Anti2'
+salience -13
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod)
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod)
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2GapG0032G0033OrgEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, "", "Antipsychotic Order 2", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+/*
+define "Numerator Performance Not Met G0032 and G0033".group:   
+* Option ID: G0032_G0033   *
+
+   "Denominator".all Encounter
+    (   exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0032"] P1
+                where   P1.start_date during "Measurement Period"
+                        and Encounter.group_id = P1.group_id )
+        and exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0033"] P2
+                    where   P2.start_date during "Measurement Period"
+                            and Encounter.group_id = P2.group_id )
+    )
+	or (    exists("More than One Benzodiazepine With Appropriate Diagnosis".group) BO
+	            such that Encounter.group_id = BO.group_id
+	        and exists("More than One Antipsychotic With Appropriate Diagnosis".group) AO
+	            such that Encounter.group_id = AO.group_id )
+  ,
+  if exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0032"] P
+              where P.start_date during "Measurement Period"  ) QC32
+      and exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0033"] P2
+              where P2.start_date during "Measurement Period"  ) QC33
+  return
+  ExtendedMeasureResultV2(
+      QC32
+      , 'Performance Not Met Quality Code G0032' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+  ,
+  ExtendedMeasureResultV2(
+      QC33
+      , 'Performance Not Met Quality Code G0033' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+  else if exists (  exists("More than One Benzodiazepine With Appropriate Diagnosis".group) BO
+                    such that Encounter.group_id = BO.group_id
+                    and exists("More than One Antipsychotic With Appropriate Diagnosis".group) AO
+                        such that Encounter.group_id = AO.group_id )
+  return
+  ExtendedMeasureResultV2(
+      BenzoOrder.med1
+      , 'Benzodiazepine Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+  ,
+  ExtendedMeasureResultV2(
+      BenzoOrder.med2
+      , 'Benzodiazepine Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+  ,
+  ExtendedMeasureResultV2(
+      AntiOrder.med1
+      , 'Antipsychotic Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+  ,
+  ExtendedMeasureResultV2(
+      AntiOrder.med2
+      , 'Antipsychotic Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+
+
+define "More than One Benzodiazepine With Appropriate Diagnosis".group:
+    exists "More than One Benzodiazepine Order".group
+    and exists  "Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD"
+
+define "More than One Benzodiazepine Order".group:
+    exists "More Than One of Same Medication Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"])
+
+define "More than One Antipsychotic With Appropriate Diagnosis".group:  
+    exists "More than One Antipsychotic Order".group
+    and exists "Schizophrenia or Bipolar on or between Jan 1 year prior to MY up to IPSD"
+
+define "More than One Antipsychotic Order".group:
+    exists "More Than One of Same Medication Order".group(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"])
+*/
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.group'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    (
+        ( // medication-based branch
+            //exists ("More than One POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC With Appropriate Diagnosis")
+            exists queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+            and exists Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGAD()
+            //"More than One POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC With Appropriate Diagnosis
+            and exists queryYear2026Mips238SharedMedicationMoreThanOneGroup($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed3, $pairMed4;)
+            and exists Year2026Mips238Rate2SchizophreniaOrBipolar()
+        )
+        or
+        ( // clinical-activity branch: both QC32 and QC33 exist during measurement period with matching group IDs
+            exists ClinicalActivity(
+                withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+                startsDuring($program.measurementPeriod),
+                !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+            )
+            and exists ClinicalActivity(
+                withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+                startsDuring($program.measurementPeriod),
+                !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+            )
+        )
+    )
+then
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.GAP, "G0032_G0033");
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Group.EMR.G0032'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    $qc32: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    )
+    and exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0032G0033GroupEMR(groupId == $groupId)
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0032G0033GroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Performance Not Met Quality Code G0032", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $qc32, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qc32.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Group.EMR.G0033'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    )
+    and $qc33: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    )
+    and exists Year2026Mips238Rate2GapG0032G0033GroupEMR(groupId == $groupId)
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Performance Not Met Quality Code G0033", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $qc33, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qc33.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Group.Medication.EMR.Benzo1'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        ),
+        earliestMedication($med)
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0032G0033GroupEMR(groupId == $groupId)
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0032G0033GroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Benzodiazepine Order 1", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Group.Medication.EMR.Benzo2'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2GapG0032G0033GroupEMR(groupId == $groupId)
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Benzodiazepine Order 2", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Group.Medication.EMR.Anti1'
+salience -12
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        ),
+        earliestMedication($med)
+    )
+    and exists Year2026Mips238Rate2GapG0032G0033GroupEMR(groupId == $groupId)
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Antipsychotic Order 1", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Group.Medication.EMR.Anti2'
+salience -13
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Collections.disjoint(groupExternalIds, $encounter.groupExternalIds)
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2GapG0032G0033GroupEMR(groupId == $groupId)
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "Antipsychotic Order 2", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+/*
+define "Numerator Performance Not Met G0032 and G0033".provider:    
+* Option ID: G0032_G0033 *
+
+    "Denominator".all Encounter
+    (   exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0032"] P1
+                where   P1.start_date during "Measurement Period"
+                        and Encounter.provider_id = P1.provider_id )
+        and exists( ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0033"] P2
+                    where   P2.start_date during "Measurement Period"
+                            and Encounter.provider_id = P2.provider_id )
+    )
+	or (    exists("More than One Benzodiazepine With Appropriate Diagnosis".provider) BO
+	            such that Encounter.provider_id = BO.provider_id
+	        and exists("More than One Antipsychotic With Appropriate Diagnosis".provider) AO
+	            such that Encounter.provider_id = AO.provider_id )
+  ,
+  if exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0032"] P
+              where P.start_date during "Measurement Period"  ) QC32
+      and exists(  ["Clinical Activity": "MIPS; 238_PERFORMANCE_NOT_MET_G0033"] P2
+              where P2.start_date during "Measurement Period"  ) QC33
+  return
+  ExtendedMeasureResultV2(
+      QC32
+      , 'Performance Not Met Quality Code G0032' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+  ,
+  ExtendedMeasureResultV2(
+      QC33
+      , 'Performance Not Met Quality Code G0033' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+  else if exists (  exists("More than One Benzodiazepine With Appropriate Diagnosis".provider) BO
+	                such that Encounter.provider_id = BO.provider_id
+	                and exists("More than One Antipsychotic With Appropriate Diagnosis".provider) AO
+	                    such that Encounter.provider_id = AO.provider_id )
+  return
+  ExtendedMeasureResultV2(
+      BenzoOrder.med1
+      , 'Benzodiazepine Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+  ,
+  ExtendedMeasureResultV2(
+      BenzoOrder.med2
+      , 'Benzodiazepine Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+  ,
+  ExtendedMeasureResultV2(
+      AntiOrder.med1
+      , 'Antipsychotic Order 1' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+  ,
+  ExtendedMeasureResultV2(
+      AntiOrder.med2
+      , 'Antipsychotic Order 2' as name
+      , display_date = start_date
+      , calculated_record = false
+      , population = Performance Not Met
+      , option_id = G0032_G0033
+  )
+
+
+define "More than One Benzodiazepine With Appropriate Diagnosis".provider:
+    exists "More than One Benzodiazepine Order".provider
+    and exists  "Seizure, REM, Sleep Disorder, Withdrawal, GAD on or between Jan 1 year prior to MY up to IPSD"
+
+define "More than One Benzodiazepine Order".provider:
+    exists "More Than One of Same Medication Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"])
+
+define "More than One Antipsychotic With Appropriate Diagnosis".provider:
+    exists "More than One Antipsychotic Order".provider
+    and exists "Schizophrenia or Bipolar on or between Jan 1 year prior to MY up to IPSD"
+
+define "More than One Antipsychotic Order".provider:
+    exists "More Than One of Same Medication Order".provider(["Medication": "ABLE; POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"])
+*/
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.provider'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    (
+        ( // medication-based branch
+            //exists ("More than One POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC With Appropriate Diagnosis")
+            exists queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC", $pairMed1, $pairMed2;)
+            and exists Year2026Mips238Rate2SeizureREMSleepDisorderWithdrawalGAD()
+            //"More than One POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC With Appropriate Diagnosis
+            and exists queryYear2026Mips238SharedMedicationMoreThanOneProvider($program, $encounter, "AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC", $pairMed3, $pairMed4;)
+            and exists Year2026Mips238Rate2SchizophreniaOrBipolar()
+        )
+        or
+        ( // clinical-activity branch: both QC32 and QC33 exist during measurement period with matching provider IDs
+            exists ClinicalActivity(
+                withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+                startsDuring($program.measurementPeriod),
+                !Strings.isNullOrEmpty(providerExternalId),
+                providerExternalId == $encounter.providerExternalId
+            )
+            and exists ClinicalActivity(
+                withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+                startsDuring($program.measurementPeriod),
+                !Strings.isNullOrEmpty(providerExternalId),
+                providerExternalId == $encounter.providerExternalId
+            )
+        )
+    )
+then
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, "G0032_G0033");
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Provider.EMR.G0032'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $qc32: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    )
+    and exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0032G0033ProviderEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0032G0033ProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Performance Not Met Quality Code G0032", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $qc32, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qc32.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Provider.EMR.G0033'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    )
+    and $qc33: ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0033"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    )
+    and exists Year2026Mips238Rate2GapG0032G0033ProviderEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Performance Not Met Quality Code G0033", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $qc33, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $qc33.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Provider.Medication.EMR.Benzo1'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        ),
+        earliestMedication($med)
+    )
+    and not (
+        exists Year2026Mips238Rate2GapG0032G0033ProviderEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2GapG0032G0033ProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Benzodiazepine Order 1", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Provider.Medication.EMR.Benzo2'
+salience -11
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    $benzoMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_BENZODIAZEPINES_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2GapG0032G0033ProviderEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Benzodiazepine Order 2", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $benzoMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $benzoMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Provider.Medication.EMR.Anti1'
+salience -12
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        ),
+        earliestMedication($med)
+    )
+    and exists Year2026Mips238Rate2GapG0032G0033ProviderEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Antipsychotic Order 1", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G0032G0033.Provider.Medication.EMR.Anti2'
+salience -13
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    not (exists ClinicalActivity(
+        withValueSet("MipsYear2026", "238_PERFORMANCE_NOT_MET_G0032"),
+        startsDuring($program.measurementPeriod),
+        !Strings.isNullOrEmpty(providerExternalId),
+        providerExternalId == $encounter.providerExternalId
+    ))
+    $antiMed: Medication() from accumulate (
+        $med: Medication(
+            withValueSet("AbleYear2026", "POTENTIALLY_HARMFUL_ANTIPSYCHOTICS_FOR_OLDER_ADULTS_MAP_NDC"),
+            startsDuring($program.measurementPeriod),
+            !Strings.isNullOrEmpty(providerExternalId),
+            providerExternalId == $encounter.providerExternalId
+        ),
+        latestMedication($med)
+    )
+    and exists Year2026Mips238Rate2GapG0032G0033ProviderEMR()
+then
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "Antipsychotic Order 2", "G0032_G0033", PopulationEnum.numerator_performance_not_met, $antiMed, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $antiMed.startDate.toString());
+end
+
+/*
+define "Numerator Performance Not Met G9368".org:
+    * Option ID: G9368 *
+    "Denominator".all
+    and not exists "Denominator Exclusion G9741 Hospice"
+    and not exists "Denominator Exclusion G0034 Palliative Care"
+    and not exists "Numerator Performance Met G9367"
+    and not exists "Numerator Performance Not Met G0032".org
+    and not exists "Numerator Performance Not Met G0033".org    
+    and not exists "Numerator Performance Not Met G0032 and G0033".org
+
+Note: Org, Group and Provider will share the same rule, since the EncounterDenominator is for all. Group/Provider 
+statuses will be updated in their rules.
+*/
+rule 'Year2026.Mips238Rate2.Gap.G9368.Default'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+then
+    controlSet.addPatientMeasureStatus($program, $patient, $measure, MeasureStatusValue.GAP, "G9368");
+    controlSet.addProviderPatientMeasureStatus($program, $patient, $encounter.providerExternalId, $measure, MeasureStatusValue.GAP, "G9368");
+    controlSet.addGroupPatientMeasureStatus($program, $patient, $encounter.groupExternalIds, $measure, MeasureStatusValue.GAP, "G9368");
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G9368.Default.Org.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    and not (
+        exists Year2026Mips238Rate2GapG9368OrgEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2GapG9368OrgEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, "", "No Documented Evidence of Performance Met or Performance Not Met", "G9368", PopulationEnum.numerator_performance_not_met, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G9368.Default.Group.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    $groupId: String() from $encounter.groupExternalIds
+    and not (
+        exists Year2026Mips238Rate2GapG9368GroupEMR(groupId == $groupId)
+    )
+then
+    insert (new Year2026Mips238Rate2GapG9368GroupEMR($groupId));
+    controlSet.addPatientEMR($program, $patient, $measure, $groupId, "No Documented Evidence of Performance Met or Performance Not Met", "G9368", PopulationEnum.numerator_performance_not_met, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end
+
+rule 'Year2026.Mips238Rate2.Gap.G9368.Default.Provider.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure:measure == 'Year2026.Mips238Rate2')
+    $patient: Patient()
+    and not (
+        exists Year2026Mips238Rate2GapG9368ProviderEMR()
+    )
+then
+    insert (new Year2026Mips238Rate2GapG9368ProviderEMR());
+    controlSet.addPatientEMR($program, $patient, $measure, $encounter.providerExternalId, "No Documented Evidence of Performance Met or Performance Not Met", "G9368", PopulationEnum.numerator_performance_not_met, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end

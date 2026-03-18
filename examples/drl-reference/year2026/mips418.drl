@@ -1,0 +1,679 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+import com.ablehealth.enums.extendedmeaures.*;
+
+global PatientResults controlSet;
+
+import accumulate com.ablehealth.functions.LatestClinicalActivityAccumulateFunction latestClinicalActivity;
+import accumulate com.ablehealth.functions.LatestMedicationAccumulateFunction latestMedication;
+import accumulate com.ablehealth.functions.LatestDiagnosisAccumulateFunction latestDiagnosis;
+import accumulate com.ablehealth.functions.LatestQdmDatatypeAccumulateFunction latestQdmDatatype;
+
+declare Year2026Mips418ExclusionPalliativeCare
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips418SuccessG8633
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips418ExclusionG9769
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips418ExclusionFrailtyAndDementiaMed66To80
+    encounter: ClinicalActivity
+end
+
+declare Year2026Mips418ExclusionFrailtyAndAdvancedIllness66To80
+    encounter: ClinicalActivity
+end
+
+/*
+define "Denominator":
+    "Denominator Encounter" Encounter
+    ,
+    if exists("Denominator") 
+    then 
+    return
+        ExtendedMeasureResultV2(
+            Encounter //return 1 record even if multiple exist
+            , 'Denominator Encounter or Procedure' as name
+            , display_date = start_date
+            , calculated_record = false
+            , population = Denominator
+        )
+    and from ["Diagnosis": "MIPS; 418_FRACTURE"] Fracture
+            with "Denominator" Encounter 
+            such that Fracture.start_date during Interval[Encounter.start_date, Encounter.stop_date]
+    return
+        ExtendedMeasureResultV2(
+            Fracture //return 1 record even if multiple exist
+            , 'Fracture' as name
+            , display_date = start_date
+            , calculated_record = false
+            , population = Denominator
+        )
+
+define "Denominator Encounter":
+    "Denominator Encounter or Procedure" Encounter
+    where (  Encounter.start_date during "Intake Period"
+                and AgeInYearsAt(Encounter.start_date) >= 50
+                and AgeInYearsAt(Encounter.start_date) < 85
+                and PatientCharacteristicSex = 'Female'
+                and Encounter.provider_id.hasMeasureMembership = true )
+    with ["Diagnosis": "MIPS; 418_FRACTURE"] Fracture
+    such that Fracture.start_date during Interval[Encounter.start_date, Encounter.stop_date]
+    return distinct ("Denominator Encounter") Denominator by Denominator.start_date
+  
+define "Denominator Encounter or Procedure":
+    ["Clinical Activity": "MIPS; 418_ENCOUNTER"] Encounter
+        where Encounter.place_of_service is not in {21}
+    union ["Clinical Activity": "MIPS; 418_PROCEDURE"]
+
+define "Intake Period"
+  [start of "Measurement Period" - 6 months, end of "Measurement Period" - 6 months"] // July 1 on prior year to June 30 of current year
+      
+*/
+rule 'Year2026.Mips418.Denominator'
+when
+    $program: Program(rules contains 'measure.Mips.2026.Mips418')
+    $encounter: ClinicalActivity (
+        startsDuring($program.measurementPeriod.start.minusMonths(6), $program.measurementPeriod.end.minusMonths(6)),
+        (
+            withValueSet("MipsYear2026", "418_ENCOUNTER") &&
+            withPlaceOfServiceNotIn("21")
+        ) ||
+        withValueSet("MipsYear2026", "418_PROCEDURE")
+        
+    )
+    and exists Diagnosis(
+        startsDuring($encounter),
+        withValueSet("MipsYear2026", "418_FRACTURE")
+    )
+    $patient: Patient(
+        isFemale(),
+        getAgeInYearsAt($encounter.startDate) >= 50,
+        getAgeInYearsAt($encounter.startDate) < 85
+    )
+    not (
+        exists EncounterDenominator($encounter.startDate == clinicalActivity.startDate)
+    )
+then
+    insert(new EncounterDenominator($program, $encounter, 'Year2026.Mips418'));
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips418", $encounter, "Denominator Encounter or Procedure", "exclusion_G9768_hospice", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips418", $encounter, "Denominator Encounter or Procedure", "exclusion_G0048_palliative_care", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips418", $encounter, "Denominator Encounter or Procedure", "exclusion_G9769_bonemineral_osteorx", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips418", $encounter, "Denominator Encounter or Procedure", "exclusion_G9938_lti", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips418", $encounter, "Denominator Encounter or Procedure", "exclusion_G2125_81_frailty", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips418", $encounter, "Denominator Encounter or Procedure", "exclusion_G2125_66_80_frailty_dementia_med", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips418", $encounter, "Denominator Encounter or Procedure", "exclusion_G2126_66_80_frailty_advanced_illness", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips418", $encounter, "Denominator Encounter or Procedure", "3095F", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips418", $encounter, "Denominator Encounter or Procedure", "G8633", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips418", $encounter, "Denominator Encounter or Procedure", "G8635", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, "Year2026.Mips418", $encounter, "Denominator Encounter or Procedure", "3095F-8P", PopulationEnum.denominator, $encounter, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $encounter.startDate.toString());
+end
+
+rule 'Year2026.Mips418.Denominator.Dx.EMR'
+salience -10
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient()
+    $result: Diagnosis() from accumulate(
+        $d: Diagnosis(
+            startsDuring($encounter),
+            withValueSet("MipsYear2026", "418_FRACTURE")
+        ),
+        latestDiagnosis($d)
+    )
+then
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Fracture", "exclusion_G9768_hospice", PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Fracture", "exclusion_G0048_palliative_care", PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Fracture", "exclusion_G9769_bonemineral_osteorx", PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Fracture", "exclusion_G9938_lti", PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Fracture", "exclusion_G2125_81_frailty", PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Fracture", "exclusion_G2125_66_80_frailty_dementia_med", PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Fracture", "exclusion_G2126_66_80_frailty_advanced_illness", PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Fracture", "3095F", PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Fracture", "G8633", PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Fracture", "G8635", PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Fracture", "3095F-8P", PopulationEnum.denominator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion G9768 Hospice Service":
+   *
+   * Option ID: exclusion_G9768_hospice
+   *
+    exists(sharedHospice."Has Hospice")Hospice
+    , 
+    ExtendedMeasureResultV2(
+        Hospice //return 1 record even if multiple exist
+        , 'Evidence of Hospice' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Exclusion
+        , option_id = exclusion_G9768_hospice
+    )
+*/
+rule 'Year2026.Mips418.Exclusion.Hospice'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient()
+    $result: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedHashospiceInMeasurementPeriod($program, $hospice;),
+        latestQdmDatatype($hospice)
+    )
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCLUSION, "exclusion_G9768_hospice");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Evidence of Hospice", "exclusion_G9768_hospice", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion G0048 Palliative Care":
+// Option ID: exclusion_G0048_palliative_care
+    exists (["Clinical Activity": "MIPS; 418_DENOMINATOR_EXCLUSION_G0048_PALLIATIVE_CARE"] PalliativeCare
+            where PalliativeCare.start_date during Interval[ "Intake Period" ] )
+    exists (sharedPalliativeCare."Has Palliative Care Custom Period"("Intake Period"))PalliativeCare
+    , 
+    ExtendedMeasureResultV2(    
+        PalliativeCare//return 1 record even if multiple exist
+        , 'Evidence of Palliative Care' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Exclusion
+        , option_id = exclusion_G0048_palliative_care
+    )
+
+define "Intake Period"
+  [start of "Measurement Period" - 6 months, end of "Measurement Period" - 6 months"] // July 1 on prior year to June 30 of current year
+*/
+rule 'Year2026.Mips418.Exclusion.exclusion_G0048_palliative_care.ClinicalActivity'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient()
+    not( exists Year2026Mips418ExclusionPalliativeCare($encounter == encounter))
+    $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "418_DENOMINATOR_EXCLUSION_G0048_PALLIATIVE_CARE"),
+            startsDuring($program.measurementPeriod.start.minusMonths(6), $program.measurementPeriod.end.minusMonths(6))
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips418ExclusionPalliativeCare($encounter));
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCLUSION, "exclusion_G0048_palliative_care");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Evidence of Palliative Care", "exclusion_G0048_palliative_care", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips418.Exclusion.exclusion_G0048_palliative_care.InCustomPeriod'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient()
+    not( exists Year2026Mips418ExclusionPalliativeCare($encounter == encounter))
+    $result: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedPalliativeCareInCustomPeriod($program.measurementPeriod.start.minusMonths(6), $program.measurementPeriod.end, $palliative;),
+        latestQdmDatatype($palliative)
+    )
+then
+    insert(new Year2026Mips418ExclusionPalliativeCare($encounter));
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCLUSION, "exclusion_G0048_palliative_care");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Evidence of Palliative Care", "exclusion_G0048_palliative_care", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Denominator Exclusion G9769 Osteoporosis Treatment":
+// Option ID: exclusion_G9769_bonemineral_osteorx
+    exists( (["Clinical Activity": "MIPS; 418_DENOMINATOR_EXCLUSION_G9769"] P
+            with "Denominator Encounter" Encounter
+            such that P.start_date during Interval[Encounter.start_date, Encounter.stop_date])
+        union  (["Clinical Activity": "Able; AXIAL_DUAL_ENERGY_X_RAY_ABSORPTIOMETRY_DXA"] A
+            with "Denominator Encounter" Encounter
+            such that A.start_date during Interval[Encounter.start_date - 24 months, Encounter.start_date - 1 day])
+        union  (["Medication": "Able; OSTEOPOROSIS_MEDICATION"] M
+            with "Denominator Encounter" Encounter
+            such that Interval[M.start_date, M.stop_date] overlaps Interval[Encounter.start_date - 12 months, Encounter.start_date - 1 day]) 
+            ) PriorOsteoExclusion
+    ,   
+    ExtendedMeasureResultV2(
+        PriorOsteoExclusion//return 1 record even if multiple exist
+        , 'Prior Osteoporosis Evaluation or Treatment' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Exclusion
+        , option_id = exclusion_G9769_bonemineral_osteorx
+    )  
+*/
+rule 'Year2026.Mips418.Exclusion.exclusion_G9769_bonemineral_osteorx.ClinicalActivity'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient()
+    not(exists Year2026Mips418ExclusionG9769($encounter == encounter))
+    $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            (    
+                withValueSet("MipsYear2026", "418_DENOMINATOR_EXCLUSION_G9769") &&
+                startsDuring($encounter)
+            ) || (
+                withValueSet("AbleYear2026", "AXIAL_DUAL_ENERGY_X_RAY_ABSORPTIOMETRY_DXA") &&
+                startsDuring($encounter.startDate.minusMonths(24), $encounter.startDate)
+            )
+        ),
+        latestClinicalActivity($c)
+     )
+then
+    insert(new Year2026Mips418ExclusionG9769($encounter));
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCLUSION, "exclusion_G9769_bonemineral_osteorx");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Prior Osteoporosis Evaluation or Treatment", "exclusion_G9769_bonemineral_osteorx", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips418.Exclusion.exclusion_G9769_bonemineral_osteorx.Medication'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient()
+    not(exists Year2026Mips418ExclusionG9769($encounter == encounter))
+    $result: Medication() from accumulate(
+        $m: Medication(
+            withValueSet("AbleYear2026", "OSTEOPOROSIS_MEDICATION"),
+            overlaps($encounter.startDate.minusMonths(12), $encounter.startDate.minusDays(1))
+        ),
+        latestMedication($m)
+    )
+then
+    insert(new Year2026Mips418ExclusionG9769($encounter));
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCLUSION, "exclusion_G9769_bonemineral_osteorx");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Prior Osteoporosis Evaluation or Treatment", "exclusion_G9769_bonemineral_osteorx", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/**
+define "Denominator Exclusion: G9938 LTI":
+// Option ID: exclusion_G9938_lti
+    exists ( ["Clinical Activity": "MIPS; 418_DENOMINATOR_EXCLUSION_G9938_LTI"] LTI
+            where LTI.start_date during Interval[start of "Intake Period", end of "Measurement Period"] )
+    or exists (sharedFrailtyLTI."Has Long Term Care with Age Anchor"("Denominator Encounter".start_date))
+    ,
+    if exists ( ["Clinical Activity": "MIPS; 418_DENOMINATOR_EXCLUSION_G9938_LTI"] LTI
+            where LTI.start_date during Interval[start of "Intake Period", end of "Measurement Period"] ) LTIPeriod
+    then
+    return
+    ExtendedMeasureResultV2(
+        LTIPeriod//return 1 record even if multiple exist
+        , 'Long Term Care Quality Code' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Exclusion
+        , option_id = exclusion_G9938_lti
+    )
+    else null
+
+define "Intake Period"
+  [start of "Measurement Period" - 6 months, end of "Measurement Period" - 6 months"] // July 1 on prior year to June 30 of current year
+*/
+rule 'Year2026.Mips418.Exclusion.exclusion_G9938_lti.ClinicalActivity'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "418_DENOMINATOR_EXCLUSION_G9938_LTI"),
+            startsDuring($program.measurementPeriod.start.minusMonths(6), $program.measurementPeriod.end)
+        ),
+        latestClinicalActivity($c)
+     )
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCLUSION, "exclusion_G9938_lti");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Long Term Care Quality Code", "exclusion_G9938_lti", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips418.Exclusion.exclusion_G9938_lti.AgeAnchor'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient()
+    exists queryYear2026MipsSharedHasLongTermCareWithAgeAnchor($program, $encounter.startDate;)
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCLUSION, "exclusion_G9938_lti");
+end
+
+/**
+define "Denominator Exclusion: G2125 81+ with Frailty":
+// Option ID: exclusion_G2125_81_frailty
+    (exists( ["Clinical Activity": "MIPS; 418_DENOMINATOR_EXCLUSION_G2125_OVER80_AND_FRAILTY"]FrailtyQC
+                  where FrailtyQC.start_date during Interval[start of "Measurement Period", end of "Measurement Period"] )
+    or exists (sharedFrailtyLTI."Is 81 and Older with Frailty  with Age Anchor and Custom Period"("Denominator Encounter".start_date, [start of "Intake Period", end of "Measurement Period"]) ) 
+    )EvidenceOfFrailty
+    ,
+    return 
+    ExtendedMeasureResultV2(
+        EvidenceOfFrailty//return 1 record even if multiple exist
+        , 'Evidence of Frailty' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Exclusion
+        , option_id = exclusion_G2125_81_frailty
+    )
+
+*/
+rule 'Year2026.Mips418.Exclusion.exclusion_G2125_81_frailty.ClinicalActivity'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient(getAgeInYearsAt($encounter.startDate) >= 81)
+    $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            withValueSet("MipsYear2026", "418_DENOMINATOR_EXCLUSION_G2125_OVER80_AND_FRAILTY"),
+            startsDuring($program.measurementPeriod)
+        ),
+        latestClinicalActivity($c)
+     )
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCLUSION, "exclusion_G2125_81_frailty");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Evidence of Frailty", "exclusion_G2125_81_frailty", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips418.Exclusion.exclusion_G2125_81_frailty.AgeAnchor'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient()
+    $result: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedIs81AndOlderWithFrailtyWithAgeAnchorAndCustomPeriod($encounter.startDate, $program.measurementPeriod.start.minusMonths(6), $program.measurementPeriod.end, $r;),
+        latestQdmDatatype($r)
+    )
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCLUSION, "exclusion_G2125_81_frailty");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Evidence of Frailty", "exclusion_G2125_81_frailty", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/**
+define "Denominator Exclusion: G2127 66-80 with Frailty and Dementia Meds":
+// Option ID: exclusion_G2125_66_80_frailty_dementia_med  
+    exists (sharedFrailtyLTI."Is 66 to 80 with Frailty and Dementia Meds with Age Anchor"("Denominator Encounter".start_date))
+    ,
+    if exists ( ["Clinical Activity": "MIPS; MIPS_FRAILTY_AND_DEMENTIA_MEDICATION_QUALITY_CODES"] FrailDementiaQC
+                where FrailDementiaQC.start_date during Interval[start of "Measurement Period", end of "Measurement Period"])
+    return
+    ExtendedMeasureResultV2(
+       FrailDementiaQC//return 1 record even if multiple exist
+        , 'Frailty and Dementia Medication Quality Code' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Exclusion
+        , option_id = exclusion_G2125_66_80_frailty_dementia_med
+    )
+    else (from sharedFrailtyLTI."Dementia Medications In Year Before or During Measurement Period" 
+    return
+    ExtendedMeasureResultV2(
+       DementiaMedPeriod//return 1 record even if multiple exist
+        , 'Dementia Medication' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Exclusion
+        , option_id = exclusion_G2125_66_80_frailty_dementia_med
+    )
+    and from sharedFrailtyLTI."Frailty Exists During Measurement Period"
+    return
+    ExtendedMeasureResultV2(
+       FrailtyPeriod//return 1 record even if multiple exist
+        , 'Evidence of Frailty' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Exclusion
+        , option_id = exclusion_G2125_66_80_frailty_dementia_med
+    )
+) 
+*/
+rule 'Year2026.Mips418.Exclusion.exclusion_G2125_66_80_frailty_dementia_med.QualityCodes'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient()
+    not(exists Year2026Mips418ExclusionFrailtyAndDementiaMed66To80($encounter == encounter))
+    $result: ClinicalActivity() from accumulate(
+        queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyAndDementiaQualityCodes($program, $encounter.startDate, $r;),
+        latestClinicalActivity($r)
+    )
+then
+    insert(new Year2026Mips418ExclusionFrailtyAndDementiaMed66To80($encounter));
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCLUSION, "exclusion_G2125_66_80_frailty_dementia_med");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Frailty and Dementia Medication Quality Code", "exclusion_G2125_66_80_frailty_dementia_med", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips418.Exclusion.exclusion_G2125_66_80_frailty_dementia_med.Medication'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient()
+    not(exists Year2026Mips418ExclusionFrailtyAndDementiaMed66To80($encounter == encounter))
+    $result1: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyExists($program, $encounter.startDate, $q;),
+        latestQdmDatatype($q)
+    )
+    $result2: Medication() from accumulate(
+        queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorDementiaMedications($program, $encounter.startDate, $m;),
+        latestMedication($m)
+    )   
+then
+    insert(new Year2026Mips418ExclusionFrailtyAndDementiaMed66To80($encounter));
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCLUSION, "exclusion_G2125_66_80_frailty_dementia_med");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Evidence of Frailty", "exclusion_G2125_66_80_frailty_dementia_med", PopulationEnum.denominator_exclusion, $result1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result1.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Dementia Medication", "exclusion_G2125_66_80_frailty_dementia_med", PopulationEnum.denominator_exclusion, $result2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result2.startDate.toString());
+end
+
+/**
+define "Denominator Exclusion: G2126 66-80 with Frailty and Advanced Illness":
+// Option ID: exclusion_G2126_66_80_frailty_advanced_illness  
+    exists (sharedFrailtyLTI."Is 66 to 80 with Frailty and Advanced Illness with Age Anchor"("Denominator Encounter".start_date)) 
+    ,
+    if exists ( ["Clinical Activity": "MIPS; MIPS_FRAILTY_AND_ADVANCED_ILLNESS_QUALITY_CODES"] FrailAdvIllQC
+                where FrailAdvIllQC.start_date during Interval[start of "Measurement Period", end of "Measurement Period"])
+    return
+    ExtendedMeasureResultV2(
+       FrailAdvIllQC//return 1 record even if multiple exist
+        , 'Frailty and Advanced Illness Quality Code' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Exclusion
+        , option_id = exclusion_G2126_66_80_frailty_advanced_illness
+    )
+    else( from sharedFrailtyLTI."Advanced Illness in Measurement Period or Year Prior" 
+    return
+    ExtendedMeasureResultV2(
+       AdvancedIllnessPeriod//return 1 record even if multiple exist
+        , 'Advanced Illness' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Exclusion
+        , option_id = exclusion_G2126_66_80_frailty_advanced_illness
+    )
+    and from sharedFrailtyLTI."Frailty Exists During Measurement Period"
+    return
+    ExtendedMeasureResultV2(
+       FrailtyPeriod//return 1 record even if multiple exist
+        , 'Evidence of Frailty' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Exclusion
+        , option_id = exclusion_G2126_66_80_frailty_advanced_illness
+    )
+)
+*/
+rule 'Year2026.Mips418.Exclusion.exclusion_G2126_66_80_frailty_advanced_illness.QualityCodes'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient()
+    not(exists Year2026Mips418ExclusionFrailtyAndAdvancedIllness66To80($encounter == encounter))
+    $result: ClinicalActivity() from accumulate(
+        queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyAndAdvancedIllnessQualityCodes($program, $encounter.startDate, $r;),
+        latestClinicalActivity($r)
+    )
+then
+    insert(new Year2026Mips418ExclusionFrailtyAndAdvancedIllness66To80($encounter));
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCLUSION, "exclusion_G2126_66_80_frailty_advanced_illness");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Frailty and Advanced Illness Quality Code", "exclusion_G2126_66_80_frailty_advanced_illness", PopulationEnum.denominator_exclusion, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips418.Exclusion.exclusion_G2126_66_80_frailty_advanced_illness.AdvancedIllness'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient()
+    not(exists Year2026Mips418ExclusionFrailtyAndAdvancedIllness66To80($encounter == encounter))
+    $result1: QdmDatatype() from accumulate(
+        queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorFrailtyExists($program, $encounter.startDate, $q;),
+        latestQdmDatatype($q)
+    )
+    $result2: Diagnosis() from accumulate(
+        queryYear2026MipsSharedFrailtyAge66To80WithAgeAnchorAdvancedIllness($program, $encounter.startDate, $d;),
+        latestDiagnosis($d)
+    )   
+then
+    insert(new Year2026Mips418ExclusionFrailtyAndAdvancedIllness66To80($encounter));
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.EXCLUSION, "exclusion_G2126_66_80_frailty_advanced_illness");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Evidence of Frailty", "exclusion_G2126_66_80_frailty_advanced_illness", PopulationEnum.denominator_exclusion, $result1, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result1.startDate.toString());
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Advanced Illness", "exclusion_G2126_66_80_frailty_advanced_illness", PopulationEnum.denominator_exclusion, $result2, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result2.startDate.toString());
+end
+
+
+/*
+define "Numerator Performance Met: 3095F":
+  
+    Option ID: 3095F
+   
+    "Bone Density Scan" P
+    with "Denominator Encounter" Encounter
+    such that P.start_date during Interval[Encounter.start_date, Encounter.start_date + 6 months]
+    ,
+    ExtendedMeasureResultV2(
+        P //return 1 record even if multiple exist
+        , 'Bone Density Scan' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator
+        , option_id = 3095F
+    )
+
+define "Bone Density Scan":
+  ["Clinical Activity": "MIPS; 418_PERFORMANCE_MET_3095F"] P
+  where ( P.code_modifiers not in {'8P'}
+          or P.code_modifiers isEmpty 
+          or P.code_modifiers = null  )
+  union ["Clinical Activity": "Able; AXIAL_DUAL_ENERGY_X_RAY_ABSORPTIOMETRY_DXA"]
+*/
+rule 'Year2026.Mips418.Success.3095F'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient()
+    $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            startsDuring($encounter.startDate, $encounter.startDate.plusMonths(6)),
+            (
+                withValueSet("MipsYear2026", "418_PERFORMANCE_MET_3095F") &&
+                withCodeModifiersNotIn("8P")
+            ) ||
+            withValueSet("AbleYear2026", "AXIAL_DUAL_ENERGY_X_RAY_ABSORPTIOMETRY_DXA")
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.SUCCESS, "3095F");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Bone Density Scan", "3095F", PopulationEnum.numerator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Numerator Performance Met: G8633":
+  
+    Option ID: G8633
+   
+    "Osteoporosis Medication" P
+    with "Denominator Encounter" Encounter
+    such that P.start_date during Interval[Encounter.start_date, Encounter.start_date + 6 months]
+    ,
+    ExtendedMeasureResultV2(
+        P //return 1 record even if multiple exist
+        , 'Osteoporosis Treatment' as name
+        , display_date = start_date
+        , calculated_record = false
+        , population = Numerator
+        , option_id = G8633
+    )
+
+define "Osteoporosis Medication":
+    ["Clinical Activity": "MIPS; 418_PERFORMANCE_MET_G8633"]
+    union ["Medication": "Able; OSTEOPOROSIS_MEDICATION"]
+*/
+rule 'Year2026.Mips418.Success.G8633.ClinicalActivity'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient()
+    not(exists Year2026Mips418SuccessG8633($encounter == encounter))
+    $result: ClinicalActivity() from accumulate(
+        $c: ClinicalActivity(
+            startsDuring($encounter.startDate, $encounter.startDate.plusMonths(6)),
+            withValueSet("MipsYear2026", "418_PERFORMANCE_MET_G8633")
+        ),
+        latestClinicalActivity($c)
+    )
+then
+    insert(new Year2026Mips418SuccessG8633($encounter));
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.SUCCESS, "G8633");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Osteoporosis Treatment", "G8633", PopulationEnum.numerator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+rule 'Year2026.Mips418.Success.G8633.Medication'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    $patient: Patient()
+    not(exists Year2026Mips418SuccessG8633($encounter == encounter))
+    $result: Medication() from accumulate(
+        $m: Medication(
+            startsDuring($encounter.startDate, $encounter.startDate.plusMonths(6)),
+            withValueSet("AbleYear2026", "OSTEOPOROSIS_MEDICATION")
+        ),
+        latestMedication($m)
+    )
+then
+    insert(new Year2026Mips418SuccessG8633($encounter));
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.SUCCESS, "G8633");
+    controlSet.addEncounterEMR($program, $patient, $measure, $encounter, "Osteoporosis Treatment", "G8633", PopulationEnum.numerator, $result, SupplementalInfoEnum.DISPLAY_DATE.displayName(), $result.startDate.toString());
+end
+
+/*
+define "Numerator Performance Not Met G8635":
+  *
+  * Option ID: G8635
+  *
+    "Denominator Encounter" Encounter
+    with ["Clinical Activity": "MIPS; 418_PERFORMANCE_NOT_MET_G8635"] P
+    such that P.start_date during Interval[Encounter.start_date, Encounter.start_date + 6 months]
+*/
+rule 'Year2026.Mips418.Gap.G8635'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+    exists ClinicalActivity(
+        withValueSet("MipsYear2026", "418_PERFORMANCE_NOT_MET_G8635"),
+        startsDuring($encounter.startDate, $encounter.startDate.plusMonths(6))
+    )
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.GAP, "G8635");
+end
+
+/*
+define "Numerator Performance Not Met: 3095F-8P":
+  *
+  *  Option ID: 3095F-8P
+  *
+    not "Denominator Exclusion Hospice Service"
+    and not "Denominator Exclusion Palliative Care"
+    and not "Denominator Exclusion Osteoporosis Treatment"
+    and not "Numerator Performance Met 3095F"
+    and not "Numerator Performance Met G8633"
+    and not "Numerator Performance Not Met G8635"
+    and not "Denominator Exclusion Denominator Exclusion: G9938 LTI"
+    and not "Denominator Exclusion Denominator Exclusion: G2125 81+ with Frailty"
+    and not "Denominator Exclusion Denominator Exclusion: G2127 66-80 with Frailty and Dementia Meds"
+    and not "Denominator Exclusion Denominator Exclusion: G21
+*/
+rule 'Year2026.Mips418.Gap.3095F-8P'
+when
+    EncounterDenominator($program: program, $encounter: clinicalActivity, $measure: measure == 'Year2026.Mips418')
+then
+    controlSet.addEncounterMeasureStatus($program, $encounter, $measure, MeasureStatusValue.GAP, "3095F-8P");
+end

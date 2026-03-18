@@ -1,0 +1,729 @@
+package com.ablehealth.measure.mips.year2026;
+
+import com.ablehealth.model.*
+import com.ablehealth.payloads.*;
+import com.ablehealth.results.*;
+
+import accumulate com.ablehealth.functions.LatestClinicalActivityAccumulateFunction latestClinicalActivity;
+import accumulate com.ablehealth.functions.LatestQdmDatatypeAccumulateFunction latestQdmDataType;
+import accumulate com.ablehealth.functions.LatestQdmResultDatatypeAccumulateFunction latestQdmResultDataType;
+import com.ablehealth.enums.extendedmeaures.*;
+
+global PatientResults controlSet;
+
+declare Year2026Mips226SharedEncounterDenominatorGroup
+    groupId: String
+end
+
+declare Year2026Mips226SharedMostRecentDenominatorEncounterOrg
+    record: ClinicalActivity
+end
+
+declare Year2026Mips226SharedMostRecentTobaccoUserStartsDuringPeriod
+    user: QdmDatatype
+end
+
+declare Year2026Mips226SharedTobaccoUser
+    qdmDataType: QdmDatatype
+end
+
+declare Year2026Mips226SharedMostRecentTobaccoNonUserStartsDuringPeriod
+    nonUser: QdmDatatype
+end
+
+declare Year2026Mips226SharedTobaccoNonUser
+    qdmDataType: QdmDatatype
+end
+
+declare Year2026Mips226SharedMostRecentTobaccoScreenStartsDuringPeriod
+    qdmDataType: QdmDatatype
+end
+
+declare Year2026Mips226SharedMostRecentTobaccoUseScreening
+    qdmResultDataType: QdmResultDataType
+end
+
+declare Year2026Mips226SharedLastScreenResultStartsDuringPeriod
+    qdmResultDataType: QdmResultDataType
+end
+
+declare Year2026Mips226SharedLastTobaccoScreenStartsDuringPeriod
+    qdmDataType: QdmDatatype
+end
+
+declare Year2026Mips226SharedTobaccoUse
+    qdmDataType: QdmDatatype
+    measure: String
+end
+
+declare Year2026Mips226SharedMostRecentDenominatorEncounterGroup
+    record: ClinicalActivity
+    groupId: String
+end
+
+declare Year2026Mips226SharedMostRecentDenominatorEncounterProvider
+    record: ClinicalActivity
+    providerId: String
+end
+
+declare Year2026Mips226SharedMostRecentTobaccoUserStartsDuringPeriodGroup
+    user: QdmDatatype
+    groupId: String
+end
+
+declare Year2026Mips226SharedMostRecentTobaccoNonUserStartsDuringPeriodGroup
+    nonUser: QdmDatatype
+    groupId: String
+end
+
+declare Year2026Mips226SharedMostRecentTobaccoUserStartsDuringPeriodProvider
+    user: QdmDatatype
+    providerId: String
+end
+
+declare Year2026Mips226SharedMostRecentTobaccoNonUserStartsDuringPeriodProvider
+    nonUser: QdmDatatype
+    providerId: String
+end
+
+/*
+define "Last Denominator Encounter".group
+    last(   "226 Encounter" Encounter
+            union "226 Preventive Encounter" PreventiveEncounter
+            where Encounter.group_id = PreventiveEncounter.group_id ) DenominatorEncounterGroup
+    sort by DenominatorEncounterGroup.start_date asc
+*/
+rule 'Year2026.Mips226Shared.Denominator.Group.PreventiveEncounter.Marker'
+salience 19
+when
+    $program: Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    $encounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "226_PREVENTIVE_ENCOUNTER"),
+        startsDuring($program.measurementPeriod),
+        groupExternalIds != null
+    )
+    $groupId: String() from $encounter.getGroupExternalIds()
+    not(exists Year2026Mips226SharedEncounterDenominatorGroup(groupId == $groupId))
+then
+    insert(new Year2026Mips226SharedEncounterDenominatorGroup($groupId));
+end
+
+rule 'Year2026.Mips226Shared.Denominator.Group.TwoEncounters.Marker'
+salience 19
+when
+    $program: Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    $encounter: ClinicalActivity(
+        withValueSet("MipsYear2026", "226_ENCOUNTER"),
+        startsDuring($program.measurementPeriod),
+        groupExternalIds != null
+    )
+    $groupId: String() from $encounter.getGroupExternalIds()
+    not(exists Year2026Mips226SharedEncounterDenominatorGroup(groupId == $groupId))
+    exists ClinicalActivity(
+        withValueSet("MipsYear2026", "226_ENCOUNTER"),
+        startsDuring($program.measurementPeriod),
+        $encounter.startDate != startDate,
+        groupExternalIds != null, groupExternalIds.contains($groupId)
+    )
+then
+    insert(new Year2026Mips226SharedEncounterDenominatorGroup($groupId));
+end
+
+/*
+define "Last Denominator Encounter".org
+    last(   "226 Encounter"
+            union "226 Preventive Encounter" ) DenominatorEncounter
+    sort by DenominatorEncounter.start_date asc
+
+define "Tobacco Screening Interval".org
+    Interval[start of "Measurement Period", LastDenominatorEncounter.org.start_date]
+*/
+rule 'Year2026.Mips226Shared.MostRecentDenominatorEncounterOrg'
+salience 18
+when
+    $program: Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    // CQL: last( "226 Encounter" union "226 Preventive Encounter" ) — uses ALL encounters, not just the qualifying one
+    exists EncounterDenominator(
+        (measure == "Year2026.Mips226Rate1" || measure == "Year2026.Mips226Rate2" || measure == "Year2026.Mips226Rate3"),
+        type == EncounterDenominatorType.ORG
+    )
+    $mostRecentEncounter: ClinicalActivity() from accumulate (
+        $enc: ClinicalActivity(
+            withValueSet("MipsYear2026", "226_ENCOUNTER") || withValueSet("MipsYear2026", "226_PREVENTIVE_ENCOUNTER"),
+            startsDuring($program.measurementPeriod)
+        ),
+        latestClinicalActivity($enc)
+    )
+    not Year2026Mips226SharedMostRecentDenominatorEncounterOrg()
+then
+    insert(new Year2026Mips226SharedMostRecentDenominatorEncounterOrg($mostRecentEncounter));
+end
+
+/*
+define "Last Denominator Encounter".group
+    last(   "226 Encounter" Encounter
+            union "226 Preventive Encounter" PreventiveEncounter
+            where Encounter.group_id = PreventiveEncounter.group_id ) DenominatorEncounterGroup
+    sort by DenominatorEncounterGroup.start_date asc
+
+define "Tobacco Screening Interval".group
+    Interval[start of "Measurement Period", LastDenominatorEncounter.group.start_date]
+*/
+rule 'Year2026.Mips226Shared.MostRecentDenominatorEncounterGroup'
+salience 15
+when
+    $program: Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    EncounterDenominator($encounter: clinicalActivity,
+        (measure == "Year2026.Mips226Rate1" || measure == "Year2026.Mips226Rate2" || measure == "Year2026.Mips226Rate3"),
+        type == EncounterDenominatorType.GROUP, clinicalActivity.isPresent(clinicalActivity.groupExternalIds))
+    $groupId: String() from $encounter.getGroupExternalIds()
+    exists Year2026Mips226SharedEncounterDenominatorGroup(groupId == $groupId)
+    // CQL: last( "226 Encounter" union "226 Preventive Encounter" where group_id matches ) — all encounters in the group
+    $mostRecentEncounter: ClinicalActivity() from accumulate (
+        $enc: ClinicalActivity(
+            withValueSet("MipsYear2026", "226_ENCOUNTER") || withValueSet("MipsYear2026", "226_PREVENTIVE_ENCOUNTER"),
+            startsDuring($program.measurementPeriod),
+            groupExternalIds != null, groupExternalIds.contains($groupId)
+        ),
+        latestClinicalActivity($enc)
+    )
+    not Year2026Mips226SharedMostRecentDenominatorEncounterGroup(groupId == $groupId)
+then
+    insert(new Year2026Mips226SharedMostRecentDenominatorEncounterGroup($mostRecentEncounter, $groupId));
+end
+
+/*
+define "Last Denominator Encounter".provider
+    last(   "226 Encounter" Encounter
+            union "226 Preventive Encounter" PreventiveEncounter
+            where Encounter.provider_id = PreventiveEncounter.provider_id ) DenominatorEncounterProvider
+    sort by DenominatorEncounterProvider.start_date asc
+
+define "Tobacco Screening Interval".provider
+    Interval[start of "Measurement Period", LastDenominatorEncounter.provider.start_date]
+*/
+rule 'Year2026.Mips226Shared.MostRecentDenominatorEncounterProvider'
+salience 15
+when
+    $program: Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    EncounterDenominator($providerId: clinicalActivity.providerExternalId,
+        (measure == "Year2026.Mips226Rate1" || measure == "Year2026.Mips226Rate2" || measure == "Year2026.Mips226Rate3"),
+        type == EncounterDenominatorType.PROVIDER, clinicalActivity.isPresent(clinicalActivity.providerExternalId))
+    // CQL: last( "226 Encounter" union "226 Preventive Encounter" where provider_id matches ) — all encounters for this provider
+    $mostRecentEncounter: ClinicalActivity() from accumulate (
+        $enc: ClinicalActivity(
+            withValueSet("MipsYear2026", "226_ENCOUNTER") || withValueSet("MipsYear2026", "226_PREVENTIVE_ENCOUNTER"),
+            startsDuring($program.measurementPeriod),
+            providerExternalId == $providerId
+        ),
+        latestClinicalActivity($enc)
+    )
+    not Year2026Mips226SharedMostRecentDenominatorEncounterProvider(providerId == $providerId)
+then
+    insert(new Year2026Mips226SharedMostRecentDenominatorEncounterProvider($mostRecentEncounter, $providerId));
+end
+
+/*
+Part of "Most Recent Tobacco User Diagnosis, Screening, or Quality Code"
+Implements: ["Diagnosis": "VSAC; TOBACCO_USER"]
+*/
+rule 'Year2026.Mips226Shared.TobaccoUser.Diagnosis'
+salience 30
+when
+    Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    $qdmDatatype: Diagnosis(
+        withValueSet("VsacYear2026", "TOBACCO_USER")
+    )
+then
+    insert(new Year2026Mips226SharedTobaccoUser($qdmDatatype));
+end
+
+/*
+Part of "Most Recent Tobacco User Diagnosis, Screening, or Quality Code"
+Implements: ["Clinical Activity": "VSAC; TOBACCO_USER"]
+
+define "Quality Codes Indicating Tobacco User"
+    ["Clinical Activity": "MIPS; 226_RATE1_PERFORMANCE_MET_G9902"]
+    union ["Clinical Activity": "MIPS; 226_RATE2_PERFORMANCE_MET_G9906"]
+    union ["Clinical Activity": "MIPS; 226_RATE3_PERFORMANCE_MET_G0030"]
+    union ["Clinical Activity": "MIPS; 497RATE6A_PERFORMANCE_MET_M1283"]
+    union ["Clinical Activity": "MIPS; 497RATE6B_PERFORMANCE_MET_M1301"]
+    union ["Clinical Activity": "MIPS; 497RATE6C_PERFORMANCE_MET_M1310"]
+*/
+rule 'Year2026.Mips226Shared.TobaccoUser.ClinicalActivities'
+salience 30
+when
+    Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    $qdmDatatype: ClinicalActivity(
+        withValueSet("VsacYear2026", "TOBACCO_USER") ||
+        withValueSet("MipsYear2026", "226_RATE1_PERFORMANCE_MET_G9902") ||
+        withValueSet("MipsYear2026", "226_RATE2_PERFORMANCE_MET_G9906") ||
+        withValueSet("MipsYear2026", "226_RATE3_PERFORMANCE_MET_G0030") ||
+        withValueSet("MipsYear2026", "497RATE6A_PERFORMANCE_MET_M1283") ||
+        withValueSet("MipsYear2026", "497RATE6B_PERFORMANCE_MET_M1301") ||
+        withValueSet("MipsYear2026", "497RATE6C_PERFORMANCE_MET_M1310")
+    )
+then
+    insert(new Year2026Mips226SharedTobaccoUser($qdmDatatype));
+end
+
+/*
+define "Tobacco Use Screening Indicates Tobacco User":
+    ["Clinical Activity": "VSAC; TOBACCO_USE_SCREENING"] TobaccoUseScreening
+    where   ( TobaccoUseScreening.result_code_type, TobaccoUseScreening.result_code_value in ["Diagnosis": "VSAC; TOBACCO_USER"]  )
+*/
+rule 'Year2026.Mips226Shared.TobaccoUser.TobaccoScreening'
+salience 30
+when
+    Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    $qdmDatatype: ClinicalActivity(
+        withValueSet("VsacYear2026", "TOBACCO_USE_SCREENING"),
+        withValueSetInResultCodeValue("VsacYear2026", "TOBACCO_USER")
+    )
+then
+    insert(new Year2026Mips226SharedTobaccoUser($qdmDatatype));
+    insert(new Year2026Mips226SharedMostRecentTobaccoUseScreening($qdmDatatype));
+end
+
+/*
+Part of "Most Recent Tobacco Non-User Diagnosis, Screening, or Quality Code"
+Implements: ["Diagnosis": "VSAC; TOBACCO_NON_USER"]
+*/
+rule 'Year2026.Mips226Shared.TobaccoNonUser.Diagnosis'
+salience 30
+when
+    Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    $qdmDatatype: Diagnosis(
+        withValueSet("VsacYear2026", "TOBACCO_NON_USER")
+    )
+then
+    insert(new Year2026Mips226SharedTobaccoNonUser($qdmDatatype));
+end
+
+/*
+Part of "Most Recent Tobacco Non-User Diagnosis, Screening, or Quality Code"
+Implements: ["Clinical Activity": "VSAC; TOBACCO_NON_USER"]
+
+define "Quality Codes Indicating Tobacco Non-User"
+    ["Clinical Activity": "MIPS; 226_RATE1_PERFORMANCE_MET_G9903"]
+    union ["Clinical Activity": "MIPS; 226_PERFORMANCE_MET_1036F"]
+    union ["Clinical Activity": "MIPS; 497RATE6A_PERFORMANCE_MET_M1282"]
+    union ["Clinical Activity": "MIPS; 497RATE6C_PERFORMANCE_MET_M1316"]
+*/
+rule 'Year2026.Mips226Shared.TobaccoNonUser.ClinicalActivities'
+salience 30
+when
+    Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    $qdmDatatype: ClinicalActivity(
+        withValueSet("VsacYear2026", "TOBACCO_NON_USER") ||
+        withValueSet("MipsYear2026", "226_RATE1_PERFORMANCE_MET_G9903") ||
+        withValueSet("MipsYear2026", "226_PERFORMANCE_MET_1036F") ||
+        withValueSet("MipsYear2026", "497RATE6A_PERFORMANCE_MET_M1282") ||
+        withValueSet("MipsYear2026", "497RATE6C_PERFORMANCE_MET_M1316")
+    )
+then
+    insert(new Year2026Mips226SharedTobaccoNonUser($qdmDatatype));
+end
+
+/*
+define "Tobacco Use Screening Indicates Tobacco Non User":
+    ["Clinical Activity": "VSAC; TOBACCO_USE_SCREENING"] TobaccoUseScreening
+    where   ( TobaccoUseScreening.result_code_type, TobaccoUseScreening.result_code_value in ["Diagnosis": "VSAC; TOBACCO_NON_USER"]   )
+*/
+rule 'Year2026.Mips226Shared.TobaccoNonUser.TobaccoScreening'
+salience 30
+when
+    Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    $qdmDatatype: ClinicalActivity(
+        withValueSet("VsacYear2026", "TOBACCO_USE_SCREENING"),
+        withValueSetInResultCodeValue("VsacYear2026", "TOBACCO_NON_USER")
+    )
+then
+    insert(new Year2026Mips226SharedMostRecentTobaccoUseScreening($qdmDatatype));
+    insert(new Year2026Mips226SharedTobaccoNonUser($qdmDatatype));
+end
+
+/*
+define "Most Recent Tobacco User Diagnosis, Screening, or Quality Code".org:
+    Last (   ["Diagnosis": "VSAC; TOBACCO_USER"]
+            union ["Clinical Activity": "VSAC; TOBACCO_USER"]
+            union "Tobacco Use Screening Indicates Tobacco User"
+            union "Quality Codes Indicating Tobacco User"   ) Screen 
+    sort by Screen.start_datetime asc
+    where Screen.start_datetime during "Tobacco Screening Interval".org
+*/
+rule 'Year2026.Mips226Shared.MostRecentTobaccoUser.Org'
+salience 16
+when
+    $program: Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    Year2026Mips226SharedMostRecentDenominatorEncounterOrg($lastEncounter: record)
+    not Year2026Mips226SharedMostRecentTobaccoUserStartsDuringPeriod()
+    $latestTobaccoUser: QdmDatatype() from accumulate (
+        Year2026Mips226SharedTobaccoUser(
+            $qdmDataType: qdmDataType,
+            qdmDataType.startsDuring($program.measurementPeriod),
+            qdmDataType.startsOnOrBefore($lastEncounter.startDate)),
+        latestQdmDataType($qdmDataType)
+    )
+then
+    insert(new Year2026Mips226SharedMostRecentTobaccoScreenStartsDuringPeriod($latestTobaccoUser));
+    insert(new Year2026Mips226SharedMostRecentTobaccoUserStartsDuringPeriod($latestTobaccoUser));
+end
+
+/*
+define "Most Recent Tobacco User Diagnosis, Screening, or Quality Code".group:
+    (Last (   ["Diagnosis": "VSAC; TOBACCO_USER"]
+            union ["Clinical Activity": "VSAC; TOBACCO_USER"]
+            union "Tobacco Use Screening Indicates Tobacco User"
+            union "Quality Codes Indicating Tobacco User"   ) Screen 
+    sort by Screen.start_datetime asc
+    where Screen.start_datetime during "Tobacco Screening Interval".group) LastScreenGroup
+        return "Tobacco Screening Interval".group_id as LastScreenGroup.group_id
+*/
+rule 'Year2026.Mips226Shared.MostRecentTobaccoUser.Group'
+salience 14
+when
+    $program: Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    Year2026Mips226SharedMostRecentDenominatorEncounterGroup($groupId: groupId, $lastEncounter: record)
+    not Year2026Mips226SharedMostRecentTobaccoUserStartsDuringPeriodGroup(groupId == $groupId)
+    $latestTobaccoUser: QdmDatatype() from accumulate (
+        Year2026Mips226SharedTobaccoUser(
+            $qdmDataType: qdmDataType,
+            qdmDataType.startsDuring($program.measurementPeriod),
+            qdmDataType.startsOnOrBefore($lastEncounter.startDate)),
+        latestQdmDataType($qdmDataType)
+    )
+then
+    insert(new Year2026Mips226SharedMostRecentTobaccoUserStartsDuringPeriodGroup($latestTobaccoUser, $groupId));
+end
+
+/*
+define "Most Recent Tobacco User Diagnosis, Screening, or Quality Code".provider:
+    (Last (   ["Diagnosis": "VSAC; TOBACCO_USER"]
+            union ["Clinical Activity": "VSAC; TOBACCO_USER"]
+            union "Tobacco Use Screening Indicates Tobacco User"
+            union "Quality Codes Indicating Tobacco User"   ) Screen 
+    sort by Screen.start_datetime asc
+    where Screen.start_datetime during "Tobacco Screening Interval".provider) LastScreenProvider
+        return "Tobacco Screening Interval".provider_id as LastScreenProvider.provider_id
+*/
+rule 'Year2026.Mips226Shared.MostRecentTobaccoUser.Provider'
+salience 14
+when
+    $program: Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    Year2026Mips226SharedMostRecentDenominatorEncounterProvider($providerId: providerId, $lastEncounter: record)
+    not Year2026Mips226SharedMostRecentTobaccoUserStartsDuringPeriodProvider(providerId == $providerId)
+    $latestTobaccoUser: QdmDatatype() from accumulate (
+        Year2026Mips226SharedTobaccoUser(
+            $qdmDataType: qdmDataType,
+            qdmDataType.startsDuring($program.measurementPeriod),
+            qdmDataType.startsOnOrBefore($lastEncounter.startDate)),
+        latestQdmDataType($qdmDataType)
+    )
+then
+    insert(new Year2026Mips226SharedMostRecentTobaccoUserStartsDuringPeriodProvider($latestTobaccoUser, $providerId));
+end
+
+/*
+define "Most Recent Tobacco Non-User Diagnosis, Screening, or Quality Code".org:
+    Last (   ["Diagnosis": "VSAC; TOBACCO_NON_USER"]
+            union ["Clinical Activity": "VSAC; TOBACCO_NON_USER"]
+            union "Tobacco Use Screening Indicates Tobacco Non User"
+            union "Quality Codes Indicating Tobacco Non-User" ) Screen
+    sort by Screen.start_datetime asc
+    where Screen.start_datetime during "Tobacco Screening Interval".org
+*/
+rule 'Year2026.Mips226Shared.MostRecentTobaccoNonUser.Org'
+salience 16
+when
+    $program: Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    Year2026Mips226SharedMostRecentDenominatorEncounterOrg($lastEncounter: record)
+    not Year2026Mips226SharedMostRecentTobaccoNonUserStartsDuringPeriod()
+    $latestTobaccoNonUser: QdmDatatype() from accumulate (
+        Year2026Mips226SharedTobaccoNonUser(
+            $qdmDataType: qdmDataType,
+            qdmDataType.startsDuring($program.measurementPeriod),
+            qdmDataType.startsOnOrBefore($lastEncounter.startDate)),
+        latestQdmDataType($qdmDataType)
+    )
+then
+    insert(new Year2026Mips226SharedMostRecentTobaccoScreenStartsDuringPeriod($latestTobaccoNonUser));
+    insert(new Year2026Mips226SharedMostRecentTobaccoNonUserStartsDuringPeriod($latestTobaccoNonUser));
+end
+
+/*
+define "Most Recent Tobacco Non-User Diagnosis, Screening, or Quality Code".group:
+    (Last (   ["Diagnosis": "VSAC; TOBACCO_NON_USER"]
+            union ["Clinical Activity": "VSAC; TOBACCO_NON_USER"]
+            union "Tobacco Use Screening Indicates Tobacco Non User"
+            union "Quality Codes Indicating Tobacco Non-User" ) Screen
+    sort by Screen.start_datetime asc
+    where Screen.start_datetime during "Tobacco Screening Interval".group) LastScreenGroup
+        return "Tobacco Screening Interval".group_id as LastScreenGroup.group_id
+*/
+rule 'Year2026.Mips226Shared.MostRecentTobaccoNonUser.Group'
+salience 14
+when
+    $program: Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    Year2026Mips226SharedMostRecentDenominatorEncounterGroup($groupId: groupId, $lastEncounter: record)
+    not Year2026Mips226SharedMostRecentTobaccoNonUserStartsDuringPeriodGroup(groupId == $groupId)
+    $latestTobaccoNonUser: QdmDatatype() from accumulate (
+        Year2026Mips226SharedTobaccoNonUser(
+            $qdmDataType: qdmDataType,
+            qdmDataType.startsDuring($program.measurementPeriod),
+            qdmDataType.startsOnOrBefore($lastEncounter.startDate)),
+        latestQdmDataType($qdmDataType)
+    )
+then
+    insert(new Year2026Mips226SharedMostRecentTobaccoNonUserStartsDuringPeriodGroup($latestTobaccoNonUser, $groupId));
+end
+
+/*
+define "Most Recent Tobacco Non-User Diagnosis, Screening, or Quality Code".provider:
+    (Last (   ["Diagnosis": "VSAC; TOBACCO_NON_USER"]
+            union ["Clinical Activity": "VSAC; TOBACCO_NON_USER"]
+            union "Tobacco Use Screening Indicates Tobacco Non User"
+            union "Quality Codes Indicating Tobacco Non-User" ) Screen
+    sort by Screen.start_datetime asc
+    where Screen.start_datetime during "Tobacco Screening Interval".provider) LastScreenProvider
+        return "Tobacco Screening Interval".provider_id as LastScreenProvider.provider_id
+*/
+rule 'Year2026.Mips226Shared.MostRecentTobaccoNonUser.Provider'
+salience 14
+when
+    $program: Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    Year2026Mips226SharedMostRecentDenominatorEncounterProvider($providerId: providerId, $lastEncounter: record)
+    not Year2026Mips226SharedMostRecentTobaccoNonUserStartsDuringPeriodProvider(providerId == $providerId)
+    $latestTobaccoNonUser: QdmDatatype() from accumulate (
+        Year2026Mips226SharedTobaccoNonUser(
+            $qdmDataType: qdmDataType,
+            qdmDataType.startsDuring($program.measurementPeriod),
+            qdmDataType.startsOnOrBefore($lastEncounter.startDate)),
+        latestQdmDataType($qdmDataType)
+    )
+then
+    insert(new Year2026Mips226SharedMostRecentTobaccoNonUserStartsDuringPeriodProvider($latestTobaccoNonUser, $providerId));
+end
+
+/*
+For Extended Measure Results reporting only (e.g., "Last Tobacco Screening Date", "Last Tobacco Screening Code Value")
+Finds the last screening result (user or non-user) during the period
+(Note: Numerator logic for "Last Screening in Measurement Year is Tobacco User/Non-User" is implemented in rate files)
+*/
+rule 'Year2026.Mips226Shared.LastTobaccoScreen'
+when
+    Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    $lastScreenResult: QdmDatatype() from accumulate (
+        Year2026Mips226SharedMostRecentTobaccoScreenStartsDuringPeriod($qdmDataType: qdmDataType),
+        latestQdmDataType($qdmDataType)
+    )
+then
+    insert(new Year2026Mips226SharedLastTobaccoScreenStartsDuringPeriod($lastScreenResult));
+end
+
+/*
+For Extended Measure Results reporting only (e.g., "Last Tobacco Screen Result")
+Finds the last screening result code from tobacco use screening activities during measurement period
+(Note: Numerator logic for "Last Screening in Measurement Year is Tobacco User/Non-User" is implemented in rate files)
+*/
+rule 'Year2026.Mips226Shared.LastScreenResult'
+when
+    $program: Program(
+        rules contains "measure.Mips.2026.Mips226Rate1" ||
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    $lastScreenResult: QdmResultDataType() from accumulate (
+        Year2026Mips226SharedMostRecentTobaccoUseScreening(
+            $qdmResultDataType: qdmResultDataType,
+            qdmResultDataType.startsDuring($program.measurementPeriod)),
+        latestQdmResultDataType($qdmResultDataType)
+    )
+then
+    insert(new Year2026Mips226SharedLastScreenResultStartsDuringPeriod($lastScreenResult));
+end
+
+/*
+Part of "Tobacco Use Intervention Occurred"
+(["Clinical Activity": "MIPS; 226_RATE2_PERFORMANCE_MET_G9906"] 
+ union ["Clinical Activity": "MIPS; 226_RATE3_PERFORMANCE_MET_G0030"]
+ union ["Clinical Activity": "MIPS; 497RATE6B_PERFORMANCE_MET_M1301"]
+ union ["Clinical Activity": "MIPS; 497RATE6C_PERFORMANCE_MET_M1310"])P
+    where P.start_date during "Measurement Period"
+*/
+rule 'Year2026.Mips226Shared.TobaccoUse.QualityCodes'
+salience 40
+when
+    $program: Program(
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    $tobaccoUse: ClinicalActivity (
+        withValueSet("MipsYear2026", "226_RATE2_PERFORMANCE_MET_G9906") ||
+        withValueSet("MipsYear2026", "226_RATE3_PERFORMANCE_MET_G0030") ||
+        withValueSet("MipsYear2026", "497RATE6B_PERFORMANCE_MET_M1301") ||
+        withValueSet("MipsYear2026", "497RATE6C_PERFORMANCE_MET_M1310"),
+        startsDuring($program.measurementPeriod)
+    )
+then
+    if (($tobaccoUse.withValueSet("MipsYear2026", "226_RATE2_PERFORMANCE_MET_G9906") ||
+         $tobaccoUse.withValueSet("MipsYear2026", "497RATE6B_PERFORMANCE_MET_M1301") ||
+         $tobaccoUse.withValueSet("MipsYear2026", "497RATE6C_PERFORMANCE_MET_M1310")) && $program.rules.contains("measure.Mips.2026.Mips226Rate2")){
+        insert(new Year2026Mips226SharedTobaccoUse($tobaccoUse, "Year2026.Mips226Rate2"));
+    }
+    if (($tobaccoUse.withValueSet("MipsYear2026", "226_RATE3_PERFORMANCE_MET_G0030") ||
+         $tobaccoUse.withValueSet("MipsYear2026", "497RATE6B_PERFORMANCE_MET_M1301") ||
+         $tobaccoUse.withValueSet("MipsYear2026", "497RATE6C_PERFORMANCE_MET_M1310")) && $program.rules.contains("measure.Mips.2026.Mips226Rate3")){
+        insert(new Year2026Mips226SharedTobaccoUse($tobaccoUse, "Year2026.Mips226Rate3"));
+    }
+end
+
+/*
+Part of "Tobacco Use Intervention Occurred"
+["Clinical Activity": "VSAC; TOBACCO_USE_CESSATION_COUNSELING"] I
+    where I.start_date during "Tobacco Counseling Interval"
+
+define "Tobacco Counseling Interval":
+    Interval[start of "Measurement Period" - 6 months, end of "Measurement Period"]
+*/
+rule 'Year2026.Mips226Shared.TobaccoUse.TOBACCO_USE_CESSATION_COUNSELING'
+salience 40
+when
+    $program: Program(
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    $tobaccoUse: ClinicalActivity (
+        withValueSet("VsacYear2026", "TOBACCO_USE_CESSATION_COUNSELING"),
+        startsDuring($program.measurementPeriod.start.minusMonths(6), $program.measurementPeriod.end)
+    )
+then
+    if ($program.rules.contains("measure.Mips.2026.Mips226Rate2")){
+        insert(new Year2026Mips226SharedTobaccoUse($tobaccoUse, "Year2026.Mips226Rate2"));
+    }
+    if ($program.rules.contains("measure.Mips.2026.Mips226Rate3")){
+        insert(new Year2026Mips226SharedTobaccoUse($tobaccoUse, "Year2026.Mips226Rate3"));
+    }
+end
+
+/*
+Part of "Tobacco Use Intervention Occurred"
+["Diagnosis": "Able; TOBACCO_USE_CESSATION_INTERVENTION_DIAGNOSES"] D
+    where D.start_date during "Tobacco Counseling Interval"
+*/
+rule 'Year2026.Mips226Shared.TobaccoUse.TOBACCO_USE_CESSATION_INTERVENTION_DIAGNOSES'
+salience 40
+when
+    $program: Program(
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    $tobaccoUse: Diagnosis(
+        withValueSet("AbleYear2026", "TOBACCO_USE_CESSATION_INTERVENTION_DIAGNOSES"),
+        startsDuring($program.measurementPeriod.start.minusMonths(6), $program.measurementPeriod.end)
+    )
+then
+    if ($program.rules.contains("measure.Mips.2026.Mips226Rate2")){
+        insert(new Year2026Mips226SharedTobaccoUse($tobaccoUse, "Year2026.Mips226Rate2"));
+    }
+    if ($program.rules.contains("measure.Mips.2026.Mips226Rate3")){
+        insert(new Year2026Mips226SharedTobaccoUse($tobaccoUse, "Year2026.Mips226Rate3"));
+    }
+end
+
+/*
+Part of "Tobacco Use Intervention Occurred"
+["Medication": "Able; TOBACCO_USE_CESSATION_PHARMACOTHERAPY_WITH_NDC"] M
+    where Interval[M.start_date, M.stop_date] overlaps "Tobacco Counseling Interval"
+*/
+rule 'Year2026.Mips226Shared.TobaccoUse.TOBACCO_USE_CESSATION_PHARMACOTHERAPY_WITH_NDC'
+salience 40
+when
+    $program: Program(
+        rules contains "measure.Mips.2026.Mips226Rate2" ||
+        rules contains "measure.Mips.2026.Mips226Rate3"
+    )
+    $tobaccoUse: Medication(
+        withValueSet("AbleYear2026", "TOBACCO_USE_CESSATION_PHARMACOTHERAPY_WITH_NDC"),
+        overlaps($program.measurementPeriod.start.minusMonths(6), $program.measurementPeriod.end)
+    )
+then
+    if ($program.rules.contains("measure.Mips.2026.Mips226Rate2")){
+        insert(new Year2026Mips226SharedTobaccoUse($tobaccoUse, "Year2026.Mips226Rate2"));
+    }
+    if ($program.rules.contains("measure.Mips.2026.Mips226Rate3")){
+        insert(new Year2026Mips226SharedTobaccoUse($tobaccoUse, "Year2026.Mips226Rate3"));
+    }
+end
