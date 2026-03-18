@@ -135,3 +135,9 @@ Additional shared protocol file:
 - The orchestrator depends on `agent_protocol.md` for shared behavior.
 - The conversion stage depends on both `SKILL.md` and `cql-to-drl-guide.md`.
 - Intake and extraction are the only stages currently using prompt modules from config.
+
+## Runtime Guide
+
+Detailed run flow, exact commands, MCP startup location, and stage-by-stage verification are in:
+
+- `docs/runtime-flow.md`
