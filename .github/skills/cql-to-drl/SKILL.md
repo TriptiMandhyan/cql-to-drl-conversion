@@ -13,7 +13,7 @@ Transform extracted CQL semantics into DRL in a traceable and reviewable format.
 
 - `artifacts/extraction/<ticket-id>.json`
 - `artifacts/plan/<ticket-id>.md`
-- `state/approval-status.json`
+- `state/tickets/<ticket-id>/approval-status.json`
 - `cql-to-drl-guide.md`
 - `examples/drl-reference/year2026/*.drl` (if present)
 
@@ -47,11 +47,11 @@ Transform extracted CQL semantics into DRL in a traceable and reviewable format.
 8. Emit DRL in package structure expected by target repository and preserve shared-file handling conventions from examples.
 9. Generate mapping document that links each CQL clause to DRL rule ids.
 10. Flag unsupported constructs and assumptions.
-11. Run `python scripts/validate_conversion_artifacts.py --ticket <ticket-id>` and fix violations before finalizing outputs.
+11. Call MCP tool `local-python.validate_conversion_artifacts(ticket_id)` and fix violations before finalizing outputs.
 
 ## Outputs
 
-- `artifacts/conversion/<cql-basename>.drl` (one file per changed CQL)
+- `artifacts/conversion/mips<measure-number>.drl` (one file per changed CQL)
 - `artifacts/conversion/<ticket-id>-mapping.md`
 
 ## Non-Negotiable Guardrails

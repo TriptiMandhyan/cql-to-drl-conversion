@@ -1,7 +1,7 @@
 ---
 name: pr-submission
 description: "Use when conversion is complete and a pull request draft with validation summary must be generated."
-tools: [read, edit, github/*]
+tools: [read, edit, github/*, local-python/*]
 ---
 
 # PR Submission Agent
@@ -12,7 +12,7 @@ Create a GitHub branch, open a pull request against the target rules-engine repo
 
 ## Inputs
 
-- `artifacts/conversion/<cql-basename>.drl` (one file per changed CQL)
+- `artifacts/conversion/mips<measure-number>.drl` (one file per changed CQL)
 - `artifacts/conversion/<ticket-id>-mapping.md`
 - `artifacts/intake/<ticket-id>.json`
 - `templates/pr-template.md`
@@ -40,7 +40,7 @@ Create a GitHub branch, open a pull request against the target rules-engine repo
    - Link to ADO work item: use `ticketUrl` from the intake artifact (format: `ADO Work Item: <ticketUrl>`).
 6. Create the GitHub pull request from branch `create-{measureNumber}-ab{ticketId}` targeting `githubRepo.baseBranch`.
 7. Summarize conversion scope, include the GitHub PR URL, and write the local PR draft artifact.
-8. Update `state/pipeline-status.json` stage to `pr-ready`.
+8. Update pipeline stage via MCP tool `local-python.state_write_pipeline(stage="pr-ready", details=...)`.
 
 ## Outputs
 
@@ -54,3 +54,4 @@ Create a GitHub branch, open a pull request against the target rules-engine repo
 - Never claim validation passed if checks were not run.
 - Keep unresolved risks explicit.
 - Do not store GitHub tokens in any artifact file; use `GITHUB_TOKEN` environment variable only.
+- Pipeline state writes must use MCP state tools (`local-python.state_write_pipeline`), not direct file edits.

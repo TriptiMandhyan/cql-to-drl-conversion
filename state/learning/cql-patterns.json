@@ -1,0 +1,17 @@
+{
+  "observations": [
+    {
+      "ticketId": "TEST-001",
+      "timestamp": "2026-03-23T09:18:50.661305",
+      "ruleCount": 1,
+      "whenCount": 1,
+      "thenCount": 1,
+      "libraries": [],
+      "usings": [],
+      "includes": [],
+      "contentLength": 38
+    }
+  ],
+  "commonLibraries": {},
+  "commonUsings": {}
+}

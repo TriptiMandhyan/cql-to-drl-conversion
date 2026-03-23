@@ -104,16 +104,15 @@ For **all agent files**, apply this pattern:
 
 ### Agents to Update
 1. `ticket-description-intake.agent.md` → calls `TicketStateManager.write_pipeline_status()`
-2. `cql-extractor.agent.md` → calls `TicketStateManager.write_pipeline_status()`
-3. `plan-approval.agent.md` → calls `TicketStateManager.write_pipeline_status()` + `write_approval_status()`
-4. `approval-recorder.agent.md` → calls `TicketStateManager.write_approval_status()` + `write_pipeline_status()`
-5. `conversion.agent.md` → calls `TicketStateManager.write_pipeline_status()`
-6. `pr-submission.agent.md` → calls `TicketStateManager.write_pipeline_status()`
+2. `cql-extractor.agent.md` → calls `TicketStateManager.write_pipeline_status()` + `write_approval_status()` (plan prepared, approval pending)
+3. `approval-recorder.agent.md` → calls `TicketStateManager.write_approval_status()` + `write_pipeline_status()` (approval recording)
+4. `conversion.agent.md` → calls `TicketStateManager.write_pipeline_status()`
+5. `pr-submission.agent.md` → calls `TicketStateManager.write_pipeline_status()`
 
 ### Agents to Update - Scripts
-1. `scripts/ado_fallback.py` → infer ticket id from `state/run-input.json` (`ticketId` or `ticketUrl`)
-2. `scripts/ado_fallback.py` → keep intake-only helper scope (`enrich-intake`)
-3. `scripts/validate_conversion_artifacts.py` → read from ticket-scoped paths
+1. `local-python.enrich_intake` MCP tool → infers ticket id from `state/run-input.json`; replaces `scripts/ado_fallback.py enrich-intake`
+2. `local-python.fetch_raw_cql` MCP tool → replaces `scripts/ado_extraction_fallback.py fetch-raw-cql`
+3. `local-python.validate_conversion_artifacts` MCP tool → replaces `scripts/validate_conversion_artifacts.py --ticket`
 
 ---
 
@@ -195,7 +194,6 @@ If issues arise during migration:
 | `.github/orchestration/config.json` | Add `stateResolution` block | 2 |
 | `ticket-description-intake.agent.md` | Use `TicketStateManager` | 3 |
 | `cql-extractor.agent.md` | Use `TicketStateManager` | 3 |
-| `plan-approval.agent.md` | Use `TicketStateManager` | 3 |
 | `approval-recorder.agent.md` | Use `TicketStateManager` | 3 |
 | `conversion.agent.md` | Use `TicketStateManager` | 3 |
 | `pr-submission.agent.md` | Use `TicketStateManager` | 3 |

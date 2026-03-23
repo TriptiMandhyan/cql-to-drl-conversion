@@ -27,6 +27,22 @@ def load_extraction(ticket_id: str, root: pathlib.Path) -> dict:
         return json.load(handle)
 
 
+def canonical_mips_drl_name_from_cql_basename(basename: str) -> str:
+    stem = pathlib.Path(basename).stem
+    stem_lower = stem.lower()
+
+    if stem_lower.startswith("mips"):
+        suffix = stem[len("mips") :]
+        if suffix.isdigit():
+            return f"mips{suffix}.drl"
+        return f"{stem_lower}.drl"
+
+    if stem.isdigit():
+        return f"mips{stem}.drl"
+
+    return pathlib.Path(basename).with_suffix(".drl").name
+
+
 def expected_drl_paths(extraction: dict, root: pathlib.Path) -> List[pathlib.Path]:
     files = extraction.get("files", [])
     output_paths: List[pathlib.Path] = []
@@ -35,9 +51,31 @@ def expected_drl_paths(extraction: dict, root: pathlib.Path) -> List[pathlib.Pat
         basename = pathlib.Path(src_path).name
         if not basename.lower().endswith(".cql"):
             continue
-        drl_name = pathlib.Path(basename).with_suffix(".drl").name
+        drl_name = canonical_mips_drl_name_from_cql_basename(basename)
         output_paths.append(root / "artifacts" / "conversion" / drl_name)
     return output_paths
+
+
+def legacy_duplicate_drl_paths(extraction: dict, root: pathlib.Path) -> List[pathlib.Path]:
+    files = extraction.get("files", [])
+    duplicates: List[pathlib.Path] = []
+    for file_info in files:
+        src_path = file_info.get("path", "")
+        basename = pathlib.Path(src_path).name
+        if not basename.lower().endswith(".cql"):
+            continue
+
+        canonical_name = canonical_mips_drl_name_from_cql_basename(basename)
+        legacy_name = pathlib.Path(basename).with_suffix(".drl").name
+
+        if canonical_name == legacy_name:
+            continue
+
+        legacy_path = root / "artifacts" / "conversion" / legacy_name
+        if legacy_path.exists():
+            duplicates.append(legacy_path)
+
+    return duplicates
 
 
 def parse_declares(text: str) -> List[str]:
@@ -62,6 +100,24 @@ def emr_rule_has_guard(text: str, rule_name: str) -> bool:
     has_guard_not_fact = re.search(r"\n\s*not\s+[A-Za-z0-9_]+\s*\(\s*\)", body)
     has_marker_insert = re.search(r"insert\s*\(\s*new\s+[A-Za-z0-9_]+\s*\(\s*\)\s*\)", body)
     return bool((has_guard_not_exists or has_guard_not_fact) and has_marker_insert)
+
+
+def has_placeholder_only_logic(text: str, rule_name: str) -> bool:
+    block_match = re.search(
+        rf"rule\s+[\"']{re.escape(rule_name)}[\"'](?P<body>.*?)\nend",
+        text,
+        flags=re.DOTALL,
+    )
+    if not block_match:
+        return False
+
+    body = block_match.group("body")
+    normalized = re.sub(r"\s+", " ", body).strip().lower()
+    if "eval(true)" in normalized:
+        return True
+
+    # Catch effectively empty rule skeletons with no predicates or actions.
+    return normalized in {"when then", "when then ;"}
 
 
 def validate_drl(path: pathlib.Path) -> Tuple[List[str], List[str]]:
@@ -91,6 +147,8 @@ def validate_drl(path: pathlib.Path) -> Tuple[List[str], List[str]]:
             errors.append(f"Ticket-style rule name found in {path}: {rule_name}")
         if not RULE_PATTERN.match(rule_name):
             errors.append(f"Rule name does not match contract in {path}: {rule_name}")
+        if has_placeholder_only_logic(text, rule_name):
+            errors.append(f"Placeholder-only rule logic found in {path}: {rule_name}")
         if ".EMR" in rule_name and not emr_rule_has_guard(text, rule_name):
             errors.append(f"EMR rule missing fire-once guard/marker insert in {path}: {rule_name}")
 
@@ -134,6 +192,8 @@ def main() -> int:
         print("ERROR: No changed CQL files found in extraction artifact")
         return 2
 
+    duplicate_legacy_paths = legacy_duplicate_drl_paths(extraction, root)
+
     all_errors: List[str] = []
     all_warnings: List[str] = []
 
@@ -148,6 +208,14 @@ def main() -> int:
     if all_errors:
         for error in all_errors:
             print(f"ERROR: {error}")
+        return 1
+
+    if duplicate_legacy_paths:
+        for legacy_path in duplicate_legacy_paths:
+            print(
+                "ERROR: Legacy duplicate DRL artifact found alongside canonical mips output: "
+                f"{legacy_path}"
+            )
         return 1
 
     print(f"Validation passed for ticket {ticket_id}: {len(paths)} DRL artifact(s) checked")

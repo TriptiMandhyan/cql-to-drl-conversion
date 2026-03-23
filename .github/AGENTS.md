@@ -16,8 +16,8 @@ flowchart TD
     INTAKEP[agents/prompts/intake.md]
     EXTRACT[agents/cql-extractor.agent.md]
     EXTRACTP[agents/prompts/extraction.md]
-    PLAN[agents/plan-approval.agent.md]
     APPROVAL[agents/approval-recorder.agent.md]
+    RESET[agents/ticket-status-reset.agent.md]
     CONVERT[agents/conversion.agent.md]
     PR[agents/pr-submission.agent.md]
 
@@ -27,24 +27,24 @@ flowchart TD
     CI --> ORCH
     CI --> INTAKE
     CI --> EXTRACT
-    CI --> PLAN
     CI --> APPROVAL
+    CI --> RESET
     CI --> CONVERT
     CI --> PR
 
     CFG --> ORCH
     CFG --> INTAKE
     CFG --> EXTRACT
-    CFG --> PLAN
     CFG --> APPROVAL
+    CFG --> RESET
     CFG --> CONVERT
     CFG --> PR
 
     ORCH --> PROTO
     ORCH --> INTAKE
     ORCH --> EXTRACT
-    ORCH --> PLAN
     ORCH --> APPROVAL
+    ORCH --> RESET
     ORCH --> CONVERT
     ORCH --> PR
 
@@ -62,8 +62,8 @@ flowchart TD
     AG -.documents.-> ORCH
     AG -.documents.-> INTAKE
     AG -.documents.-> EXTRACT
-    AG -.documents.-> PLAN
     AG -.documents.-> APPROVAL
+    AG -.documents.-> RESET
     AG -.documents.-> CONVERT
     AG -.documents.-> PR
     AG -.documents.-> SKILL
@@ -80,10 +80,10 @@ flowchart TD
 | `.github/agents/prompts/agent_protocol.md` | Shared contract for how agents read state, write artifacts, and respect guardrails. | Indirectly |
 | `.github/agents/ticket-description-intake.agent.md` | Defines how intake turns a ticket into a normalized intake artifact. | Yes |
 | `.github/agents/prompts/intake.md` | Minimal intake prompt content referenced by the manifest for the intake stage. | Yes |
-| `.github/agents/cql-extractor.agent.md` | Defines how intake output becomes structured extraction output. | Yes |
+| `.github/agents/cql-extractor.agent.md` | Defines how intake output becomes structured extraction output and initial plan/approval-pending artifacts. | Yes |
 | `.github/agents/prompts/extraction.md` | Minimal extraction prompt content referenced by the manifest for the extraction stage. | Yes |
-| `.github/agents/plan-approval.agent.md` | Defines how a plan is produced and how the approval gate is entered. | Yes |
-| `.github/agents/approval-recorder.agent.md` | Defines how explicit human approval is recorded before conversion. | Yes |
+| `.github/agents/approval-recorder.agent.md` | Defines how explicit human approval details are recorded before conversion. | Yes |
+| `.github/agents/ticket-status-reset.agent.md` | Defines how a ticket's pipeline and approval status are reset for a clean rerun. | Yes |
 | `.github/agents/conversion.agent.md` | Defines how approved extraction output becomes DRL and mapping output. | Yes |
 | `.github/agents/pr-submission.agent.md` | Defines how converted output becomes a PR draft and GitHub update. | Yes |
 | `.github/skills/cql-to-drl/SKILL.md` | Conversion rulebook used to keep DRL generation consistent and enforce non-negotiable constraints. | No |
@@ -111,8 +111,8 @@ These files read or depend on `.github/orchestration/config.json` at runtime:
 - `.github/agents/cql-flow-orchestrator.agent.md`
 - `.github/agents/ticket-description-intake.agent.md`
 - `.github/agents/cql-extractor.agent.md`
-- `.github/agents/plan-approval.agent.md`
 - `.github/agents/approval-recorder.agent.md`
+- `.github/agents/ticket-status-reset.agent.md`
 - `.github/agents/conversion.agent.md`
 - `.github/agents/pr-submission.agent.md`
 - prompt modules referenced inside `config.json`

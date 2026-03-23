@@ -1,0 +1,16 @@
+{
+  "pipelineStages": {
+    "INTAKE_START": "intake-start",
+    "INTAKE_COMPLETE": "intake-complete",
+    "EXTRACTION_COMPLETE": "extraction-complete",
+    "AWAITING_APPROVAL": "awaiting-approval",
+    "CONVERSION_READY": "conversion-ready",
+    "CONVERSION_COMPLETE": "conversion-complete",
+    "PR_READY": "pr-ready",
+    "PR_SUBMITTED": "pr-submitted"
+  },
+  "approval": {
+    "PENDING": false,
+    "APPROVED": true
+  }
+}

@@ -114,14 +114,12 @@ Run ticket 1048701 → state/tickets/1048701/pipeline-status.json ✓
 ### Files to Update
 - `ticket-description-intake.agent.md` - Use `TicketStateManager`
 - `cql-extractor.agent.md` - Use `TicketStateManager`
-- `plan-approval.agent.md` - Use `TicketStateManager`
-- `approval-recorder.agent.md` - Use `TicketStateManager`
+- `approval-recorder.agent.md` - Use `TicketStateManager` (approval recording only)
 - `conversion.agent.md` - Use `TicketStateManager`
 - `pr-submission.agent.md` - Use `TicketStateManager`
-- `scripts/ado_fallback.py` - Read ticket ID properly
-- `scripts/ado_fallback.py` - Keep intake-only helper scope (`enrich-intake`)
-- `scripts/ado_extraction_fallback.py` - Fetch commit-pinned raw CQL only (`fetch-raw-cql`)
-- `scripts/validate_conversion_artifacts.py` - Read per-ticket state
+- Use MCP tool `local-python.enrich_intake` for intake-stage `cqlPaths` enrichment (replaces `ado_fallback.py`)
+- Use MCP tool `local-python.fetch_raw_cql` for extraction-stage commit-pinned raw CQL retrieval (replaces `ado_extraction_fallback.py`)
+- Use MCP tool `local-python.validate_conversion_artifacts` for conversion artifact validation (replaces direct `validate_conversion_artifacts.py` call)
 
 ### New Directory Structure
 ```

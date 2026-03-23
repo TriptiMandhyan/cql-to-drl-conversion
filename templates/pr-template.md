@@ -7,7 +7,7 @@
 
 ## Included Artifacts
 
-- DRLs (one per changed CQL, e.g., `mips338.cql` -> `mips338.drl`): `artifacts/conversion/<cql-basename>.drl`
+- DRLs (one per changed CQL, canonical naming): `artifacts/conversion/mips<measure-number>.drl`
 - Mapping: `artifacts/conversion/<ticket-id>-mapping.md`
 - Plan: `artifacts/plan/<ticket-id>.md`
 - DRL reference patterns: `examples/drl-reference/year2026/*.drl` (if available)

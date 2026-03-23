@@ -1,7 +1,7 @@
 ---
 name: ticketDescriptionIntakeAgent
 description: "Use when one ADO ticket URL is provided and you need to extract PR links from ticket description, resolve source branches, and create intake artifact for next agents."
-tools: [read, edit, search, execute, ado/*]
+tools: [read, edit, search, execute, ado/*, local-python/*]
 ---
 
 # Ticket Description Intake Agent
@@ -14,15 +14,14 @@ Use a single ticket URL placeholder as the local run input. Pull ticket descript
 
 - `state/run-input.json` with `ticketUrl`
 - ADO MCP connection config in `.vscode/mcp.json`
-- Fallback auth: `ADO_PAT` environment variable
-- Fallback helper: `scripts/ado_fallback.py` (`enrich-intake`)
+- Local MCP helper tools: `local-python.get_pr_changes`, `local-python.enrich_intake`
 
 ## Runtime Config Guardrails
 
 - `governance.enabled` must be `true`.
 - `governance.guardrails.slashOnlyExecution` must be enforced.
 - `governance.guardrails.mcpPreferredForAdo` must be enforced.
-- `governance.guardrails.allowPatHttpsFallback` controls fallback behavior.
+- `governance.guardrails.mcpPreferredForPrMetadata` must be enforced (MCP tool `local-python.get_pr_changes()` required for all PR metadata).
 - `governance.guardrails.usePrSourceBranchOverMain` must be enforced.
 - `governance.guardrails.ticketTraceabilityRequired` must be enforced.
 
@@ -34,11 +33,11 @@ Use a single ticket URL placeholder as the local run input. Pull ticket descript
 3. If MCP is unavailable for ticket details or PR metadata, use direct PAT HTTPS fallback.
 4. Extract all PR links in ticket description.
 5. Extract direct CQL source references when present (for example ADO file links with path and branch/version parameters).
-6. Resolve source branch and source commit from PR metadata when PR links exist.
+6. Resolve source branch and source commit from PR metadata using MCP tool `local-python.get_pr_changes(project_url, repository, pull_request_id)` for each PR found.
 7. When no PR links exist, resolve branch and optional commit from direct CQL source references; keep unresolved commit as an explicit assumption.
 8. Write `artifacts/intake/<ticket-id>.json`.
-9. If `cqlPaths` is empty and `allowPatHttpsFallback=true`, run `scripts/ado_fallback.py enrich-intake` to enrich changed CQL paths from PR iteration changes.
-10. Update `state/pipeline-status.json` with `intake-complete`.
+9. If `cqlPaths` is empty and `allowPatHttpsFallback=true`, call MCP tool `local-python.enrich_intake(ticket_id)` to enrich changed CQL paths from PR iteration changes.
+10. Update pipeline stage via MCP tool `local-python.state_write_pipeline(stage="intake-complete", details=...)`.
 
 ## Outputs
 
@@ -51,8 +50,10 @@ Use a single ticket URL placeholder as the local run input. Pull ticket descript
 - Keep all extracted PR links and resolved refs in output.
 - If a PR cannot be resolved, add it to `unresolvedPullRequests` with reason.
 - Never write PAT or secrets to artifacts.
+- **Do not fall back to Python script execution. Always use `local-python.get_pr_changes()` MCP tool for fetching PR changes.** This tool is available at runtime and does not require direct Python invocation.
+- MCP is the required transport for all PR metadata resolution (ADO MCP for work item details, `local-python.get_pr_changes` for PR changes).
+- Pipeline/approval state writes must use MCP state tools (`local-python.state_write_pipeline`, `local-python.state_write_approval`), not direct file edits.
 - Do not ask user to run python/shell scripts; perform intake stage directly as agent work.
-- MCP is the preferred transport for ADO calls when available.
 - Any helper utility (if used) must only fetch remote data and must not decide stage transitions.
-- Keep helper usage scoped to intake-stage MCP gaps only.
+- Keep helper usage scoped to intake-stage MCP gaps only (currently only for cqlPaths enrichment via `local-python.enrich_intake`).
 - Helper usage is for enriching `cqlPaths` from resolved PRs; it is not a replacement for ticket/PR metadata resolution.

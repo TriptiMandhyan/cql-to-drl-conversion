@@ -98,10 +98,18 @@ state/
 - **Content:**
   - Before/after code samples for each agent
   - Per-agent update instructions
-  - Script updates (ado_fallback.py, etc.)
+  - Local MCP tool references (`local-python.enrich_intake`, `local-python.fetch_raw_cql`, `local-python.validate_conversion_artifacts`)
   - Testing procedures
   - Common issues & fixes
   - Completion checklist
+
+### 5. **Local FastAPI MCP Server**
+📄 `scripts/local_mcp_server.py`
+- **Purpose:** Expose repository helper scripts as MCP tools so agents never call Python directly
+- **Endpoint:** `http://127.0.0.1:8765/mcp`
+- **Tools registered:** `enrich_intake`, `fetch_raw_cql`, `validate_conversion_artifacts`
+- **Start:** `python scripts/local_mcp_server.py`
+- **Dependencies:** `config/mcp/requirements-local-mcp.txt`
 
 ### 5. **Updated Orchestration Config (v2.0)**
 📄 `.github/orchestration/config-v2.0-per-ticket.json` (150 lines)
@@ -128,9 +136,13 @@ state/
 # 1. Initialize ticket directories
 mkdir -p state/tickets
 
-# 2. Migrate existing singleton files to per-ticket structure
+# 2. Migrate existing singleton files to per-ticket structure (one-time)
 cd /path/to/workspace
 python scripts/state_manager.py migrate
+
+# 3. Install and start the local FastAPI MCP server
+python -m pip install -r config/mcp/requirements-local-mcp.txt
+python scripts/local_mcp_server.py  # keep running in a separate terminal
 
 # Result: state/tickets/{1024330,1048701}/pipeline-status.json, etc.
 ```
@@ -150,15 +162,15 @@ For each of 6 agent files:
 **Agent Update Order (by dependency):**
 1. `ticket-description-intake.agent.md` (writes initial state)
 2. `cql-extractor.agent.md` (reads/writes state)
-3. `plan-approval.agent.md` (writes approval state)
-4. `approval-recorder.agent.md` (records approval)
-5. `conversion.agent.md` (checks approval, writes state)
-6. `pr-submission.agent.md` (final state update)
+3. `approval-recorder.agent.md` (records approval)
+4. `conversion.agent.md` (checks approval, writes state)
+5. `pr-submission.agent.md` (final state update)
 
-### Phase 4: Update Scripts (2-3 hours)
-- [ ] `ado_fallback.py` - get ticket ID from run-input.json
-- [ ] `ado_fallback.py` - keep intake-only helper scope and command (`enrich-intake`)
-- [ ] `validate_conversion_artifacts.py` - read per-ticket state
+### Phase 4: Local MCP server (replaces direct script execution)
+- [x] `scripts/local_mcp_server.py` - FastAPI MCP server exposing 3 tools
+- [x] `local-python.enrich_intake` — replaces `ado_fallback.py enrich-intake`
+- [x] `local-python.fetch_raw_cql` — replaces `ado_extraction_fallback.py fetch-raw-cql`
+- [x] `local-python.validate_conversion_artifacts` — replaces `validate_conversion_artifacts.py --ticket`
 
 ### Phase 5: Integration Tests (2 hours)
 ```bash

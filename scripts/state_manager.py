@@ -9,8 +9,22 @@ import json
 import os
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any, Optional
+from enum import Enum
+from typing import Dict, Any, Optional, Union
 import shutil
+
+
+class PipelineStage(str, Enum):
+    """Canonical pipeline stages for all agents."""
+
+    INTAKE_START = "intake-start"
+    INTAKE_COMPLETE = "intake-complete"
+    EXTRACTION_COMPLETE = "extraction-complete"
+    AWAITING_APPROVAL = "awaiting-approval"
+    CONVERSION_READY = "conversion-ready"
+    CONVERSION_COMPLETE = "conversion-complete"
+    PR_READY = "pr-ready"
+    PR_SUBMITTED = "pr-submitted"
 
 
 class TicketStateManager:
@@ -24,7 +38,7 @@ class TicketStateManager:
     @classmethod
     def _ensure_dir(cls, path: Path) -> None:
         """Ensure directory exists."""
-        path.parent.mkdir(parents=True, exist_ok=True)
+        path.mkdir(parents=True, exist_ok=True)
     
     @classmethod
     def _get_ticket_dir(cls, ticket_id: str) -> Path:
@@ -44,7 +58,7 @@ class TicketStateManager:
         if not cls.RUN_INPUT_FILE.exists():
             raise RuntimeError(f"Missing {cls.RUN_INPUT_FILE}")
         
-        data = json.loads(cls.RUN_INPUT_FILE.read_text())
+        data = json.loads(cls.RUN_INPUT_FILE.read_text(encoding="utf-8-sig"))
         
         # Try ticketId first (new format), fallback to ticketUrl parsing
         ticket_id = data.get("ticketId")
@@ -55,9 +69,10 @@ class TicketStateManager:
         if not ticket_url:
             raise RuntimeError("No ticketId or ticketUrl in run-input.json")
         
-        # Extract ID from URL like .../edit/1024415
+        # Extract ID from URL like .../edit/1024415 or .../edit/1024415/
         try:
-            return str(int(ticket_url.split("/")[-1]))
+            parts = [p for p in ticket_url.split("/") if p]  # Filter out empty parts from trailing slash
+            return str(int(parts[-1]))
         except (IndexError, ValueError):
             raise RuntimeError(f"Could not parse ticket ID from URL: {ticket_url}")
     
@@ -78,7 +93,7 @@ class TicketStateManager:
         path = cls._get_ticket_dir(ticket_id) / filename
         if not path.exists():
             raise FileNotFoundError(f"No {filename} for ticket {ticket_id}")
-        return json.loads(path.read_text())
+        return json.loads(path.read_text(encoding="utf-8-sig"))
     
     @classmethod
     def write_ticket_state(cls, ticket_id: str, filename: str, data: Dict[str, Any]) -> Path:
@@ -110,7 +125,23 @@ class TicketStateManager:
         return cls.read_ticket_state(ticket_id, "pipeline-status.json")
     
     @classmethod
-    def write_pipeline_status(cls, ticket_id: str, stage: str, details: str = "") -> Path:
+    def _normalize_stage(cls, stage: Union[str, PipelineStage]) -> str:
+        """Normalize and validate stage against canonical pipeline values."""
+        value = stage.value if isinstance(stage, PipelineStage) else str(stage)
+        allowed = {item.value for item in PipelineStage}
+        if value not in allowed:
+            raise ValueError(
+                f"Invalid pipeline stage '{value}'. Allowed values: {sorted(allowed)}"
+            )
+        return value
+
+    @classmethod
+    def write_pipeline_status(
+        cls,
+        ticket_id: str,
+        stage: Union[str, PipelineStage],
+        details: str = "",
+    ) -> Path:
         """Write pipeline status for a ticket.
         
         Args:
@@ -121,15 +152,16 @@ class TicketStateManager:
         Returns:
             Path where file was written
         """
+        normalized_stage = cls._normalize_stage(stage)
         data = {
             "ticketId": ticket_id,
-            "stage": stage,
+            "stage": normalized_stage,
             "updatedAt": datetime.now().isoformat(),
             "details": details
         }
         result = cls.write_ticket_state(ticket_id, "pipeline-status.json", data)
-        cls._update_index(ticket_id, stage=stage)
-        cls._add_history_entry(ticket_id, stage, "system")
+        cls._update_index(ticket_id, stage=normalized_stage)
+        cls._add_history_entry(ticket_id, normalized_stage, "system")
         return result
     
     @classmethod
@@ -169,7 +201,7 @@ class TicketStateManager:
         if cls.INDEX_FILE.exists():
             return
         
-        cls._ensure_dir(cls.INDEX_FILE)
+        cls._ensure_dir(cls.TICKETS_DIR)
         default_index = {
             "currentTicketId": None,
             "lastUpdated": datetime.now().isoformat(),
@@ -183,11 +215,11 @@ class TicketStateManager:
         """Update master index with ticket info."""
         cls._ensure_index_exists()
         
-        index = json.loads(cls.INDEX_FILE.read_text())
+        index = json.loads(cls.INDEX_FILE.read_text(encoding="utf-8-sig"))
         
         if ticket_id not in index["tickets"]:
             index["tickets"][ticket_id] = {
-                "stage": "intake-start",
+                "stage": PipelineStage.INTAKE_START.value,
                 "approved": False,
                 "ingestedAt": datetime.now().isoformat()
             }
@@ -211,7 +243,7 @@ class TicketStateManager:
         history_file = ticket_dir / "history.json"
         
         if history_file.exists():
-            history = json.loads(history_file.read_text())
+            history = json.loads(history_file.read_text(encoding="utf-8-sig"))
         else:
             history = {"ticketId": ticket_id, "transitions": []}
         
@@ -227,7 +259,7 @@ class TicketStateManager:
     def get_all_tickets(cls) -> Dict[str, Dict[str, Any]]:
         """Get index of all tickets and their states."""
         cls._ensure_index_exists()
-        index = json.loads(cls.INDEX_FILE.read_text())
+        index = json.loads(cls.INDEX_FILE.read_text(encoding="utf-8-sig"))
         return index["tickets"]
     
     @classmethod
@@ -244,7 +276,7 @@ class TicketStateManager:
         old_approval = cls.STATE_DIR / "approval-status.json"
         
         if old_pipeline.exists():
-            pipeline_data = json.loads(old_pipeline.read_text())
+            pipeline_data = json.loads(old_pipeline.read_text(encoding="utf-8-sig"))
             ticket_id = pipeline_data.get("ticketId")
             
             if ticket_id:
@@ -253,7 +285,7 @@ class TicketStateManager:
                 cls._add_history_entry(ticket_id, pipeline_data.get("stage"), "migration")
         
         if old_approval.exists():
-            approval_data = json.loads(old_approval.read_text())
+            approval_data = json.loads(old_approval.read_text(encoding="utf-8-sig"))
             ticket_id = approval_data.get("ticketId")
             
             if ticket_id:
@@ -274,9 +306,14 @@ def read_pipeline(ticket_id: str) -> Dict[str, Any]:
     return TicketStateManager.read_pipeline_status(ticket_id)
 
 
-def write_pipeline(ticket_id: str, stage: str, details: str = "") -> Path:
+def write_pipeline(ticket_id: str, stage: Union[str, PipelineStage], details: str = "") -> Path:
     """Write pipeline status for ticket."""
     return TicketStateManager.write_pipeline_status(ticket_id, stage, details)
+
+
+def list_pipeline_stages() -> list[str]:
+    """List canonical pipeline status values."""
+    return [item.value for item in PipelineStage]
 
 
 def read_approval(ticket_id: str) -> Dict[str, Any]:

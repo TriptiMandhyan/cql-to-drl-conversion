@@ -18,8 +18,8 @@ Each phase must produce machine-readable handoff outputs:
 
 - Intake: `artifacts/intake/<ticket-id>.json`
 - Extraction: `artifacts/extraction/<ticket-id>.json`
-- Plan: `artifacts/plan/<ticket-id>.md` and `state/approval-status.json`
-- Conversion: `artifacts/conversion/<cql-basename>.drl` (one per changed CQL) and `artifacts/conversion/<ticket-id>-mapping.md`
+- Plan: `artifacts/plan/<ticket-id>.md` and `state/tickets/<ticket-id>/approval-status.json`
+- Conversion: `artifacts/conversion/mips<measure-number>.drl` (one per changed CQL) and `artifacts/conversion/<ticket-id>-mapping.md`
 - PR: `artifacts/pr/<ticket-id>-pr.md`
 
 ## Definition of Done

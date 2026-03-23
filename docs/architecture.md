@@ -6,7 +6,7 @@ The workflow is intentionally split into specialist agents with strict stage bou
 
 1. Intake Agent: ticket and metadata retrieval
 2. Extractor Agent: CQL parse and semantic extraction
-3. Plan Agent: plan creation plus human approval checkpoint
+3. Approval Agent: plan creation plus human approval checkpoint
 4. Conversion Agent: CQL to DRL transformation
 5. PR Agent: PR-ready documentation and checks
 
@@ -30,7 +30,7 @@ The workflow is intentionally split into specialist agents with strict stage bou
 
 ## Approval Gate
 
-No conversion may start until `state/approval-status.json` is set to:
+No conversion may start until `state/tickets/<ticket-id>/approval-status.json` is set to:
 
 {
   "ticketId": "<ticket-id>",
@@ -62,19 +62,17 @@ flowchart TD
 
     A_OUT --> B
 
-    subgraph STAGE2["Stage 2 — Extraction"]
+    subgraph STAGE2["Stage 2 — Extraction + Plan Draft"]
         B["/cql-extractor\nFetches CQL from PR source branch\nExtracts definitions, value sets,\nclauses, and dependencies"]
-        B --> B_OUT["artifacts/extraction/&lt;id&gt;.json\npipeline: extraction-complete"]
+        B --> B_OUT["artifacts/extraction/&lt;id&gt;.json\nartifacts/plan/&lt;id&gt;.md\napproval-status.json approved=false\npipeline: awaiting-approval"]
     end
 
     B_OUT --> C
 
-    subgraph STAGE3["Stage 3 — Plan + Approval Gate"]
-        C["/plan-approval\nBuilds implementation plan\nHighlights risks and unknowns\nSets approved: false"]
-        C --> C_OUT["artifacts/plan/&lt;id&gt;.md\napproval-status.json approved=false\npipeline: awaiting-approval"]
-        C_OUT --> HUMAN{{"HUMAN REVIEW\nRead plan · verify assumptions\nDecide to approve or revise"}}
-        HUMAN -->|"approve"| D
-        HUMAN -->|"revise"| C
+    subgraph STAGE3["Stage 3 — Approval Gate"]
+        C["HUMAN REVIEW\nRead plan · verify assumptions\nDecide to approve or revise"]
+        C -->|"approve"| D
+        C -->|"revise"| B
     end
 
     subgraph STAGE4["Stage 4 — Record Approval"]
@@ -106,7 +104,7 @@ flowchart TD
 
 ### Orchestrator and Human Intervention
 
-The `/cqlFlowOrchestrator` is a **routing guide**, not an automatic executor. It reads `state/pipeline-status.json` and recommends the next valid slash command — it does not auto-chain agents.
+The `/cqlFlowOrchestrator` is a **routing guide**, not an automatic executor. It resolves `ticketId` from `state/run-input.json`, reads `state/tickets/<ticket-id>/pipeline-status.json`, and recommends the next valid slash command. It does not auto-chain agents.
 
 **Mandatory human touch-points (by design):**
 
@@ -117,4 +115,4 @@ The `/cqlFlowOrchestrator` is a **routing guide**, not an automatic executor. It
 | Plan review (Stage 3 hard stop) | Core Rule 1: conversion is blocked until a named human explicitly approves |
 | Provide approver name to `/approvalRecorder` | Ensures a traceable, non-automated approval identity |
 
-**Net result:** Stages 1, 2, 5, and 6 are fully automated once launched. Stage 4 requires only pasting an approver name. Stage 3 is the one genuine human decision point. If you want fully automated chaining (with a single approval pause), the orchestrator would need to be extended to call `runSubagent` internally — that is a future enhancement flagged in `docs/todo.md`.
+**Net result:** Stages 1, 2, 5, and 6 are fully automated once launched. Stage 3 is the human decision point, and Stage 4 is one approval-recording call. If you want fully automated chaining (with a single approval pause), the orchestrator would need to be extended to call `runSubagent` internally — that is a future enhancement flagged in `docs/todo.md`.

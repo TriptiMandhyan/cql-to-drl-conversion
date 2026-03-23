@@ -1,0 +1,16 @@
+{
+  "intake": {
+    "executions": [
+      {
+        "ticketId": "TEST-001",
+        "timestamp": "2026-03-23T09:18:50.657769",
+        "elapsedSeconds": 12.5,
+        "success": true,
+        "details": "5 CQL files"
+      }
+    ],
+    "successCount": 1,
+    "failureCount": 0,
+    "avgTimeSeconds": 12.5
+  }
+}

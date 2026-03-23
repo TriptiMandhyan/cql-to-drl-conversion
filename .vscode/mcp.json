@@ -35,6 +35,10 @@
                 "ADO_MCP_AUTH_TOKEN": "${env:ADO_PAT}",
                 "ADO_PAT": "${env:ADO_PAT}"
             }
+        },
+        "local-python": {
+            "type": "http",
+            "url": "http://127.0.0.1:8765/mcp"
         }
     }
 }

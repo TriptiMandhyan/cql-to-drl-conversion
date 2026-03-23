@@ -1,0 +1,14 @@
+{
+  "conversion": {
+    "byType": {
+      "validation": [
+        {
+          "ticketId": "TEST-001",
+          "timestamp": "2026-03-23T09:18:50.664171",
+          "message": "Empty rule body"
+        }
+      ]
+    },
+    "totalCount": 1
+  }
+}

@@ -24,18 +24,46 @@ This project scaffolds a local, VS Code based multi-agent pipeline to automate t
 ## MCP-First With Fallback
 
 - MCP remains the preferred integration path wherever applicable.
-- For intake-stage non-MCP gaps (changed CQL paths from PR iteration changes), use `python scripts/ado_fallback.py enrich-intake --ticket-id <ticket-id>`.
-- For extraction-stage non-MCP gaps (commit-pinned raw CQL retrieval), use `python scripts/ado_extraction_fallback.py fetch-raw-cql --ticket-id <ticket-id>`.
+- Local helper execution is exposed through a FastAPI-hosted MCP server (`local-python`) at `http://127.0.0.1:8765/mcp`.
+- For intake-stage non-MCP gaps (changed CQL paths from PR iteration changes), use MCP tool `local-python.enrich_intake`.
+- For extraction-stage non-MCP gaps (commit-pinned raw CQL retrieval), use MCP tool `local-python.fetch_raw_cql`.
+- State read/write operations can be routed through MCP tools backed by `scripts/state_manager.py` (`state_read_pipeline`, `state_write_pipeline`, `state_read_approval`, `state_write_approval`).
+- Full first-time ticket cleanup can be run via MCP tool `local-python.state_reset_ticket_baseline`.
 - Helper scripts are fetch-only utilities. Agents remain responsible for parsing, artifact generation, and stage transitions.
+
+## Local MCP Server Setup
+
+```powershell
+python -m pip install -r config/mcp/requirements-local-mcp.txt
+python scripts/local_mcp_server.py
+```
+
+## State Directory Setup
+
+Before running agents, create the ticket state directory:
+
+```powershell
+mkdir -p state/tickets
+```
+
+This ensures each ticket's per-ticket state folder (`state/tickets/<ticket-id>/`) can be created by agents as they run.
 
 ## Suggested Run Order
 
 1. `/ticketDescriptionIntakeAgent`
 2. `/cql-extractor`
-3. `/plan-approval`
-4. `/approvalRecorder`
-5. `/conversion`
-6. `/pr-submission`
+3. `/approvalRecorder` (single call with approver details)
+4. `/conversion`
+5. `/pr-submission`
+
+## Utility Command
+
+- `/ticketStatusReset` resets the current ticket state to `intake-start` and clears approval so the flow can be re-run.
+
+## Canonical Status Values
+
+- Pipeline and approval statuses are standardized in `.github/orchestration/statuses.json`.
+- `scripts/state_manager.py` enforces allowed pipeline stage values through `PipelineStage` enum.
 
 ## Project Structure
 
