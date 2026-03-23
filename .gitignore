@@ -27,6 +27,11 @@ artifacts/plan/*.md
 artifacts/conversion/*.drl
 artifacts/conversion/*-mapping.md
 artifacts/pr/*-pr.md
+artifacts/sample/
+
+# Local documentation (not for repo)
+docs/todo.md
+docs/migration-to-per-ticket-state.md
 
 # Keep folder structure
 !artifacts/**/.gitkeep
