@@ -40,6 +40,10 @@ def canonical_mips_drl_name_from_cql_basename(basename: str) -> str:
     if stem.isdigit():
         return f"mips{stem}.drl"
 
+    # Mixed basenames like 005Rate1 should still emit canonical mips-prefixed outputs.
+    if re.match(r"^\d+[A-Za-z0-9]+$", stem):
+        return f"mips{stem_lower}.drl"
+
     return pathlib.Path(basename).with_suffix(".drl").name
 
 

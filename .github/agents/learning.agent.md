@@ -1,25 +1,8 @@
 ---
-type: agent
-mode: skill-guided
-goal: |
-  Passively aggregate execution metrics, CQL analysis patterns, and error insights
-  without interfering with the main pipeline workflow.
-
-safety: |
-  - Non-blocking: If learning fails, orchestrator continues unaffected
-  - Isolated writes: All output goes to state/learning/ only
-  - Optional: Can be disabled in orchestrator config without cascading failures
-  - Silent failures: Errors are logged but never propagated
-
-triggers:
-  - After each pipeline stage completion (intake, extraction, conversion, pr)
-  - Optional: Invoked asynchronously, result not required for next stage
-
-outputs:
-  - state/learning/execution-metrics.json (timing, success/failure per stage)
-  - state/learning/cql-patterns.json (CQL structure analysis)
-  - state/learning/error-patterns.json (error categorization and frequency)
-
+name: learningAgent
+description: "Use for passive, non-blocking capture of execution metrics, CQL patterns, and error insights."
+argument-hint: Provide ticket ID and optional stage context when recording metrics.
+tools: [read, edit, search, local-python/*]
 ---
 
 # CQL Flow Learning Agent

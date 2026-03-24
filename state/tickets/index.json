@@ -1,16 +1,16 @@
 {
-  "currentTicketId": "1024345",
-  "lastUpdated": "2026-03-23T22:16:46.867974",
+  "currentTicketId": null,
+  "lastUpdated": "2026-03-24T19:32:07.771893",
   "tickets": {
-    "1024340": {
-      "stage": "conversion-complete",
-      "approved": true,
-      "ingestedAt": "2026-03-23T15:56:54.353128"
-    },
     "1024345": {
       "stage": "pr-ready",
       "approved": true,
       "ingestedAt": "2026-03-23T21:14:11.848182"
+    },
+    "1024385": {
+      "stage": "conversion-complete",
+      "approved": true,
+      "ingestedAt": "2026-03-24T17:21:43.704924"
     }
   }
 }

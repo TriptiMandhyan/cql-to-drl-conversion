@@ -1,6 +1,0 @@
-{
-  "ticketId": "1024340",
-  "stage": "conversion-complete",
-  "updatedAt": "2026-03-23T16:03:11.834871",
-  "details": "Generated artifacts/conversion/mips050.drl and artifacts/conversion/1024340-mapping.md from artifacts/extraction/1024340.json and artifacts/plan/1024340.md; validation passed via scripts/validate_conversion_artifacts.py."
-}

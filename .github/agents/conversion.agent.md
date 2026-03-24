@@ -1,6 +1,7 @@
 ---
 name: conversion
 description: "Use when plan approval is true and CQL extraction must be converted into DRL with mapping notes."
+argument-hint: Provide ticket ID context and confirm approval has already been recorded.
 tools: [read, edit, search, local-python/*]
 ---
 

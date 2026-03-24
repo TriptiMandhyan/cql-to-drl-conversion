@@ -74,21 +74,39 @@ def _safe_remove_path(path: Path) -> bool:
 
 
 def _derive_drl_candidates(ticket_id: str) -> list[Path]:
-    """Build DRL candidate paths from extraction traceability data."""
+    """Build DRL candidate paths from extraction and intake traceability data."""
     candidates: set[Path] = set()
+
+    source_paths: set[str] = set()
+
     extraction_file = ROOT_DIR / "artifacts" / "extraction" / f"{ticket_id}.json"
-    if not extraction_file.exists():
-        return []
+    if extraction_file.exists():
+        try:
+            extraction_payload = json.loads(extraction_file.read_text(encoding="utf-8-sig"))
+            for file_entry in extraction_payload.get("files", []):
+                source_path = str((file_entry or {}).get("path") or "").strip()
+                if source_path:
+                    source_paths.add(source_path)
+        except Exception:
+            pass
 
-    try:
-        payload = json.loads(extraction_file.read_text(encoding="utf-8-sig"))
-    except Exception:
-        return []
+    intake_file = ROOT_DIR / "artifacts" / "intake" / f"{ticket_id}.json"
+    if intake_file.exists():
+        try:
+            intake_payload = json.loads(intake_file.read_text(encoding="utf-8-sig"))
+            for cql_path in intake_payload.get("cqlPaths", []):
+                source_path = str(cql_path or "").strip()
+                if source_path:
+                    source_paths.add(source_path)
+        except Exception:
+            pass
 
-    for file_entry in payload.get("files", []):
-        source_path = str((file_entry or {}).get("path") or "").strip()
-        if not source_path:
-            continue
+    raw_ticket_dir = ROOT_DIR / "artifacts" / "extraction" / "raw" / ticket_id
+    if raw_ticket_dir.exists() and raw_ticket_dir.is_dir():
+        for cql_file in raw_ticket_dir.rglob("*.cql"):
+            source_paths.add(str(cql_file))
+
+    for source_path in source_paths:
         stem = Path(source_path).stem
         if not stem:
             continue

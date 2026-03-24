@@ -38,4 +38,5 @@
 - If MCP behavior does not reflect recent Python edits, restart `python scripts/local_mcp_server.py` before retrying tools.
 - JSON reads in local MCP/state paths should be BOM-tolerant (`utf-8-sig`) to avoid parse failures on Windows-authored files.
 - In this workspace setup, call `activate_pipeline_state_management_tools` before attempting `mcp_local-python_state_write_approval`; write tool may not be exposed until activation.
+- Intake MCP nuance: `mcp_local-python_enrich_intake(ticket_id)` requires `resolvedPullRequests` in `artifacts/intake/<ticket-id>.json`; if missing, first resolve PR metadata via ADO MCP (`mcp_ado_wit_get_work_item` + `mcp_ado_repo_get_pull_request_by_id`) and write resolved PR entry, then enrich.
 

@@ -3,6 +3,45 @@
   "migrationStatus": "per-ticket-state-enabled",
   "mode": "agent-first",
   "statusCatalog": ".github/orchestration/statuses.json",
+  "pipeline": {
+    "name": "CQL to DRL Local Workflow",
+    "stateDir": "state/tickets",
+    "layout": {
+      "canonical": {
+        "agentsRoot": ".github/agents",
+        "promptsRoot": ".github/agents/prompts",
+        "skillsRoot": ".github/skills",
+        "orchestrationRoot": ".github/orchestration",
+        "stateRoot": "state/tickets",
+        "artifactsRoot": "artifacts"
+      },
+      "legacyCompatibility": {
+        "enabled": true,
+        "notes": "Legacy singleton state may coexist, but per-ticket state is authoritative."
+      }
+    },
+    "stateCompression": {
+      "enabled": true,
+      "maxRunHistory": 20,
+      "maxErrorsPerStage": 10,
+      "maxAgentMessages": 20,
+      "warnSizeKb": 50
+    },
+    "auditTrail": {
+      "enabled": true,
+      "format": "jsonl",
+      "directory": "state/tickets/<ticket-id>",
+      "filePattern": "audit-<ticket-id>.jsonl",
+      "summaryOnCompletion": true,
+      "traceabilityMatrix": true
+    },
+    "adapters": {
+      "githubCopilot": {
+        "name": "GitHub Copilot",
+        "entryPoint": ".github/copilot-instructions.md"
+      }
+    }
+  },
   "orchestrator": {
     "agent": "cqlFlowOrchestrator",
     "entryStateFile": "state/run-input.json",
@@ -31,9 +70,10 @@
       "slashOnlyExecution": true,
       "mcpPreferredForAdo": true,
       "mcpPreferredForPrMetadata": true,
-      "allowPatHttpsFallback": true,
-      "patHttpsFallbackScope": "intake-cqlpaths-and-extraction-commit-content",
+      "allowPatHttpsFallback": false,
+      "patHttpsFallbackScope": "disabled-mcp-only",
       "approvalRequiredBeforeConversion": true,
+      "explicitApprovalCommandRequired": true,
       "usePrSourceBranchOverMain": true,
       "ticketTraceabilityRequired": true,
       "guideReferenceRequiredInMapping": true,
@@ -146,9 +186,17 @@
         "state/tickets/<ticket-id>/approval-status.json"
       ],
       "writes": [
-        "state/tickets/<ticket-id>/approval-status.json",
-        "state/tickets/<ticket-id>/pipeline-status.json",
         "state/tickets/index.json"
+      ],
+      "deletes": [
+        "state/tickets/<ticket-id>/",
+        "artifacts/intake/<ticket-id>.json",
+        "artifacts/extraction/<ticket-id>.json",
+        "artifacts/extraction/<ticket-id>-fetched.json",
+        "artifacts/extraction/raw/<ticket-id>/",
+        "artifacts/plan/<ticket-id>.md",
+        "artifacts/conversion/<ticket-id>-mapping.md",
+        "artifacts/pr/<ticket-id>-pr.md"
       ]
     },
     "learning": {

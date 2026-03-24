@@ -1,6 +1,7 @@
 ---
 name: ticketStatusReset
 description: "Use when you want to reset a ticket's pipeline/approval state before re-running the workflow."
+argument-hint: Provide ticket ID to reset, or keep state/run-input.json aligned to the target ticket.
 tools: [read, edit, search, local-python/*]
 ---
 

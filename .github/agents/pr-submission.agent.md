@@ -1,6 +1,7 @@
 ---
 name: pr-submission
 description: "Use when conversion is complete and a pull request draft with validation summary must be generated."
+argument-hint: Provide ticket ID context and ensure conversion artifacts are present.
 tools: [read, edit, github/*, local-python/*]
 ---
 

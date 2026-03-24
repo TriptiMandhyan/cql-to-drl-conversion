@@ -22,11 +22,21 @@ Define shared behavior for all slash agents in this repository.
 ## Guardrails
 
 - Never proceed to conversion when approval is false.
+- Never treat approval from prior runs as valid for the current run; approval must be explicitly recorded in the current run by `/approvalRecorder` with approver identity provided at command time.
 - Never use main branch when PR source refs are available.
 - Never write secrets to artifacts.
 - Mark unresolved logic as assumptions or blockers.
 - Do not let helper scripts update stage transitions on behalf of the agent.
 - Do not use helper scripts for extraction parsing, conversion, or PR submission stages.
+- Do not use ad-hoc shell or PowerShell parsing commands (for example rg/grep/Select-String pipelines) as the primary stage logic when required artifacts are already local; use agent-native artifact reads and deterministic parsing in stage instructions.
+- Do not use direct ADO REST URL calls from agent instructions when MCP tools are available. MCP transport is required.
 - **MCP tool `local-python.get_pr_changes()` is the required path for PR metadata resolution. Never fall back to direct Python script execution for PR changes.**
 - **All pipeline/approval state transitions must use `local-python.state_write_*` tools. Direct writes to state JSON files are not allowed.**
 - Conversion outputs must use reference-style fact modeling (platform domain facts and minimal marker/helper declares).
+
+## Stage Completion Gates
+
+- Intake can complete only if `artifacts/intake/<ticket-id>.json` exists and `cqlPaths` is non-empty.
+- Extraction can complete only if both `artifacts/extraction/<ticket-id>.json` and `artifacts/plan/<ticket-id>.md` exist and required raw CQL content was fetched for intake `cqlPaths`.
+- Conversion can complete only if approval is true and conversion artifacts are written for the current ticket.
+- PR stage can complete only if `artifacts/pr/<ticket-id>-pr.md` exists.

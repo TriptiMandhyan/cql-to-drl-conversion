@@ -11,6 +11,9 @@ Build and operate a local multi-agent workflow that transforms CQL artifacts int
 3. Do not fabricate unknown business logic. Mark assumptions explicitly.
 4. Keep all generated artifacts in project folders (`artifacts/`, `state/`, `templates/` outputs).
 5. Never store secrets in files. Use environment variables only.
+6. Use MCP tools only for ADO metadata/content/state operations; do not use direct REST URL/PAT calls from agent workflows.
+7. Intake cannot complete unless `artifacts/intake/<ticket-id>.json` has non-empty `cqlPaths`; extraction cannot complete unless raw CQL content is fetched for required paths and extraction/plan artifacts are written.
+8. Never assume approval from prior runs or existing state; conversion requires an explicit approval command in the current run with an approver name provided at approval time.
 
 ## Agent Handoff Contract
 

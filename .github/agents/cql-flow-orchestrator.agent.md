@@ -1,7 +1,24 @@
 ---
 name: cqlFlowOrchestrator
 description: "Use when you want VS Code slash-agent orchestration for end-to-end CQL to DRL flow with explicit approval gate and agent handoffs."
-tools: [read, edit, search, agent, github/*]
+argument-hint: Provide ticket ID or ticket URL context in state/run-input.json and optionally the stage to resume.
+handoffs:
+  - label: Intake Ticket
+    agent: ticketDescriptionIntakeAgent
+    prompt: Pull ticket details, resolve PR references, and write intake artifact.
+  - label: Extract CQL
+    agent: cql-extractor
+    prompt: Build extraction and plan outputs from intake artifact.
+  - label: Record Approval
+    agent: approvalRecorder
+    prompt: Record explicit approver details and unlock conversion.
+  - label: Convert to DRL
+    agent: conversion
+    prompt: Generate DRL and clause-to-rule mapping from approved extraction.
+  - label: Prepare PR
+    agent: pr-submission
+    prompt: Draft PR content and update pipeline stage to pr-ready.
+tools: [read, edit, search, agent]
 agents: [ticketDescriptionIntakeAgent, cql-extractor, approvalRecorder, conversion, pr-submission, ticketStatusReset, learningAgent]
 ---
 
@@ -48,16 +65,21 @@ Before running any agent for the first time on a ticket:
 
 - Resolve `ticketId` from `state/run-input.json`, then read `state/tickets/<ticket-id>/pipeline-status.json` and recommend only the next valid agent.
 - Enforce slash-only execution guidance; do not ask user to run python or shell scripts.
-- If intake finishes with empty `cqlPaths` and PAT fallback is enabled, require intake stage to call MCP tool `local-python.enrich_intake` before extractor.
-- If extractor cannot read commit-pinned CQL content through MCP and PAT fallback is enabled, allow extraction stage to call MCP tool `local-python.fetch_raw_cql` before parsing.
+- Do not use GitHub MCP tools in orchestrator stages before `/pr-submission`; GitHub operations are owned by the PR agent only.
+- Enforce MCP-only transport for ADO metadata/content operations; do not recommend direct REST URL/PAT fallback.
+- If intake artifact has empty `cqlPaths`, require intake stage to call MCP tool `local-python.enrich_intake` and block extractor until `cqlPaths` is non-empty.
+- Require extraction stage to call MCP tool `local-python.fetch_raw_cql` for commit-pinned content and block extraction completion when required CQL content is missing.
 - Block conversion unless approval is true.
+- Do not infer approval from prior runs, prior approver names, or pre-existing `approval-status.json` values; require explicit `/approvalRecorder` invocation for the current run.
 - Require all state transitions to be written through MCP tools (`local-python.state_write_pipeline`, `local-python.state_write_approval`).
 - Require conversion agent to reference `cql-to-drl-guide.md` sections in mapping output.
 - Ensure each stage writes its required artifact before moving to next stage.
+- Before `/conversion`, verify both `artifacts/extraction/<ticket-id>.json` and `artifacts/plan/<ticket-id>.md` exist for the current ticket.
+- Before `/pr-submission`, verify `artifacts/conversion/<ticket-id>-mapping.md` exists and at least one ticket-relevant DRL file was produced.
 - Validate governance flags in `.github/orchestration/config.json` before recommending stage transitions.
 - **Optional Learning Invocation** (Non-Blocking): After each major stage completes (intake, extraction, conversion, pr), optionally invoke `/learningAgent` for passive metrics aggregation. This is background-only and does not block the main workflow. If learning succeeds (returns ok=true), provide silent progress note; if it fails, suppress failure and continue pipeline.
 - Never request human intervention except the single approval command.
-- When paused for approval, provide one exact command format and wait.
+- When paused for approval, provide one exact command format including approver name and wait.
 
 ## Outputs
 

@@ -12,5 +12,61 @@
     "successCount": 1,
     "failureCount": 0,
     "avgTimeSeconds": 12.5
+  },
+  "awaiting-approval": {
+    "executions": [
+      {
+        "ticketId": "1024385",
+        "timestamp": "2026-03-24T10:40:19.412223",
+        "elapsedSeconds": 0.0,
+        "success": true,
+        "details": "Extraction complete; awaiting approval. learningStage/elapsedSeconds absent in run-input; recorded with fallback. analyzed 2 CQL files from artifacts/extraction/raw/1024385."
+      }
+    ],
+    "successCount": 1,
+    "failureCount": 0,
+    "avgTimeSeconds": 0.0
+  },
+  "conversion-complete": {
+    "executions": [
+      {
+        "ticketId": "1024385",
+        "timestamp": "2026-03-24T10:59:34.133227",
+        "elapsedSeconds": 916.5,
+        "success": true,
+        "details": "Conversion stage complete; generated 2 DRL artifacts and 1 mapping artifact; no ticket errors file present."
+      }
+    ],
+    "successCount": 1,
+    "failureCount": 0,
+    "avgTimeSeconds": 916.5
+  },
+  "intake-complete": {
+    "executions": [
+      {
+        "ticketId": "1023697",
+        "timestamp": "2026-03-24T13:16:41.847095",
+        "elapsedSeconds": 0.0,
+        "success": true,
+        "details": "Intake context captured: cqlPaths=1; path=/measures/2026/MIPS/218.cql; sourceRef=refs/heads/2026-MIPS-218; sourceCommit=e9c368605ff2b8e9435d5ca7170eb1daa23dc2f1; elapsedSeconds unavailable in run-input."
+      }
+    ],
+    "successCount": 1,
+    "failureCount": 0,
+    "avgTimeSeconds": 0.0
+  },
+  "pr-ready": {
+    "executions": [
+      {
+        "ticketId": "1023697",
+        "timestamp": "2026-03-24T13:38:07.888670",
+        "elapsedSeconds": 0.0,
+        "success": true,
+        "details": "Post-PR learning capture; elapsedSeconds missing in state/run-input.json; no state/tickets/1023697/errors.json present."
+      }
+    ],
+    "successCount": 1,
+    "failureCount": 0,
+    "avgTimeSeconds": 0.0
   }
 }

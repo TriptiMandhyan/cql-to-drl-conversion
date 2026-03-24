@@ -2,11 +2,39 @@
 
 This guide captures practical conversion patterns for year-over-year MIPS measure updates, with emphasis on EMRv2, attribution loops, and fire-once dedup guards.
 
+## 0. Family and Subject Classification First (Additive)
+
+Before applying any section below, classify the work in two steps.
+
+### 0.1 Measure Family
+
+1. Family = MIPS: apply all sections in this guide directly.
+2. Family = HEDIS: keep the same DRL and semantic-preservation basics from this guide, then add HEDIS-specific logic only when explicitly defined in extraction/plan artifacts.
+3. Do not infer HEDIS-specific business behavior from MIPS conventions unless the CQL explicitly indicates the same semantics.
+
+### 0.2 Output Subject Type
+
+1. Encounter subject measure: use encounter-centric carry-forward and prefer `addEncounterEMR(...)` for evidence output.
+2. Patient subject measure: use patient-centric carry-forward and prefer `addPatientEMR(...)` for evidence output.
+3. If subject type is ambiguous, treat it as unresolved, document in mapping notes, and do not guess.
+
+### 0.3 Subject-Type Guardrails
+
+1. Do not convert encounter-subject measures to patient-level EMR output shape without explicit source intent.
+2. Do not convert patient-subject measures to encounter-level EMR output shape without explicit source intent.
+3. Status/EMR split is allowed only if output cardinality and attribution behavior remain semantically equivalent.
+
 ## 1. Denominator With option_id = all and Multiple Extended Results
 
 When CQL denominator includes multiple ExtendedMeasureResultV2 returns under option_id = all, DRL must emit denominator EMR for each named evidence item.
 
 Important: `option_id = all` is a fan-out instruction, not a literal option id.
+
+Subject-type note:
+
+1. For patient-subject measures, fan-out rows normally use `addPatientEMR(...)`.
+2. For encounter-subject measures, apply the same fan-out concept with `addEncounterEMR(...)`.
+3. Keep option-code expansion semantics identical regardless of chosen EMR API.
 
 1. Do not write `all` as the option id argument in `controlSet.addPatientEMR(...)`.
 2. Expand to one EMR row per concrete measure option code that applies to the measure, for example denominator option codes and gap/success option codes used by the measure.
@@ -192,6 +220,7 @@ end
 - If a reference rule is split into `.Org` and `.GroupAndProvider`, did the generated DRL preserve that separation or justify the deviation?
 - Are shared-library queries or facts referenced exactly as provided by the shared DRL contract, with unresolved dependencies called out instead of being invented locally?
 - If CQL uses `option_id = all`, did the DRL fan out into concrete option-code rows instead of emitting `all` as an option id?
+- Is the measure correctly classified as encounter-subject versus patient-subject, and is the EMR API (`addEncounterEMR` or `addPatientEMR`) consistent with that classification?
 
 ## 8. Rule Naming Standard (Required)
 
@@ -325,3 +354,15 @@ Preserve stable naming behavior from production/reference DRLs when it carries b
 5. Never emit `all` as option id in EMR output rows.
 
 Validation cue: for each CQL clause with `option_id = all`, verify there is at least one EMR row per concrete option code and zero EMR rows with option id `all`.
+
+## 18. CQL-First Drift Prevention (Additive)
+
+These checks are additive and should be run after normal conversion and before finalization.
+
+1. Comparator drift check: ensure strict operators are not changed to inclusive operators, and vice versa.
+2. Eligibility drift check: ensure no new executable filters were introduced unless required by source CQL semantics.
+3. Exists-window drift check: ensure `exists` and `not exists` windows match source interval boundaries.
+4. Selection-direction drift check: ensure earliest/latest evidence selection is preserved or explicitly justified.
+5. Output-shape drift check: ensure subject-type classification still matches EMR API usage and attribution loops.
+
+If any drift check fails, revise DRL and mapping notes before publishing conversion artifacts.
