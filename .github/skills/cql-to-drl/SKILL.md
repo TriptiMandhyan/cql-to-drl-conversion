@@ -9,6 +9,11 @@ description: "Use when converting approved CQL extraction artifacts into DRL and
 
 Transform extracted CQL semantics into DRL in a traceable and reviewable format.
 
+## Measure Family Boundary
+
+- MIPS examples in this skill are illustrative, not global defaults.
+- When `measureFamily != mips`, use family-specific slug/naming contracts from `.github/orchestration/config.json` and do not force `Mips` prefixes.
+
 ## Required Inputs
 
 - `artifacts/extraction/<ticket-id>.json`
@@ -32,7 +37,7 @@ Transform extracted CQL semantics into DRL in a traceable and reviewable format.
 ## Procedure
 
 1. Read extraction clauses and group them by source CQL file.
-2. For each changed source CQL file, emit one DRL. If the CQL basename already starts with `mips`, use it as-is (e.g., `mips338.cql` → `mips338.drl`). If the basename is a bare number, prefix with `mips` (e.g., `488.cql` → `mips488.drl`).
+2. For each changed source CQL file, emit one DRL using the configured `measureSlug` naming contract in `.github/orchestration/config.json`.
 3. Keep rule naming deterministic and aligned to established year/measure naming conventions.
 4. Before authoring rules, perform a CQL semantic pass for:
 	- comparator/operator fidelity (`>`, `>=`, `<`, `<=`, `=`)
@@ -81,7 +86,7 @@ Transform extracted CQL semantics into DRL in a traceable and reviewable format.
 
 ## Outputs
 
-- `artifacts/conversion/mips<measure-number>.drl` (one file per changed CQL)
+- `artifacts/conversion/<measure-slug>.drl` (one file per changed CQL)
 - `artifacts/conversion/<ticket-id>-mapping.md`
 
 ## Non-Negotiable Guardrails

@@ -37,8 +37,16 @@ flowchart TD
     CONVERTFILE[.github/agents/conversion.agent.md]
     SKILL[.github/skills/cql-to-drl/SKILL.md]
     GUIDE[.github/skills/cql-to-drl/cql-to-drl-guide.md]
-    CONVERTOUT[artifacts/conversion/mips<measure-number>.drl\nartifacts/conversion/<ticket-id>-mapping.md]
+    CONVERTOUT[artifacts/conversion/<measure-slug>.drl\nartifacts/conversion/<ticket-id>-mapping.md]
     VALIDATECMD[MCP tool: local-python.validate_conversion_artifacts\n(ticket_id=<ticket-id>)]
+
+    APICMD[/apiArtifactBuilder]
+    APIFILE[.github/agents/api-artifact-builder.agent.md]
+    APIOUT[artifacts/pr-assets/<ticket-id>/<measure-slug>.json]
+
+    TESTCMD[/testRunFileBuilder]
+    TESTFILE[.github/agents/test-run-file-builder.agent.md]
+    TESTOUT[artifacts/pr-assets/<ticket-id>/Year<measureYear><measureFamilyPascal><measureNumber>Rate<rateNumber>Test.java]
 
     PRCMD[/pr-submission]
     PRFILE[.github/agents/pr-submission.agent.md]
@@ -54,13 +62,13 @@ flowchart TD
     FALLBACK -- no --> EXTRACTCMD
 
     INTAKEOUT --> EXTRACTCMD --> EXTRACTFILE --> EXTRACTOUT --> PLANOUT --> APPROVALSTATE --> PIPE
-    PIPE --> APPROVECMD --> APPROVEFILE --> APPROVALSTATE --> PIPE
-
-    APPROVALSTATE --> CONVERTCMD --> CONVERTFILE
+    PIPE --> CONVERTCMD --> CONVERTFILE
     CONVERTFILE --> SKILL
     CONVERTFILE --> GUIDE
     CONVERTCMD --> CONVERTOUT --> VALIDATECMD --> PIPE
-
+    PIPE --> APICMD --> APIFILE --> APIOUT --> PIPE
+    PIPE --> TESTCMD --> TESTFILE --> TESTOUT --> APPROVALSTATE --> PIPE
+    PIPE --> APPROVECMD --> APPROVEFILE --> APPROVALSTATE --> PIPE
     PIPE --> PRCMD --> PRFILE --> PROUT --> PIPE
 ```
 
@@ -83,6 +91,7 @@ Set your authentication tokens in your PowerShell session:
 ```powershell
 $env:ADO_PAT = "<your-ado-personal-access-token>"
 $env:GITHUB_TOKEN = "<your-github-personal-access-token>"
+$env:API_AUTH_BASIC_TOKEN = "<your-basic-auth-token-for-auth-api>"
 ```
 
 To persist these across sessions, use:
@@ -90,6 +99,7 @@ To persist these across sessions, use:
 ```powershell
 setx ADO_PAT "<your-ado-personal-access-token>"
 setx GITHUB_TOKEN "<your-github-personal-access-token>"
+setx API_AUTH_BASIC_TOKEN "<your-basic-auth-token-for-auth-api>"
 ```
 
 ### 3. Start the Local MCP Server
@@ -157,9 +167,11 @@ Run each of these commands in sequence:
 
 1. **`/ticketDescriptionIntakeAgent`** – Extracts PR links and CQL file paths from the ticket
 2. **`/cql-extractor`** – Analyzes CQL and generates extraction artifacts + plan
-3. **`/approvalRecorder`** – Records human approval (only step that requires user input)
-4. **`/conversion`** – Converts CQL to DRL rules using the plan
-5. **`/pr-submission`** – Generates PR draft and opens a pull request
+3. **`/conversion`** – Converts CQL to DRL rules using the plan
+4. **`/apiArtifactBuilder`** – Retrieves auth token and writes canonical measure JSON artifact
+5. **`/testRunFileBuilder`** – Generates canonical Java test-run file
+6. **`/approvalRecorder`** – Records human approval (only step that requires user input)
+7. **`/pr-submission`** – Generates PR draft and opens a pull request
 
 **Do not skip stages.** Each stage depends on outputs from previous stages.
 
@@ -169,8 +181,10 @@ Run each of these commands in sequence:
 |-------|-----------------|----------|
 | **Intake** | Resolved PR links and CQL paths | `artifacts/intake/<ticket-id>.json` |
 | **Extraction** | Parsed CQL rules, generation plan | `artifacts/extraction/<ticket-id>.json` <br/> `artifacts/plan/<ticket-id>.md` |
-| **Approval** | Approval decision recorded | `state/tickets/<ticket-id>/approval-status.json` <br/> (`approved: true`) |
 | **Conversion** | Generated DRL files and mapping | `artifacts/conversion/<ticket-id>-mapping.md` <br/> `artifacts/conversion/*.drl` |
+| **API Artifact** | Authenticated payload captured as measure JSON | `artifacts/pr-assets/<ticket-id>/<measure-slug>.json` |
+| **Test Artifact** | Canonical Java test file generated | `artifacts/pr-assets/<ticket-id>/Year<measureYear><measureFamilyPascal><measureNumber>Rate<rateNumber>Test.java` |
+| **Approval** | Approval decision recorded and PR unlock stage set | `state/tickets/<ticket-id>/approval-status.json` <br/> (`approved: true`) |
 | **PR Submission** | Draft PR with validation summary | `artifacts/pr/<ticket-id>-pr.md` |
 
 After each stage completes successfully, check the output files to confirm the next stage's inputs are correct.
@@ -232,10 +246,20 @@ All state operations use MCP tools—**do not edit state files directly**.
 **Cause**: `state/run-input.json` is missing or doesn't contain `ticketId`.  
 **Fix**: Create/update `state/run-input.json` with a valid ticket ID.
 
-### "Conversion blocked: not approved"
+### "PR submission blocked: not approved"
 
 **Cause**: Approval status is `false`; you skipped or didn't complete `/approvalRecorder`.  
-**Fix**: Run `/approvalRecorder` and provide approver details to unlock conversion.
+**Fix**: Run `/approvalRecorder` and provide approver details to unlock PR submission.
+
+### "CQL did not download again"
+
+**Cause**: CQL fetching is performed by `/cql-extractor` only. If you resume from `conversion-ready` or later, extraction is skipped and no new fetch occurs.  
+**Fix**: Re-run extraction for the ticket. If you want a clean re-run, execute `/ticketStatusReset`, then run `/ticketDescriptionIntakeAgent` followed by `/cql-extractor`.
+
+### "Extractor ran but I still see old CQL content"
+
+**Cause**: Fetch is commit-pinned to intake PR metadata (`sourceCommitId`). If intake is stale, extraction re-fetches the same commit snapshot.  
+**Fix**: Re-run intake first to refresh PR metadata, then run extractor again.
 
 ### "Empty DRL file generated"
 

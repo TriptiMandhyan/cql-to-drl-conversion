@@ -7,8 +7,10 @@
 
 ## Included Artifacts
 
-- DRLs (one per changed CQL, canonical naming): `artifacts/conversion/mips<measure-number>.drl`
+- DRLs (one per changed CQL, canonical naming): `artifacts/conversion/<measure-slug>.drl`
 - Mapping: `artifacts/conversion/<ticket-id>-mapping.md`
+- API JSON: `artifacts/pr-assets/<ticket-id>/<measure-slug>.json`
+- Test Run File: `artifacts/pr-assets/<ticket-id>/Year<measureYear><measureFamilyPascal><measureNumber>Rate<rateNumber>Test.java`
 - Plan: `artifacts/plan/<ticket-id>.md`
 - DRL reference patterns: `examples/drl-reference/year2026/*.drl` (if available)
 

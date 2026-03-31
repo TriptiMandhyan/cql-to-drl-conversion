@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -33,6 +34,11 @@ APP_PORT = int(os.environ.get("LOCAL_MCP_PORT", "8765"))
 mcp = FastMCP("local-python-tools")
 # Create the streamable app once to initialize session manager lazily.
 _mcp_asgi_app = mcp.streamable_http_app()
+
+
+class _SafeFormatDict(dict):
+    def __missing__(self, key: str) -> str:
+        return "{" + key + "}"
 
 
 def _run_python_script(args: list[str]) -> dict[str, Any]:
@@ -71,6 +77,127 @@ def _safe_remove_path(path: Path) -> bool:
     else:
         path.unlink()
     return True
+
+
+def _format_template(value: str, context: dict[str, Any]) -> str:
+    """Format a string template while preserving unknown placeholders."""
+    return str(value).format_map(_SafeFormatDict({k: str(v) for k, v in context.items()}))
+
+
+_ENV_VAR_PATTERN = re.compile(r"\$\{([A-Z0-9_]+)\}")
+
+
+def _expand_env_vars(value: Any) -> Any:
+    """Expand ${ENV_VAR} placeholders recursively in strings/dicts/lists."""
+    if isinstance(value, str):
+        return _ENV_VAR_PATTERN.sub(lambda m: os.environ.get(m.group(1), ""), value)
+    if isinstance(value, list):
+        return [_expand_env_vars(item) for item in value]
+    if isinstance(value, dict):
+        return {k: _expand_env_vars(v) for k, v in value.items()}
+    return value
+
+
+def _json_path_get(payload: Any, path: str) -> Any:
+    """Read a simple dot-path from a JSON-like payload."""
+    current = payload
+    for part in str(path or "").split("."):
+        key = part.strip()
+        if not key:
+            continue
+        if not isinstance(current, dict) or key not in current:
+            return None
+        current = current[key]
+    return current
+
+
+def _json_path_set(payload: Any, path: str, value: Any) -> bool:
+    """Set a simple dot-path on a JSON-like dict payload."""
+    if not isinstance(payload, dict):
+        return False
+
+    parts = [part.strip() for part in str(path or "").split(".") if part.strip()]
+    if not parts:
+        return False
+
+    current: Any = payload
+    for key in parts[:-1]:
+        if not isinstance(current, dict) or key not in current:
+            return False
+        current = current[key]
+
+    final_key = parts[-1]
+    if not isinstance(current, dict) or final_key not in current:
+        return False
+
+    current[final_key] = value
+    return True
+
+
+def _http_json_request(
+    *,
+    url: str,
+    method: str,
+    headers: dict[str, str] | None,
+    body: Any,
+    timeout_seconds: int,
+) -> Any:
+    """Execute an HTTP request and parse the JSON response."""
+    request_data: bytes | None = None
+    if body is not None:
+        request_data = json.dumps(body).encode("utf-8")
+
+    req = urllib.request.Request(url=url, data=request_data, method=str(method or "GET").upper())
+    
+    # Set Content-Length explicitly for POST with no body to match Postman behavior
+    if request_data is None and method.upper() == "POST":
+        req.add_header("Content-Length", "0")
+    
+    for key, val in (headers or {}).items():
+        req.add_header(str(key), str(val))
+
+    with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
+        raw = resp.read().decode("utf-8")
+
+    if not raw.strip():
+        raise ValueError(f"Empty response body from {url}")
+
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Non-JSON response from {url}: {exc}") from exc
+
+
+def _normalize_auth_headers(headers: dict[str, Any] | None) -> dict[str, str]:
+    """Normalize outgoing auth headers to avoid malformed Authorization values."""
+    normalized: dict[str, str] = {
+        str(k): str(v) for k, v in (headers or {}).items()
+    }
+
+    auth_value = normalized.get("Authorization")
+    if auth_value:
+        trimmed = str(auth_value).strip()
+        lower = trimmed.lower()
+        if lower.startswith("basic basic "):
+            normalized["Authorization"] = "Basic " + trimmed[12:].strip()
+
+    return normalized
+
+
+def _redacted_headers(headers: dict[str, Any] | None) -> dict[str, str]:
+    """Return a copy of headers with sensitive values redacted."""
+    out = {str(k): str(v) for k, v in (headers or {}).items()}
+    for key in list(out.keys()):
+        if key.lower() in {"authorization", "x-api-key", "api-key"}:
+            original = str(out[key])
+            # Always show length and first/last 4 chars for debugging without exposing full value
+            if len(original) > 8:
+                out[key] = f"<redacted len={len(original)} start={original[:4]}... end=...{original[-4:]}>"
+            elif len(original) > 0:
+                out[key] = f"<redacted len={len(original)}>"
+            else:
+                out[key] = "<redacted len=0 EMPTY>"
+    return out
 
 
 def _derive_drl_candidates(ticket_id: str) -> list[Path]:
@@ -264,6 +391,292 @@ def get_pr_changes(
             "ok": False,
             "returnCode": 1,
             "cqlPaths": [],
+            "error": str(e),
+        }
+
+
+@mcp.tool()
+def fetch_measure_json_via_api_config(
+    ticket_id: str = "",
+    measure_slug: str = "",
+    measure_specification: str = "",
+) -> dict[str, Any]:
+    """Fetch and persist measure JSON using configured auth+data API endpoints.
+
+    Args:
+        ticket_id: Optional ticket id. If omitted, helper infers from state/run-input.json.
+        measure_slug: Optional explicit measure slug (e.g., mips007rate1).
+        measure_specification: Optional explicit measureSpecification value.
+    """
+    try:
+        resolved_ticket = _resolve_ticket_id(ticket_id)
+
+        config_path = ROOT_DIR / ".github" / "orchestration" / "config.json"
+        config = json.loads(config_path.read_text(encoding="utf-8-sig"))
+        api_payload = config.get("apiPayload") or {}
+        if not api_payload.get("enabled", False):
+            return {
+                "ok": False,
+                "returnCode": 1,
+                "error": "apiPayload.enabled must be true",
+            }
+
+        intake_path = ROOT_DIR / "artifacts" / "intake" / f"{resolved_ticket}.json"
+        intake = json.loads(intake_path.read_text(encoding="utf-8-sig")) if intake_path.exists() else {}
+
+        cql_paths = intake.get("cqlPaths") or []
+        first_cql = str(cql_paths[0]) if cql_paths else ""
+
+        derived_year = ""
+        year_match = re.search(r"/(20\d{2})/", first_cql)
+        if year_match:
+            derived_year = year_match.group(1)
+
+        family_default = str((config.get("measureFamilies") or {}).get("default") or "mips").strip().lower()
+
+        slug = str(measure_slug).strip().lower()
+        if not slug and first_cql:
+            stem = Path(first_cql).stem.strip().lower()
+            numeric_prefix_match = re.match(r"^(\d+)(.*)$", stem)
+            if numeric_prefix_match:
+                number = numeric_prefix_match.group(1).zfill(3)
+                suffix = numeric_prefix_match.group(2)
+                slug = f"{family_default}{number}{suffix}"
+            else:
+                slug = stem
+
+        if not slug:
+            return {
+                "ok": False,
+                "returnCode": 1,
+                "error": "Unable to resolve measure_slug; provide measure_slug explicitly",
+            }
+
+        number_match = re.search(r"(\d{1,4})", slug)
+        rate_match = re.search(r"rate(\d+)", slug)
+
+        context = {
+            "ticketId": resolved_ticket,
+            "measureSlug": slug,
+            "measureFamilyLower": family_default,
+            "measureYear": derived_year,
+            "measureYearShort": derived_year[-2:] if len(derived_year) >= 2 else "",
+            "measureNumber": number_match.group(1) if number_match else "",
+            "measureNumberPadded": number_match.group(1).zfill(3) if number_match else "",
+            "rateNumber": rate_match.group(1) if rate_match else "",
+        }
+
+        data_cfg = api_payload.get("data") or {}
+        specification = str(measure_specification).strip()
+        if not specification:
+            specification_template = str(data_cfg.get("measureSpecificationFormat") or "{measureSlug}")
+            specification = _format_template(specification_template, context)
+        else:
+            # Keep external spec prefix/version but enforce slug parity with DRL/CQL/JSON naming.
+            spec_parts = str(specification).split("-")
+            if len(spec_parts) >= 3:
+                spec_parts[-1] = slug
+                specification = "-".join(spec_parts)
+
+        context["measureSpecification"] = specification
+
+        auth_cfg = api_payload.get("auth") or {}
+        auth_url = str(auth_cfg.get("url") or "").strip()
+        if not auth_url:
+            return {"ok": False, "returnCode": 1, "error": "apiPayload.auth.url is required"}
+
+        # Check required env vars before expansion
+        required_env = auth_cfg.get("requiredEnv") or []
+        missing_env = [var for var in required_env if not os.environ.get(var)]
+        if missing_env:
+            return {
+                "ok": False,
+                "returnCode": 1,
+                "phase": "auth-config",
+                "error": f"Required environment variables not set: {', '.join(missing_env)}",
+                "missingVars": missing_env,
+            }
+
+        auth_method = str(auth_cfg.get("method") or "POST").upper()
+        auth_headers = _normalize_auth_headers(_expand_env_vars(auth_cfg.get("headers") or {}))
+        auth_body_template = auth_cfg.get("bodyTemplate")
+        auth_body = _expand_env_vars(auth_body_template) if auth_body_template is not None else None
+
+        unresolved_auth_headers = {
+            k: v for k, v in auth_headers.items() if "${" in str(v)
+        }
+        if unresolved_auth_headers:
+            return {
+                "ok": False,
+                "returnCode": 1,
+                "phase": "auth-config",
+                "error": "Unresolved auth header placeholders detected",
+                "requestHeaders": _redacted_headers(unresolved_auth_headers),
+            }
+
+        if isinstance(auth_body, dict):
+            unresolved_auth_body = {
+                k: v for k, v in auth_body.items() if "${" in str(v)
+            }
+            if unresolved_auth_body:
+                return {
+                    "ok": False,
+                    "returnCode": 1,
+                    "phase": "auth-config",
+                    "error": "Unresolved auth body placeholders detected",
+                    "requestBody": unresolved_auth_body,
+                }
+
+        try:
+            auth_response = _http_json_request(
+                url=auth_url,
+                method=auth_method,
+                headers=auth_headers,
+                body=auth_body,
+                timeout_seconds=120,
+            )
+        except urllib.error.HTTPError as e:
+            try:
+                body = e.read().decode("utf-8", errors="replace")
+            except Exception:
+                body = ""
+            
+            # Add diagnostic info about Authorization header
+            auth_header_diagnostics = {}
+            auth_value = auth_headers.get("Authorization", "")
+            if auth_value:
+                auth_header_diagnostics["authHeaderLength"] = len(auth_value)
+                if len(auth_value) > 8:
+                    auth_header_diagnostics["authHeaderPreview"] = f"{auth_value[:4]}...{auth_value[-4:]}"
+                elif len(auth_value) > 0:
+                    auth_header_diagnostics["authHeaderPreview"] = f"<length {len(auth_value)}>"
+                else:
+                    auth_header_diagnostics["authHeaderPreview"] = "<EMPTY>"
+            
+            return {
+                "ok": False,
+                "returnCode": 1,
+                "phase": "auth",
+                "error": f"HTTP {e.code}: {e.reason}",
+                "url": auth_url,
+                "requestHeaders": _redacted_headers(auth_headers),
+                "authDiagnostics": auth_header_diagnostics,
+                "responseBody": body[:2000],
+            }
+
+        auth_from_response = data_cfg.get("authorizationFromAuthResponse") or {}
+        token_json_path = str(
+            auth_from_response.get("tokenJsonPath")
+            or auth_cfg.get("tokenJsonPath")
+            or "access_token"
+        )
+        token = _json_path_get(auth_response, token_json_path)
+        auth_response_sanitized = auth_response
+        try:
+            auth_response_sanitized = json.loads(json.dumps(auth_response))
+        except Exception:
+            pass
+
+        if isinstance(auth_response_sanitized, dict):
+            _json_path_set(auth_response_sanitized, token_json_path, "<redacted>")
+
+        if not token:
+            return {
+                "ok": False,
+                "returnCode": 1,
+                "error": f"Auth response did not include token at configured tokenJsonPath: {token_json_path}",
+                "authResponse": auth_response_sanitized,
+            }
+
+        data_url_template = str(data_cfg.get("urlTemplate") or "").strip()
+        if not data_url_template:
+            return {"ok": False, "returnCode": 1, "error": "apiPayload.data.urlTemplate is required"}
+
+        data_url = _format_template(data_url_template, context)
+        data_method = str(data_cfg.get("method") or "GET").upper()
+        data_headers = _normalize_auth_headers(_expand_env_vars(data_cfg.get("headers") or {}))
+
+        auth_header_name = str(auth_from_response.get("headerName") or "Authorization")
+        auth_header_template = str(auth_from_response.get("headerValueTemplate") or "Bearer {token}")
+        data_headers[auth_header_name] = _format_template(auth_header_template, {"token": token})
+
+        data_body_template = data_cfg.get("bodyTemplate")
+        data_body = None
+        if data_body_template is not None:
+            expanded_body = _expand_env_vars(data_body_template)
+            if isinstance(expanded_body, str):
+                data_body = _format_template(expanded_body, context)
+            elif isinstance(expanded_body, dict):
+                data_body = {
+                    k: _format_template(v, context) if isinstance(v, str) else v
+                    for k, v in expanded_body.items()
+                }
+            else:
+                data_body = expanded_body
+
+        try:
+            payload = _http_json_request(
+                url=data_url,
+                method=data_method,
+                headers=data_headers,
+                body=data_body,
+                timeout_seconds=120,
+            )
+        except urllib.error.HTTPError as e:
+            try:
+                body = e.read().decode("utf-8", errors="replace")
+            except Exception:
+                body = ""
+            return {
+                "ok": False,
+                "returnCode": 1,
+                "phase": "data",
+                "error": f"HTTP {e.code}: {e.reason}",
+                "url": data_url,
+                "measureSpecification": specification,
+                "authResponse": auth_response_sanitized,
+                "responseBody": body[:2000],
+            }
+
+        if payload in ({}, [], None):
+            return {
+                "ok": False,
+                "returnCode": 1,
+                "error": "Data API returned an empty JSON payload",
+            }
+
+        output_pattern = str(data_cfg.get("outputFilePattern") or "{measureSlug}.json")
+        output_name = _format_template(output_pattern, context)
+        output_dir = ROOT_DIR / "artifacts" / "pr-assets" / resolved_ticket
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_file = output_dir / output_name
+        output_file.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+        return {
+            "ok": True,
+            "returnCode": 0,
+            "ticketId": resolved_ticket,
+            "measureSlug": slug,
+            "measureSpecification": specification,
+            "authResponse": auth_response_sanitized,
+            "outputPath": str(output_file.relative_to(ROOT_DIR)).replace("\\", "/"),
+            "bytes": output_file.stat().st_size,
+        }
+    except urllib.error.HTTPError as e:
+        try:
+            body = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            body = ""
+        return {
+            "ok": False,
+            "returnCode": 1,
+            "error": f"HTTP {e.code}: {e.reason}",
+            "responseBody": body[:2000],
+        }
+    except Exception as e:
+        return {
+            "ok": False,
+            "returnCode": 1,
             "error": str(e),
         }
 
@@ -597,7 +1010,11 @@ def health() -> dict[str, str]:
 
 
 if hasattr(mcp, "streamable_http_app"):
-    # streamable_http_app already serves on /mcp, so mount at root.
+    # Be tolerant to SDK/client path expectations:
+    # - Some variants expose MCP transport at subapp root.
+    # - Others expose it under /mcp inside the subapp.
+    # Mount both prefixes so clients configured for /mcp do not get 404.
+    app.mount("/mcp", _mcp_asgi_app)
     app.mount("/", _mcp_asgi_app)
 elif hasattr(mcp, "sse_app"):
     # Compatibility fallback for older SDK variants.

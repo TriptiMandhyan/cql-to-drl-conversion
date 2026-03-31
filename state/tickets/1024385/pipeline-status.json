@@ -1,6 +1,0 @@
-{
-  "ticketId": "1024385",
-  "stage": "conversion-complete",
-  "updatedAt": "2026-03-24T17:37:26.771837",
-  "details": "Generated mips005rate1.drl and mips005rate2.drl with mapping artifact artifacts/conversion/1024385-mapping.md. Validation passed via scripts/validate_conversion_artifacts.py --ticket 1024385."
-}

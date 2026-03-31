@@ -61,8 +61,58 @@
     "owner": "AbleHealth",
     "repo": "rules-engine",
     "baseBranch": "main",
-    "drlTargetPath": "rules/mips",
-    "branchPattern": "create-{measureNumber}-ab{ticketId}"
+    "drlTargetPath": "src/main/resources/com/ablehealth/measure",
+    "jsonTargetPath": "src/main/resources/com/ablehealth/measure/{measureFamilyLower}/year{measureYear}",
+    "testTargetPath": "src/test/java/com/ablehealth/measures/{measureFamilyLower}/year{measureYear}",
+    "branchPattern": "feature/create-{measureFamilyLower}{measureNumber}-{measureYear}-ab{ticketId}"
+  },
+  "measureFamilies": {
+    "default": "mips",
+    "supported": [
+      "mips",
+      "ecqm",
+      "hedis"
+    ],
+    "mipsBoundary": "MIPS-specific naming and DRL guidance applies only when measureFamily is mips. Other families must use family-specific naming, templates, and domain rules."
+  },
+  "apiPayload": {
+    "enabled": true,
+    "auth": {
+      "url": "https://librarian.admin.ablehealth.com/auth/login",
+      "method": "POST",
+      "requiredEnv": [
+        "API_AUTH_BASIC_TOKEN"
+      ],
+      "headers": {
+        "Accept": "*/*",
+        "User-Agent": "PostmanRuntime/7.51.1",
+        "Authorization": "Basic ${API_AUTH_BASIC_TOKEN}"
+      },
+      "tokenJsonPath": "access_token"
+    },
+    "data": {
+      "urlTemplate": "https://librarian.admin.ablehealth.com/api/v0/measures/{measureSpecification}/published_test",
+      "measureSpecificationFormat": "{measureYearShort}-{measureFamilyLower}-{measureSlug}",
+      "measureSlugFormat": "{measureFamilyLower}{measureNumberPadded}rate{rateNumber}",
+      "measureSpecificationExample": "26-mips-mips007rate1",
+      "method": "GET",
+      "headers": {
+        "Accept": "application/json",
+        "Account": "QA1013",
+        "lastKey": "1"
+      },
+      "authorizationFromAuthResponse": {
+        "tokenJsonPath": "access_token",
+        "headerName": "Authorization",
+        "headerValueTemplate": "Bearer {token}"
+      },
+      "outputFilePattern": "{measureSlug}.json"
+    }
+  },
+  "testRunFile": {
+    "templatePath": "rules-engine/src/test/java/com/ablehealth/measures/mips/year2026/Year2026Mips047Test.java",
+    "classNamePattern": "Year{measureYear}{measureFamilyPascal}{measureNumber}Rate{rateNumber}Test",
+    "outputFilePattern": "Year{measureYear}{measureFamilyPascal}{measureNumber}Rate{rateNumber}Test.java"
   },
   "governance": {
     "enabled": true,
@@ -72,7 +122,8 @@
       "mcpPreferredForPrMetadata": true,
       "allowPatHttpsFallback": false,
       "patHttpsFallbackScope": "disabled-mcp-only",
-      "approvalRequiredBeforeConversion": true,
+      "approvalRequiredBeforeConversion": false,
+      "approvalRequiredBeforePrSubmission": true,
       "explicitApprovalCommandRequired": true,
       "usePrSourceBranchOverMain": true,
       "ticketTraceabilityRequired": true,
@@ -120,12 +171,16 @@
       "stateManager": "scripts/state_manager.py:TicketStateManager",
       "readState": [
         "run-input.json",
-        "artifacts/plan/<ticket-id>.md",
+        "artifacts/conversion/<ticket-id>-mapping.md",
+        "artifacts/pr-assets/<ticket-id>/<measure-slug>.json",
+        "artifacts/pr-assets/<ticket-id>/Year<measureYear><measureFamilyPascal><measureNumber>Rate<rateNumber>Test.java",
         "state/tickets/<ticket-id>/pipeline-status.json",
         "state/tickets/<ticket-id>/approval-status.json"
       ],
       "reads": [
-        "artifacts/plan/<ticket-id>.md",
+        "artifacts/conversion/<ticket-id>-mapping.md",
+        "artifacts/pr-assets/<ticket-id>/<measure-slug>.json",
+        "artifacts/pr-assets/<ticket-id>/Year<measureYear><measureFamilyPascal><measureNumber>Rate<rateNumber>Test.java",
         "state/tickets/<ticket-id>/pipeline-status.json",
         "state/tickets/<ticket-id>/approval-status.json"
       ],
@@ -145,13 +200,42 @@
       ],
       "readState": [
         "run-input.json",
-        "artifacts/extraction/<ticket-id>.json",
-        "state/tickets/<ticket-id>/approval-status.json"
+        "artifacts/extraction/<ticket-id>.json"
       ],
-      "prerequisite": "state/tickets/<ticket-id>/approval-status.json::approved == true",
       "writes": [
-        "artifacts/conversion/mips<measure-number>.drl",
+        "artifacts/conversion/<measure-slug>.drl",
         "artifacts/conversion/<ticket-id>-mapping.md",
+        "state/tickets/<ticket-id>/pipeline-status.json",
+        "state/tickets/index.json"
+      ]
+    },
+    "apiArtifact": {
+      "slash": "/apiArtifactBuilder",
+      "file": ".github/agents/api-artifact-builder.agent.md",
+      "stateManager": "scripts/state_manager.py:TicketStateManager",
+      "readState": [
+        "run-input.json",
+        "artifacts/intake/<ticket-id>.json",
+        "artifacts/conversion/<ticket-id>-mapping.md",
+        "state/tickets/<ticket-id>/pipeline-status.json"
+      ],
+      "writes": [
+        "artifacts/pr-assets/<ticket-id>/<measure-slug>.json",
+        "state/tickets/<ticket-id>/pipeline-status.json",
+        "state/tickets/index.json"
+      ]
+    },
+    "testArtifact": {
+      "slash": "/testRunFileBuilder",
+      "file": ".github/agents/test-run-file-builder.agent.md",
+      "stateManager": "scripts/state_manager.py:TicketStateManager",
+      "readState": [
+        "run-input.json",
+        "artifacts/pr-assets/<ticket-id>/<measure-slug>.json",
+        "state/tickets/<ticket-id>/pipeline-status.json"
+      ],
+      "writes": [
+        "artifacts/pr-assets/<ticket-id>/Year<measureYear><measureFamilyPascal><measureNumber>Rate<rateNumber>Test.java",
         "state/tickets/<ticket-id>/pipeline-status.json",
         "state/tickets/index.json"
       ]
@@ -163,6 +247,9 @@
       "readState": [
         "run-input.json",
         "artifacts/conversion/<ticket-id>-mapping.md",
+        "artifacts/pr-assets/<ticket-id>/<measure-slug>.json",
+        "artifacts/pr-assets/<ticket-id>/Year<measureYear><measureFamilyPascal><measureNumber>Rate<rateNumber>Test.java",
+        "state/tickets/<ticket-id>/approval-status.json",
         "state/tickets/<ticket-id>/pipeline-status.json"
       ],
       "writes": [
@@ -196,6 +283,7 @@
         "artifacts/extraction/raw/<ticket-id>/",
         "artifacts/plan/<ticket-id>.md",
         "artifacts/conversion/<ticket-id>-mapping.md",
+        "artifacts/pr-assets/<ticket-id>/",
         "artifacts/pr/<ticket-id>-pr.md"
       ]
     },

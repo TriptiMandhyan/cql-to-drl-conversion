@@ -19,6 +19,8 @@ flowchart TD
     APPROVAL[agents/approval-recorder.agent.md]
     RESET[agents/ticket-status-reset.agent.md]
     CONVERT[agents/conversion.agent.md]
+    APIART[agents/api-artifact-builder.agent.md]
+    TESTART[agents/test-run-file-builder.agent.md]
     PR[agents/pr-submission.agent.md]
 
     SKILL[skills/cql-to-drl/SKILL.md]
@@ -30,6 +32,8 @@ flowchart TD
     CI --> APPROVAL
     CI --> RESET
     CI --> CONVERT
+    CI --> APIART
+    CI --> TESTART
     CI --> PR
 
     CFG --> ORCH
@@ -38,6 +42,8 @@ flowchart TD
     CFG --> APPROVAL
     CFG --> RESET
     CFG --> CONVERT
+    CFG --> APIART
+    CFG --> TESTART
     CFG --> PR
 
     ORCH --> PROTO
@@ -46,6 +52,8 @@ flowchart TD
     ORCH --> APPROVAL
     ORCH --> RESET
     ORCH --> CONVERT
+    ORCH --> APIART
+    ORCH --> TESTART
     ORCH --> PR
 
     CFG --> INTAKEP
@@ -65,6 +73,8 @@ flowchart TD
     AG -.documents.-> APPROVAL
     AG -.documents.-> RESET
     AG -.documents.-> CONVERT
+    AG -.documents.-> APIART
+    AG -.documents.-> TESTART
     AG -.documents.-> PR
     AG -.documents.-> SKILL
     AG -.documents.-> GUIDE
@@ -82,9 +92,11 @@ flowchart TD
 | `.github/agents/prompts/intake.md` | Minimal intake prompt content referenced by the manifest for the intake stage. | Yes |
 | `.github/agents/cql-extractor.agent.md` | Defines how intake output becomes structured extraction output and initial plan/approval-pending artifacts. | Yes |
 | `.github/agents/prompts/extraction.md` | Minimal extraction prompt content referenced by the manifest for the extraction stage. | Yes |
-| `.github/agents/approval-recorder.agent.md` | Defines how explicit human approval details are recorded before conversion. | Yes |
+| `.github/agents/approval-recorder.agent.md` | Defines how explicit human approval details are recorded before PR submission. | Yes |
 | `.github/agents/ticket-status-reset.agent.md` | Defines how a ticket's pipeline and approval status are reset for a clean rerun. | Yes |
-| `.github/agents/conversion.agent.md` | Defines how approved extraction output becomes DRL and mapping output. | Yes |
+| `.github/agents/conversion.agent.md` | Defines how extraction output becomes DRL and mapping output. | Yes |
+| `.github/agents/api-artifact-builder.agent.md` | Defines how local-python MCP retrieves authenticated API payloads and converts them into PR-ready measure JSON. | Yes |
+| `.github/agents/test-run-file-builder.agent.md` | Defines how the PR-ready Java test run file is generated from a canonical template. | Yes |
 | `.github/agents/pr-submission.agent.md` | Defines how converted output becomes a PR draft and GitHub update. | Yes |
 | `.github/skills/cql-to-drl/SKILL.md` | Conversion rulebook used to keep DRL generation consistent and enforce non-negotiable constraints. | No |
 | `.github/skills/cql-to-drl/cql-to-drl-guide.md` | Detailed conversion reference used by the conversion stage and mapping output. | No |
@@ -114,6 +126,8 @@ These files read or depend on `.github/orchestration/config.json` at runtime:
 - `.github/agents/approval-recorder.agent.md`
 - `.github/agents/ticket-status-reset.agent.md`
 - `.github/agents/conversion.agent.md`
+- `.github/agents/api-artifact-builder.agent.md`
+- `.github/agents/test-run-file-builder.agent.md`
 - `.github/agents/pr-submission.agent.md`
 - prompt modules referenced inside `config.json`
 

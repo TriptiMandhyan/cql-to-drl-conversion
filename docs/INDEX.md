@@ -1,35 +1,28 @@
-# Documentation Index
+﻿# Documentation Index
 
-This index reflects the current, active workflow layout and runtime behavior.
+This index lists the active workflow documentation for the current CQL to DRL pipeline.
 
-## Core docs
+## Core Docs
 
-1. [docs/architecture.md](architecture.md) - Project architecture and component boundaries.
-2. [docs/runtime-flow.md](runtime-flow.md) - End-to-end agent runtime flow and stage transitions.
-3. [docs/local-runbook.md](local-runbook.md) - Local execution and troubleshooting playbook.
-4. [docs/SOLUTION-SUMMARY.md](SOLUTION-SUMMARY.md) - Current migration and stability summary.
+1. [architecture.md](architecture.md) - System architecture and stage responsibilities.
+2. [runtime-flow.md](runtime-flow.md) - End-to-end execution order, gates, and troubleshooting.
+3. [local-runbook.md](local-runbook.md) - Local setup, MCP discipline, and operator run steps.
 
-## Runtime source of truth
+## Workflow Rules
 
-1. [.github/orchestration/config.json](../.github/orchestration/config.json) - Active orchestrator manifest.
-2. [.github/orchestration/statuses.json](../.github/orchestration/statuses.json) - Canonical pipeline stages.
-3. [.github/copilot-instructions.md](../.github/copilot-instructions.md) - Workspace-wide Copilot operating rules.
+1. [../.github/copilot-instructions.md](../.github/copilot-instructions.md) - Workspace guardrails and definition of done.
+2. [../.github/orchestration/config.json](../.github/orchestration/config.json) - Runtime manifest, guardrails, and agent wiring.
+3. [../.github/orchestration/statuses.json](../.github/orchestration/statuses.json) - Canonical pipeline stage values.
+4. [../.github/agents/prompts/agent_protocol.md](../.github/agents/prompts/agent_protocol.md) - Shared stage protocol and completion gates.
 
-## Agent and skill entry points
+## Current Stage Order
 
-1. [.github/agents/README.md](../.github/agents/README.md) - Copilot custom agent map.
-2. [.github/AGENTS.md](../.github/AGENTS.md) - File relationship map and rationale.
-3. [.github/skills/cql-to-drl/SKILL.md](../.github/skills/cql-to-drl/SKILL.md) - Conversion guardrails and conventions.
+1. `/ticketDescriptionIntakeAgent`
+2. `/cql-extractor`
+3. `/conversion`
+4. `/apiArtifactBuilder`
+5. `/testRunFileBuilder`
+6. `/approvalRecorder`
+7. `/pr-submission`
 
-## State and artifacts
-
-1. [state/tickets](../state/tickets) - Per-ticket pipeline and approval state.
-2. [state/tickets/index.json](../state/tickets/index.json) - Master ticket stage index.
-3. [artifacts](../artifacts) - Intake, extraction, plan, conversion, and PR outputs.
-
-## Notes
-
-1. The active config is [.github/orchestration/config.json](../.github/orchestration/config.json).
-2. Deprecated template configs are intentionally removed to avoid divergence.
-3. DRL generation outputs remain under [artifacts/conversion](../artifacts/conversion).
-
+Approval is required immediately before PR submission.

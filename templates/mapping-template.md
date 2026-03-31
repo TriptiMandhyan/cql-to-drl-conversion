@@ -13,7 +13,18 @@
 
 | CQL Source | DRL Rule | Status | Guide Reference | Notes |
 | --- | --- | --- | --- | --- |
-| <file>#<definition> | <YearYYYY.MipsNNN.RuleName> | mapped | <Section X> | <note> |
+| <file>#<definition> | <YearYYYY.<MeasureFamilyPascal>NNN.RuleName> | mapped | <Section X> | <note> |
+
+## Attribution Verification
+
+- Subject type used: <Encounter|Patient>
+- EMR API used: <addEncounterEMR|addPatientEMR>
+- Output attribution shape implemented: <encounter-scoped only|org only|org+group+provider>
+- Plan required attribution shape: <copy from plan>
+- Parity check result: <matched|deviation>
+- If deviation, explain semantic impact and rationale:
+	- <impact>
+	- <rationale>
 
 ## Assumptions / Gaps
 

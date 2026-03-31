@@ -10,4 +10,4 @@
 - Write `artifacts/extraction/<ticket-id>.json` with source file and commit traceability, and include blockers/assumptions when deterministic file resolution is not possible.
 - Draft `artifacts/plan/<ticket-id>.md` from extraction output and `templates/plan-template.md`.
 - Initialize `state/tickets/<ticket-id>/approval-status.json` with `approved=false`.
-- Set `state/tickets/<ticket-id>/pipeline-status.json` to `awaiting-approval` using canonical values from `.github/orchestration/statuses.json` only after extraction and plan artifacts are present.
+- Set `state/tickets/<ticket-id>/pipeline-status.json` to `conversion-ready` using canonical values from `.github/orchestration/statuses.json` only after extraction and plan artifacts are present.

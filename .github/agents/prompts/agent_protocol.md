@@ -21,7 +21,7 @@ Define shared behavior for all slash agents in this repository.
 
 ## Guardrails
 
-- Never proceed to conversion when approval is false.
+- Never proceed to PR submission when approval is false.
 - Never treat approval from prior runs as valid for the current run; approval must be explicitly recorded in the current run by `/approvalRecorder` with approver identity provided at command time.
 - Never use main branch when PR source refs are available.
 - Never write secrets to artifacts.
@@ -38,5 +38,8 @@ Define shared behavior for all slash agents in this repository.
 
 - Intake can complete only if `artifacts/intake/<ticket-id>.json` exists and `cqlPaths` is non-empty.
 - Extraction can complete only if both `artifacts/extraction/<ticket-id>.json` and `artifacts/plan/<ticket-id>.md` exist and required raw CQL content was fetched for intake `cqlPaths`.
-- Conversion can complete only if approval is true and conversion artifacts are written for the current ticket.
-- PR stage can complete only if `artifacts/pr/<ticket-id>-pr.md` exists.
+- Conversion can complete only if conversion artifacts are written for the current ticket.
+- API artifact stage can complete only if `artifacts/pr-assets/<ticket-id>/<measure-slug>.json` exists.
+- Test artifact stage can complete only if `artifacts/pr-assets/<ticket-id>/Year<measureYear><measureFamilyPascal><measureNumber>Rate<rateNumber>Test.java` exists.
+- Approval-recording stage can complete only if approval is explicitly written as true for the current run and pipeline stage is `pr-ready`.
+- PR stage can complete only if approval is true for the current run and `artifacts/pr/<ticket-id>-pr.md` exists, then pipeline stage is set to `pr-submitted`.

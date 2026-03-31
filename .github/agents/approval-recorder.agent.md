@@ -1,6 +1,6 @@
 ---
 name: approvalRecorder
-description: "Use when plan is ready and explicit human approval details must be recorded before conversion."
+description: "Use when pre-PR artifacts are ready and explicit human approval details must be recorded before PR submission."
 argument-hint: Provide approver name and optional approval note for the active ticket.
 tools: [read, edit, search, local-python/*]
 ---
@@ -9,7 +9,7 @@ tools: [read, edit, search, local-python/*]
 
 ## Purpose
 
-Record explicit human approval and unlock conversion after extractor has produced plan and pending approval state.
+Record explicit human approval and unlock PR submission after conversion and supplemental artifact stages are complete.
 
 This stage is the only valid path to mark approval true for the current run.
 
@@ -18,8 +18,9 @@ This stage is the only valid path to mark approval true for the current run.
 - `state/run-input.json`
 - `state/tickets/<ticket-id>/pipeline-status.json`
 - `state/tickets/<ticket-id>/approval-status.json`
-- `artifacts/extraction/<ticket-id>.json`
-- `artifacts/plan/<ticket-id>.md`
+- `artifacts/conversion/<ticket-id>-mapping.md`
+- `artifacts/pr-assets/<ticket-id>/<measure-slug>.json`
+- `artifacts/pr-assets/<ticket-id>/Year<measureYear><measureFamilyPascal><measureNumber>Rate<rateNumber>Test.java`
 - approver name (prompt user if not provided)
 - optional approval note
 
@@ -27,7 +28,7 @@ This stage is the only valid path to mark approval true for the current run.
 
 - `governance.enabled` must be `true`.
 - `governance.guardrails.slashOnlyExecution` must be enforced.
-- `governance.guardrails.approvalRequiredBeforeConversion` must be enforced.
+- `governance.guardrails.approvalRequiredBeforePrSubmission` must be enforced.
 - `governance.guardrails.ticketTraceabilityRequired` must be enforced.
 
 ## Steps
@@ -35,15 +36,20 @@ This stage is the only valid path to mark approval true for the current run.
 0. Read `.github/orchestration/config.json` and `.github/orchestration/statuses.json`; enforce approval guardrails and canonical status values.
 1. Resolve `ticketId` from `state/run-input.json` and read `state/tickets/<ticket-id>/pipeline-status.json`; confirm stage is `awaiting-approval`.
 2. Read `state/tickets/<ticket-id>/approval-status.json` and verify `approved` is currently `false`.
-3. Confirm both `artifacts/extraction/<ticket-id>.json` and `artifacts/plan/<ticket-id>.md` exist for approval context.
-4. Require explicit approver identity from the current `/approvalRecorder` command; never infer or reuse approver identity from prior runs, prior ticket state, chat history, or placeholder defaults.
-5. Write updated approval state via MCP tool `local-python.state_write_approval(approved=true, approved_by=..., notes=...)`:
+3. Confirm conversion mapping and both PR supplemental artifacts exist for approval context.
+4. Confirm mapping/checklist coverage includes:
+   - status-derived GAP logic (not EMR-marker-gated),
+   - group/provider marker id-field modeling,
+   - attribution-scoped cross-rate exclusion,
+   - status-vs-EMR predicate parity.
+5. Require explicit approver identity from the current `/approvalRecorder` command; never infer or reuse approver identity from prior runs, prior ticket state, chat history, or placeholder defaults.
+6. Write updated approval state via MCP tool `local-python.state_write_approval(approved=true, approved_by=..., notes=...)`:
    - `ticketId`: from pipeline
    - `approved`: true
    - `approvedBy`: provided approver
    - `approvedAt`: current ISO timestamp
    - `notes`: provided note or default
-6. Update pipeline stage via MCP tool `local-python.state_write_pipeline(stage="conversion-ready", details=...)`.
+7. Update pipeline stage via MCP tool `local-python.state_write_pipeline(stage="pr-ready", details=...)`.
 
 ## Outputs
 
@@ -58,4 +64,5 @@ This stage is the only valid path to mark approval true for the current run.
 - Never change `ticketId` to a different value than current pipeline state.
 - Never generate or modify the plan in this stage.
 - Pipeline/approval state writes must use MCP state tools (`local-python.state_write_pipeline`, `local-python.state_write_approval`), not direct file edits.
-- Do not proceed to conversion in this stage; only set `conversion-ready`.
+- Do not create or update PR in this stage; only set `pr-ready`.
+- This is the only permitted transition from `awaiting-approval` to `pr-ready`.

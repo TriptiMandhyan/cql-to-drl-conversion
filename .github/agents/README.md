@@ -16,8 +16,10 @@ Primary agents:
 - `cqlFlowOrchestrator`: End-to-end stage coordination with approval gate.
 - `ticketDescriptionIntakeAgent`: Ticket normalization and PR/source resolution.
 - `cql-extractor`: Structured extraction and plan output.
-- `approvalRecorder`: Explicit approval capture before conversion.
+- `approvalRecorder`: Explicit approval capture before PR submission.
 - `conversion`: DRL generation and clause-to-rule mapping.
+- `apiArtifactBuilder`: local-python MCP auth+data API retrieval into canonical measure JSON artifact.
+- `testRunFileBuilder`: Java test file generation following existing year-specific test patterns.
 - `pr-submission`: PR draft generation and final stage update.
 - `ticketStatusReset`: Ticket reset to baseline state.
 - `learningAgent`: Optional non-blocking metrics and pattern aggregation.

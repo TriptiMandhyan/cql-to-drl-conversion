@@ -36,12 +36,17 @@ Read CQL artifacts and extract rule logic, value sets, temporal clauses, and dep
 3. Use intake `cqlPaths` as the authoritative changed-file set.
 4. If `cqlPaths` is empty, fail closed and report a blocker back to intake stage.
 5. Load CQL content from PR source commit (not main branch). Call MCP tool `local-python.fetch_raw_cql(ticket_id)` to fetch commit-pinned file contents from resolved PRs.
-6. Verify fetched raw CQL content exists for every required path in `cqlPaths`; if any required file is missing, fail closed, record blockers, and stop without writing `awaiting-approval`.
+6. Verify fetched raw CQL content exists for every required path in `cqlPaths`; if any required file is missing, fail closed, record blockers, and stop without writing `conversion-ready`.
 7. Extract expressions, definitions, include statements, and terminology bindings from fetched CQL content using agent-native file reads and parsing logic.
 8. Produce normalized extraction JSON at `artifacts/extraction/<ticket-id>.json`.
 9. Generate the conversion plan from extracted content and write `artifacts/plan/<ticket-id>.md`.
-10. Initialize or reset approval state via MCP tool `local-python.state_write_approval(approved=false, ...)`.
-11. Update pipeline stage via MCP tool `local-python.state_write_pipeline(stage="awaiting-approval", details=...)` only when extraction and plan artifacts are written and all required CQL sources were fetched.
+10. In the plan, add an explicit DRL quality checklist section requiring conversion to verify:
+	- GAP status logic is not gated by EMR evidence markers.
+	- Group/provider marker declarations include and populate `groupId`/`providerId` when used in constraints.
+	- Cross-rate exclusions for group/provider logic are attribution-scoped unless explicitly approved as patient-global.
+	- Status and EMR evidence predicates are parity-checked for timing/modifier criteria when reused for gating.
+11. Initialize or reset approval state via MCP tool `local-python.state_write_approval(approved=false, ...)`.
+12. Update pipeline stage via MCP tool `local-python.state_write_pipeline(stage="conversion-ready", details=...)` only when extraction and plan artifacts are written and all required CQL sources were fetched.
 
 ## Outputs
 
@@ -62,4 +67,4 @@ Read CQL artifacts and extract rule logic, value sets, temporal clauses, and dep
 - If intake does not provide deterministic `cqlPaths`, fail closed and surface explicit blockers.
 - MCP tool usage is required for commit-pinned raw CQL retrieval; parsing and stage transitions remain agent-owned.
 - Pipeline/approval state writes must use MCP state tools (`local-python.state_write_pipeline`, `local-python.state_write_approval`), not direct file edits.
-- Extraction must not mark `awaiting-approval` until both `artifacts/extraction/<ticket-id>.json` and `artifacts/plan/<ticket-id>.md` exist for the current ticket.
+- Extraction must not mark `conversion-ready` until both `artifacts/extraction/<ticket-id>.json` and `artifacts/plan/<ticket-id>.md` exist for the current ticket.

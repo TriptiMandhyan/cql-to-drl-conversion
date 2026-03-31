@@ -61,3 +61,4 @@ Use a single ticket URL placeholder as the local run input. Pull ticket descript
 - Keep helper usage scoped to intake-stage MCP gaps only (currently only for cqlPaths enrichment via `local-python.enrich_intake`).
 - Helper usage is for enriching `cqlPaths` from resolved PRs; it is not a replacement for ticket/PR metadata resolution.
 - Intake must not complete unless `artifacts/intake/<ticket-id>.json` contains a non-empty `cqlPaths` array.
+- Preserve attribution context needed for downstream DRL correctness (group/provider semantics) by keeping resolved PR metadata and source references intact.

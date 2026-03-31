@@ -124,9 +124,11 @@ Run stages from Copilot chat using slash agents:
 
 1. `/ticketDescriptionIntakeAgent`
 2. `/cql-extractor`
-3. `/approvalRecorder` (single call with approver identity and optional note)
-4. `/conversion`
-5. `/pr-submission`
+3. `/conversion`
+4. `/apiArtifactBuilder`
+5. `/testRunFileBuilder`
+6. `/approvalRecorder` (single call with approver identity and optional note)
+7. `/pr-submission`
 
 ## 5.1) Local MCP helper tools
 
@@ -208,22 +210,36 @@ Notes:
 - ✓ No repeat ADO MCP calls; all PR metadata already in intake artifact.
 - ✓ Raw CQL files available for offline review/validation.
 
+### 5.2.1) When CQL is downloaded (and when it is not)
+
+- CQL download happens in extraction only: `/cql-extractor` calls `local-python.fetch_raw_cql(ticket_id)`.
+- The fetch is commit-pinned to the PR source commit stored in intake (`sourceCommitId`).
+- On each extraction run, files are written to `artifacts/extraction/raw/<ticket-id>/...` and the fetch manifest is rewritten at `artifacts/extraction/<ticket-id>-fetched.json`.
+- If the pipeline is already at `conversion-ready` or later, and you continue from that stage, extraction is not re-run, so no new CQL download occurs.
+
+To force a fresh CQL download for the same ticket:
+1. Run `/ticketStatusReset`.
+2. Run `/ticketDescriptionIntakeAgent`.
+3. Run `/cql-extractor`.
+
+This guarantees intake metadata is refreshed and commit-pinned raw CQL is fetched again before conversion.
+
 ## 5.3) Approval gate
 
-`/cql-extractor` now writes both extraction and plan artifacts, and initializes approval to false.
+`/cql-extractor` writes extraction and plan artifacts and initializes approval to false.
 
 Approval and pipeline status are ticket-scoped at:
 
 - `state/tickets/<ticket-id>/approval-status.json`
 - `state/tickets/<ticket-id>/pipeline-status.json`
 
-`/approvalRecorder` performs one action only: record explicit human approval details and move pipeline to conversion-ready.
+`/approvalRecorder` performs one action only: record explicit human approval details and move pipeline to `pr-ready`.
 
 ## 6) Validate outputs
 
 Check for generated files:
 
-- `artifacts/conversion/mips<measure-number>.drl`
+- `artifacts/conversion/<measure-slug>.drl`
 - `artifacts/conversion/<ticket-id>-mapping.md`
 
 
@@ -236,6 +252,6 @@ Validation checks naming, EMR fire-once guards, and reference-style fact modelin
 If the tool is disabled or unavailable, document in pipeline state (`details: "...validation tool unavailable..."`); do not retry noop calls.
 
 For ticket `1024340`, expect:
-- `artifacts/conversion/mips050.drl`
+- `artifacts/conversion/<measure-slug>.drl` (example: `ecqm050rate1.drl`)
 - `artifacts/conversion/1024340-mapping.md`
 

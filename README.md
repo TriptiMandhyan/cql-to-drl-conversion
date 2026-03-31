@@ -27,9 +27,11 @@ This project scaffolds a local, VS Code based multi-agent pipeline to automate t
 - Local helper execution is exposed through a FastAPI-hosted MCP server (`local-python`) at `http://127.0.0.1:8765/mcp`.
 - For intake-stage non-MCP gaps (changed CQL paths from PR iteration changes), use MCP tool `local-python.enrich_intake`.
 - For extraction-stage non-MCP gaps (commit-pinned raw CQL retrieval), use MCP tool `local-python.fetch_raw_cql`.
+- For API-artifact stage auth/data retrieval, use MCP tool `local-python.fetch_measure_json_via_api_config`.
 - State read/write operations can be routed through MCP tools backed by `scripts/state_manager.py` (`state_read_pipeline`, `state_write_pipeline`, `state_read_approval`, `state_write_approval`).
 - Full first-time ticket cleanup can be run via MCP tool `local-python.state_reset_ticket_baseline`.
 - Helper scripts are fetch-only utilities. Agents remain responsible for parsing, artifact generation, and stage transitions.
+- API auth and payload endpoint calls are executed behind local-python MCP; agents should not call auth/data URLs directly.
 
 ## Local MCP Server Setup
 
@@ -52,9 +54,11 @@ This ensures each ticket's per-ticket state folder (`state/tickets/<ticket-id>/`
 
 1. `/ticketDescriptionIntakeAgent`
 2. `/cql-extractor`
-3. `/approvalRecorder` (single call with approver details)
-4. `/conversion`
-5. `/pr-submission`
+3. `/conversion`
+4. `/apiArtifactBuilder`
+5. `/testRunFileBuilder`
+6. `/approvalRecorder` (single call with approver details)
+7. `/pr-submission`
 
 ## Utility Command
 

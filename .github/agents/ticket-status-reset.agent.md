@@ -56,13 +56,13 @@ state/
 A ticket is considered fully reset when all of the following are true:
 
 - No ticket-scoped state exists at `state/tickets/<ticket-id>/`.
-- No ticket-generated artifacts remain in `artifacts/intake`, `artifacts/extraction`, `artifacts/plan`, `artifacts/conversion`, and `artifacts/pr`.
+- No ticket-generated artifacts remain in `artifacts/intake`, `artifacts/extraction`, `artifacts/plan`, `artifacts/conversion`, `artifacts/pr-assets`, and `artifacts/pr`.
 - No ticket entry remains in `state/tickets/index.json`.
 - Legacy singleton state files under `state/` are treated as non-authoritative and are not used as completion criteria.
 
 ## Outputs
 
-- Deleted: ticket-generated artifacts (intake, extraction, plan, conversion mapping, PR draft, raw extraction)
+- Deleted: ticket-generated artifacts (intake, extraction, plan, conversion mapping, PR assets, PR draft, raw extraction)
 - Deleted: ticket-generated DRL files linked to ticket source CQL files
 - Deleted: `state/tickets/<ticket-id>/`
 - Updated: `state/tickets/index.json` (ticket entry removed)
@@ -77,3 +77,4 @@ A ticket is considered fully reset when all of the following are true:
 - Never leave partial cleanup silently; report skipped or unresolved paths explicitly.
 - If `state/tickets/index.json` is a directory, stop and report remediation instead of forcing unsafe deletion.
 - Never bypass MCP reset with manual shell cleanup as a primary path.
+- When rerunning after DRL review failures, ensure prior conversion/PR artifacts are removed so stale status-vs-EMR or attribution-scope defects are not reused.

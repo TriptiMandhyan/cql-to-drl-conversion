@@ -58,6 +58,11 @@ local-python.learning_record_execution(
 **If conversion or validation stage:**
 - Check for errors/validation results
 - If errors found, call: `local-python.learning_record_error(ticket_id, stage, error_type, message)`
+- Explicitly classify and record these recurring DRL error types when detected:
+  - `status-emr-gating-order`
+  - `marker-id-field-missing`
+  - `cross-rate-attribution-scope`
+  - `status-emr-predicate-mismatch`
 
 ### Step 4: Report Summary
 
