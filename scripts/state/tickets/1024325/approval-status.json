@@ -1,0 +1,7 @@
+{
+  "ticketId": "1024325",
+  "approved": false,
+  "approvedBy": null,
+  "approvedAt": null,
+  "notes": "Initialized by cql-extractor after extraction and plan generation."
+}

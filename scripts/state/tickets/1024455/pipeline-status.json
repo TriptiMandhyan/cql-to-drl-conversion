@@ -1,0 +1,6 @@
+{
+  "ticketId": "1024455",
+  "stage": "conversion-complete",
+  "updatedAt": "2026-04-06T13:41:00.239684",
+  "details": "API artifact blocked: auth API returned HTTP 500 at https://librarian.admin.ablehealth.com/auth/login on repeated attempts via local-python.fetch_measure_json_via_api_config; no pr-assets JSON generated."
+}

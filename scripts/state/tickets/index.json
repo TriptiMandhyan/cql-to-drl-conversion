@@ -1,0 +1,16 @@
+{
+  "currentTicketId": "1024325",
+  "lastUpdated": "2026-04-13T17:31:11.748512",
+  "tickets": {
+    "1024455": {
+      "stage": "conversion-complete",
+      "approved": false,
+      "ingestedAt": "2026-04-06T00:53:49.108432"
+    },
+    "1024325": {
+      "stage": "conversion-complete",
+      "approved": false,
+      "ingestedAt": "2026-04-13T13:19:05.432925"
+    }
+  }
+}

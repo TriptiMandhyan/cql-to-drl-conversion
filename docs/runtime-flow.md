@@ -39,6 +39,9 @@ flowchart TD
     GUIDE[.github/skills/cql-to-drl/cql-to-drl-guide.md]
     CONVERTOUT[artifacts/conversion/<measure-slug>.drl\nartifacts/conversion/<ticket-id>-mapping.md]
     VALIDATECMD[MCP tool: local-python.validate_conversion_artifacts\n(ticket_id=<ticket-id>)]
+    SEMANTICCMD[/semanticCheck]
+    SEMANTICFILE[.github/agents/semantic-check.agent.md]
+    SEMANTICOUT[artifacts/review/<ticket-id>-semantic-check.md]
 
     APICMD[/apiArtifactBuilder]
     APIFILE[.github/agents/api-artifact-builder.agent.md]
@@ -66,6 +69,7 @@ flowchart TD
     CONVERTFILE --> SKILL
     CONVERTFILE --> GUIDE
     CONVERTCMD --> CONVERTOUT --> VALIDATECMD --> PIPE
+    PIPE --> SEMANTICCMD --> SEMANTICFILE --> SEMANTICOUT --> PIPE
     PIPE --> APICMD --> APIFILE --> APIOUT --> PIPE
     PIPE --> TESTCMD --> TESTFILE --> TESTOUT --> APPROVALSTATE --> PIPE
     PIPE --> APPROVECMD --> APPROVEFILE --> APPROVALSTATE --> PIPE
@@ -168,10 +172,11 @@ Run each of these commands in sequence:
 1. **`/ticketDescriptionIntakeAgent`** – Extracts PR links and CQL file paths from the ticket
 2. **`/cql-extractor`** – Analyzes CQL and generates extraction artifacts + plan
 3. **`/conversion`** – Converts CQL to DRL rules using the plan
-4. **`/apiArtifactBuilder`** – Retrieves auth token and writes canonical measure JSON artifact
-5. **`/testRunFileBuilder`** – Generates canonical Java test-run file
-6. **`/approvalRecorder`** – Records human approval (only step that requires user input)
-7. **`/pr-submission`** – Generates PR draft and opens a pull request
+4. **`/semanticCheck`** – Reviews DRL/mapping outputs for semantic drift and writes a review report
+5. **`/apiArtifactBuilder`** – Retrieves auth token and writes canonical measure JSON artifact
+6. **`/testRunFileBuilder`** – Generates canonical Java test-run file
+7. **`/approvalRecorder`** – Records human approval (only step that requires user input)
+8. **`/pr-submission`** – Generates PR draft and opens a pull request
 
 **Do not skip stages.** Each stage depends on outputs from previous stages.
 
@@ -182,6 +187,7 @@ Run each of these commands in sequence:
 | **Intake** | Resolved PR links and CQL paths | `artifacts/intake/<ticket-id>.json` |
 | **Extraction** | Parsed CQL rules, generation plan | `artifacts/extraction/<ticket-id>.json` <br/> `artifacts/plan/<ticket-id>.md` |
 | **Conversion** | Generated DRL files and mapping | `artifacts/conversion/<ticket-id>-mapping.md` <br/> `artifacts/conversion/*.drl` |
+| **Semantic Check** | Semantic drift review report | `artifacts/review/<ticket-id>-semantic-check.md` |
 | **API Artifact** | Authenticated payload captured as measure JSON | `artifacts/pr-assets/<ticket-id>/<measure-slug>.json` |
 | **Test Artifact** | Canonical Java test file generated | `artifacts/pr-assets/<ticket-id>/Year<measureYear><measureFamilyPascal><measureNumber>Rate<rateNumber>Test.java` |
 | **Approval** | Approval decision recorded and PR unlock stage set | `state/tickets/<ticket-id>/approval-status.json` <br/> (`approved: true`) |

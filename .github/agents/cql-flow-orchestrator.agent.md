@@ -12,6 +12,9 @@ handoffs:
   - label: Convert to DRL
     agent: conversion
     prompt: Generate DRL and clause-to-rule mapping from extraction output.
+  - label: Run Semantic Check
+    agent: semanticCheck
+    prompt: Review generated DRL against extraction and mapping artifacts, then write semantic check findings.
   - label: Build API JSON
     agent: apiArtifactBuilder
     prompt: Retrieve auth token, call data API, and write measure JSON artifact.
@@ -25,7 +28,7 @@ handoffs:
     agent: pr-submission
     prompt: Draft PR content, include supplemental artifacts, and update pipeline stage to pr-submitted.
 tools: [read, edit, search, agent]
-agents: [ticketDescriptionIntakeAgent, cql-extractor, approvalRecorder, conversion, apiArtifactBuilder, testRunFileBuilder, pr-submission, ticketStatusReset, learningAgent]
+agents: [ticketDescriptionIntakeAgent, cql-extractor, approvalRecorder, conversion, semanticCheck, apiArtifactBuilder, testRunFileBuilder, pr-submission, ticketStatusReset, learningAgent]
 ---
 
 # CQL Flow Orchestrator Agent
@@ -52,10 +55,11 @@ Before running any agent for the first time on a ticket:
 1. `/ticketDescriptionIntakeAgent`
 2. `/cql-extractor`
 3. `/conversion`
-4. `/apiArtifactBuilder`
-5. `/testRunFileBuilder`
-6. pause and request one explicit approval command: `/approvalRecorder` (single call with approver details)
-7. `/pr-submission`
+4. `/semanticCheck` (optional when `governance.guardrails.semanticCheckRequiredBeforeApiArtifact` is `false`)
+5. `/apiArtifactBuilder`
+6. `/testRunFileBuilder`
+7. pause and request one explicit approval command: `/approvalRecorder` (single call with approver details)
+8. `/pr-submission`
 
 ## Utility Command
 
@@ -83,9 +87,12 @@ Before running any agent for the first time on a ticket:
 - Require conversion agent to reference `cql-to-drl-guide.md` sections in mapping output.
 - Ensure each stage writes its required artifact before moving to next stage.
 - Before `/conversion`, verify both `artifacts/extraction/<ticket-id>.json` and `artifacts/plan/<ticket-id>.md` exist for the current ticket.
-- Before `/apiArtifactBuilder`, verify conversion outputs exist and pipeline stage is `conversion-complete`.
+- Before `/semanticCheck`, verify `artifacts/conversion/<ticket-id>-mapping.md` exists and at least one ticket-relevant DRL file was produced.
+- Before `/apiArtifactBuilder`, if `governance.guardrails.semanticCheckRequiredBeforeApiArtifact` is `true`, verify semantic check report exists and pipeline stage is `semantic-check-complete`.
+- Before `/apiArtifactBuilder`, if `governance.guardrails.semanticCheckRequiredBeforeApiArtifact` is `false`, allow stage `conversion-complete` and treat semantic report as optional context.
 - Before `/testRunFileBuilder`, verify `artifacts/pr-assets/<ticket-id>/<measure-slug>.json` exists.
 - Before `/approvalRecorder`, verify `artifacts/pr-assets/<ticket-id>/Year<measureYear><measureFamilyPascal><measureNumber>Rate<rateNumber>Test.java` exists.
+- Before `/approvalRecorder`, if semantic check gate is enabled, verify `artifacts/review/<ticket-id>-semantic-check.md` exists for reviewer context.
 - Before `/pr-submission`, verify `artifacts/conversion/<ticket-id>-mapping.md` exists and at least one ticket-relevant DRL file was produced.
 - Before `/pr-submission`, verify `artifacts/pr-assets/<ticket-id>/Year<measureYear><measureFamilyPascal><measureNumber>Rate<rateNumber>Test.java` exists.
 - Before `/pr-submission`, require conversion details/mapping to explicitly confirm all of the following checks passed:

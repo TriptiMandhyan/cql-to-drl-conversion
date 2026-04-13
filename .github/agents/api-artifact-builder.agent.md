@@ -16,6 +16,7 @@ Generate a ticket-scoped JSON artifact from an external API response where the a
 - `state/run-input.json`
 - `state/tickets/<ticket-id>/pipeline-status.json`
 - `artifacts/intake/<ticket-id>.json`
+- `artifacts/review/<ticket-id>-semantic-check.md` (optional when semantic-check gate is disabled)
 - `artifacts/conversion/*.drl` (for measure/rate naming)
 - `.github/orchestration/config.json` (`apiPayload` section)
 
@@ -54,15 +55,18 @@ Secrets must come from env vars only:
 
 ## Steps
 
-1. Resolve `ticketId` from `state/run-input.json` and confirm current stage is `conversion-complete`.
-2. Read intake and conversion artifacts to derive `measureNumber`, `measureYear`, and `rateNumber`.
-3. Read `.github/orchestration/config.json::apiPayload`; if required fields are missing, stop with explicit blocker and do not advance stage.
-4. Call auth API using configured method/headers/body template and env-var secrets; extract token using `tokenJsonPath`.
-5. Call data API with auth header and configured payload/query.
-6. Validate response is non-empty JSON payload.
-7. Build `measureSpecification` using `data.measureSpecificationFormat` (example: `26-mips-mips007rate1`) and call data API.
-8. Write local artifact: `artifacts/pr-assets/<ticket-id>/<measureSlug>.json`.
-9. Update pipeline stage via MCP tool: `local-python.state_write_pipeline(stage="api-artifact-ready", details=...)`.
+1. Resolve `ticketId` from `state/run-input.json` and read `.github/orchestration/config.json`.
+2. If `governance.guardrails.semanticCheckRequiredBeforeApiArtifact` is `true`, confirm stage is `semantic-check-complete`.
+3. If `governance.guardrails.semanticCheckRequiredBeforeApiArtifact` is `false`, allow stage `conversion-complete` or `semantic-check-complete`.
+4. If semantic check report exists, read it for context. Stop on `FAIL` only when semantic check is required by config.
+5. Read intake and conversion artifacts to derive `measureNumber`, `measureYear`, and `rateNumber`.
+6. Read `.github/orchestration/config.json::apiPayload`; if required fields are missing, stop with explicit blocker and do not advance stage.
+7. Call auth API using configured method/headers/body template and env-var secrets; extract token using `tokenJsonPath`.
+8. Call data API with auth header and configured payload/query.
+9. Validate response is non-empty JSON payload.
+10. Build `measureSpecification` using `data.measureSpecificationFormat` (example: `26-mips-mips007rate1`) and call data API.
+11. Write local artifact: `artifacts/pr-assets/<ticket-id>/<measureSlug>.json`.
+12. Update pipeline stage via MCP tool: `local-python.state_write_pipeline(stage="api-artifact-ready", details=...)`.
 
 ## Outputs
 
@@ -76,5 +80,7 @@ Secrets must come from env vars only:
 - Never continue if API response is empty or non-JSON.
 - Always include ticket and source context in `details` when writing stage transition.
 - Do not advance if conversion artifacts indicate unresolved DRL correctness blockers (status-vs-EMR gating, marker id fields, or cross-rate attribution scope).
-- Only run from `conversion-complete` and only advance to `api-artifact-ready`.
+- If `governance.guardrails.semanticCheckRequiredBeforeApiArtifact` is `true`, only run from `semantic-check-complete`.
+- If `governance.guardrails.semanticCheckRequiredBeforeApiArtifact` is `false`, allow run from `conversion-complete`.
+- Always advance only to `api-artifact-ready`.
 - If `measureFamily` is not `mips`, do not apply MIPS-specific slug assumptions; use configured measure-family formats only.

@@ -1,0 +1,6 @@
+{
+  "ticketId": "1024455",
+  "stage": "conversion-complete",
+  "updatedAt": "2026-04-06T14:18:47.389460",
+  "details": "API artifact retry failed: auth endpoint returned HTTP 500 at /auth/login for default and explicit measure parameters; no pr-assets JSON created."
+}

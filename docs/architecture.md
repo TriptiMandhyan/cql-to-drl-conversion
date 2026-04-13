@@ -7,10 +7,11 @@ The workflow is intentionally split into specialist agents with strict stage bou
 1. Intake Agent: ticket and metadata retrieval
 2. Extractor Agent: CQL parse and semantic extraction
 3. Conversion Agent: CQL to DRL transformation
-4. API Artifact Agent: authenticated measure JSON generation
-5. Test Artifact Agent: canonical Java test file generation
-6. Approval Agent: explicit human approval checkpoint before PR submission
-7. PR Agent: PR creation and final submission state
+4. Semantic Check Agent: post-conversion semantic drift review
+5. API Artifact Agent: authenticated measure JSON generation
+6. Test Artifact Agent: canonical Java test file generation
+7. Approval Agent: explicit human approval checkpoint before PR submission
+8. PR Agent: PR creation and final submission state
 
 ## Why This Split
 
@@ -22,7 +23,7 @@ The workflow is intentionally split into specialist agents with strict stage bou
 
 - Input: ADO ticket id
 - Intermediate: JSON/Markdown artifacts per stage
-- Output: DRL files (one per changed CQL), mapping notes, PR draft text
+- Output: DRL files (one per changed CQL), mapping notes, semantic review notes, PR draft text
 
 ## DRL Modeling Standard
 
@@ -57,56 +58,62 @@ flowchart TD
     O["fa:fa-sitemap /cqlFlowOrchestrator\nReads pipeline-status.json\nRecommends next valid agent"]
     O --> A
 
-    subgraph STAGE1["Stage 1 — Intake"]
+    subgraph STAGE1["Stage 1 - Intake"]
         A["/ticketDescriptionIntakeAgent\nFetches ADO ticket via MCP\nExtracts PR links and CQL paths\nResolves source branch + commit"]
         A --> A_OUT["artifacts/intake/&lt;id&gt;.json\npipeline: intake-complete"]
     end
 
     A_OUT --> B
 
-    subgraph STAGE2["Stage 2 — Extraction + Plan Draft"]
+    subgraph STAGE2["Stage 2 - Extraction + Plan Draft"]
         B["/cql-extractor\nFetches CQL from PR source branch\nExtracts definitions, value sets,\nclauses, and dependencies"]
         B --> B_OUT["artifacts/extraction/&lt;id&gt;.json\nartifacts/plan/&lt;id&gt;.md\napproval-status.json approved=false\npipeline: conversion-ready"]
     end
 
     B_OUT --> C
 
-    subgraph STAGE3["Stage 3 — Conversion"]
+    subgraph STAGE3["Stage 3 - Conversion"]
         C["/conversion\nGenerates DRL per changed CQL\nRuns validate_conversion_artifacts.py"]
         C --> C_OUT["artifacts/conversion/&lt;measure-slug&gt;.drl\nartifacts/conversion/&lt;id&gt;-mapping.md\npipeline: conversion-complete"]
     end
 
-    C_OUT --> D
+    C_OUT --> S
 
-    subgraph STAGE4["Stage 4 — API Artifact"]
+    subgraph STAGE4["Stage 4 - Semantic Check"]
+        S["/semanticCheck\nReviews DRL against extraction + mapping\nWrites semantic drift report"]
+        S --> S_OUT["artifacts/review/&lt;id&gt;-semantic-check.md\npipeline: semantic-check-complete"]
+    end
+
+    S_OUT --> D
+
+    subgraph STAGE5["Stage 5 - API Artifact"]
         D["/apiArtifactBuilder\nGets auth token from auth API\nCalls measure payload API\nWrites canonical JSON artifact"]
         D --> D_OUT["artifacts/pr-assets/&lt;id&gt;/&lt;measure-slug&gt;.json\npipeline: api-artifact-ready"]
     end
 
     D_OUT --> E
 
-    subgraph STAGE5["Stage 5 — Test Artifact"]
+    subgraph STAGE6["Stage 6 - Test Artifact"]
         E["/testRunFileBuilder\nLoads canonical Java test template\nGenerates YearYYYY&lt;MeasureFamilyPascal&gt;NNNRateRTest.java"]
         E --> E_OUT["artifacts/pr-assets/&lt;id&gt;/YearYYYY&lt;MeasureFamilyPascal&gt;NNNRateRTest.java\npipeline: awaiting-approval"]
     end
 
     E_OUT --> F
 
-    subgraph STAGE6["Stage 6 — Record Approval"]
+    subgraph STAGE7["Stage 7 - Record Approval"]
         F["/approvalRecorder\nUser provides approver name + note\nSets approved: true with timestamp"]
         F --> F_OUT["approval-status.json approved=true\npipeline: pr-ready"]
     end
 
     F_OUT --> G
 
-    subgraph STAGE7["Stage 7 — PR Submission"]
+    subgraph STAGE8["Stage 8 - PR Submission"]
         G["/pr-submission\nCreates GitHub branch\nPushes DRL + JSON + test files via GitHub MCP\nOpens GitHub PR"]
         G --> G_OUT["artifacts/pr/&lt;id&gt;-pr.md\nGitHub PR created\npipeline: pr-submitted"]
     end
 
     G_OUT --> DONE(["Done"])
 
-    style HUMAN fill:#ffe599,stroke:#f0b429,color:#333
     style O fill:#d9ead3,stroke:#6aa84f
     style START fill:#cfe2f3,stroke:#3d85c8
     style DONE fill:#cfe2f3,stroke:#3d85c8
@@ -122,7 +129,7 @@ The `/cqlFlowOrchestrator` is a **routing guide**, not an automatic executor. It
 |---|---|
 | Populate `state/run-input.json` | User must supply the ADO ticket URL to start the run |
 | Invoke each slash agent | User types `/agentName` in chat to advance each stage |
-| Approval review (Stage 6 hard stop) | Core Rule 1: PR submission is blocked until a named human explicitly approves |
+| Approval review (Stage 7 hard stop) | Core Rule 1: PR submission is blocked until a named human explicitly approves |
 | Provide approver name to `/approvalRecorder` | Ensures a traceable, non-automated approval identity |
 
-**Net result:** Stages 1 to 5 and 7 are fully automated once launched. Stage 6 is the single human approval decision point. If you want fully automated chaining (with a single approval pause), the orchestrator would need to be extended to call `runSubagent` internally — that is a future enhancement flagged in `docs/todo.md`.
+**Net result:** Stages 1 to 6 and 8 are fully automated once launched. Stage 7 is the single human approval decision point. If you want fully automated chaining (with a single approval pause), the orchestrator would need to be extended to call `runSubagent` internally - that is a future enhancement flagged in `docs/todo.md`.

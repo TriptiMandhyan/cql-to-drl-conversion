@@ -1,6 +1,6 @@
 ---
 name: pr-submission
-description: "Use when conversion is complete and a pull request draft with validation summary must be generated."
+description: "Use when approval is complete and a pull request draft with validation summary must be generated."
 argument-hint: Provide ticket ID context and ensure conversion artifacts are present.
 tools: [read, edit, github/*, local-python/*]
 ---
@@ -15,6 +15,7 @@ Create a GitHub branch, open a pull request against the target rules-engine repo
 
 - `artifacts/conversion/<measure-slug>.drl` (one file per changed CQL; family-specific slug)
 - `artifacts/conversion/<ticket-id>-mapping.md`
+- `artifacts/review/<ticket-id>-semantic-check.md`
 - `artifacts/pr-assets/<ticket-id>/<measure-slug>.json`
 - `artifacts/pr-assets/<ticket-id>/Year<measureYear><measureFamilyPascal><measureNumber>Rate<rateNumber>Test.java`
 - `artifacts/intake/<ticket-id>.json`
@@ -50,6 +51,7 @@ Create a GitHub branch, open a pull request against the target rules-engine repo
    f. Push the generated Java test file into `githubRepo.testTargetPath` with canonical class file name `Year{measureYear}{measureFamilyPascal}{measureNumber}Rate{rateNumber}Test.java`.
 10. Compose PR body:
    - Summary of conversion scope and impacted areas.
+   - Semantic check outcome and notable warnings.
    - Summary of supplemental JSON and test artifact additions.
    - Validation results and known blockers.
    - DRL non-regression checklist confirmation (status-vs-EMR gating, marker id fields, cross-rate attribution scope, predicate parity).

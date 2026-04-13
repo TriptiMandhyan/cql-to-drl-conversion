@@ -40,4 +40,5 @@
 - In this workspace setup, call `activate_pipeline_state_management_tools` before attempting `mcp_local-python_state_write_approval`; write tool may not be exposed until activation.
 - Intake MCP nuance: `mcp_local-python_enrich_intake(ticket_id)` requires `resolvedPullRequests` in `artifacts/intake/<ticket-id>.json`; if missing, first resolve PR metadata via ADO MCP (`mcp_ado_wit_get_work_item` + `mcp_ado_repo_get_pull_request_by_id`) and write resolved PR entry, then enrich.
 - Learning-agent fallback: if `state/run-input.json` lacks `learningStage`/`elapsedSeconds`, derive stage context from ticket pipeline status, map terminal stage `conversion-complete` to learning stage `conversion`, and record metrics with `elapsedSeconds=0` as non-blocking fallback.
+- Local-python MCP state writes are relative to the MCP server working directory; if server starts from `scripts/`, state files appear under `scripts/state/...` instead of repository `state/...`.
 

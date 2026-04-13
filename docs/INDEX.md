@@ -20,9 +20,10 @@ This index lists the active workflow documentation for the current CQL to DRL pi
 1. `/ticketDescriptionIntakeAgent`
 2. `/cql-extractor`
 3. `/conversion`
-4. `/apiArtifactBuilder`
-5. `/testRunFileBuilder`
-6. `/approvalRecorder`
-7. `/pr-submission`
+4. `/semanticCheck`
+5. `/apiArtifactBuilder`
+6. `/testRunFileBuilder`
+7. `/approvalRecorder`
+8. `/pr-submission`
 
 Approval is required immediately before PR submission.

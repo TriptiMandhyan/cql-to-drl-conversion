@@ -1,0 +1,6 @@
+{
+  "ticketId": "1024325",
+  "stage": "conversion-complete",
+  "updatedAt": "2026-04-13T17:31:11.738259",
+  "details": "API artifact blocked at auth phase: POST https://librarian.admin.ablehealth.com/auth/login returned HTTP 500 (external service error). Semantic-check gate is disabled, but auth outage prevents api-artifact-ready."
+}

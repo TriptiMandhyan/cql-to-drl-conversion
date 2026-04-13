@@ -19,6 +19,7 @@ flowchart TD
     APPROVAL[agents/approval-recorder.agent.md]
     RESET[agents/ticket-status-reset.agent.md]
     CONVERT[agents/conversion.agent.md]
+    SEMANTIC[agents/semantic-check.agent.md]
     APIART[agents/api-artifact-builder.agent.md]
     TESTART[agents/test-run-file-builder.agent.md]
     PR[agents/pr-submission.agent.md]
@@ -32,6 +33,7 @@ flowchart TD
     CI --> APPROVAL
     CI --> RESET
     CI --> CONVERT
+    CI --> SEMANTIC
     CI --> APIART
     CI --> TESTART
     CI --> PR
@@ -42,6 +44,7 @@ flowchart TD
     CFG --> APPROVAL
     CFG --> RESET
     CFG --> CONVERT
+    CFG --> SEMANTIC
     CFG --> APIART
     CFG --> TESTART
     CFG --> PR
@@ -52,6 +55,7 @@ flowchart TD
     ORCH --> APPROVAL
     ORCH --> RESET
     ORCH --> CONVERT
+    ORCH --> SEMANTIC
     ORCH --> APIART
     ORCH --> TESTART
     ORCH --> PR
@@ -65,6 +69,7 @@ flowchart TD
     SKILL --> GUIDE
     SKILL --> CONVERT
     GUIDE --> CONVERT
+    GUIDE --> SEMANTIC
 
     AG -.documents.-> CFG
     AG -.documents.-> ORCH
@@ -73,6 +78,7 @@ flowchart TD
     AG -.documents.-> APPROVAL
     AG -.documents.-> RESET
     AG -.documents.-> CONVERT
+    AG -.documents.-> SEMANTIC
     AG -.documents.-> APIART
     AG -.documents.-> TESTART
     AG -.documents.-> PR
@@ -95,6 +101,7 @@ flowchart TD
 | `.github/agents/approval-recorder.agent.md` | Defines how explicit human approval details are recorded before PR submission. | Yes |
 | `.github/agents/ticket-status-reset.agent.md` | Defines how a ticket's pipeline and approval status are reset for a clean rerun. | Yes |
 | `.github/agents/conversion.agent.md` | Defines how extraction output becomes DRL and mapping output. | Yes |
+| `.github/agents/semantic-check.agent.md` | Defines how post-conversion semantic drift review is recorded before downstream artifact generation. | Yes |
 | `.github/agents/api-artifact-builder.agent.md` | Defines how local-python MCP retrieves authenticated API payloads and converts them into PR-ready measure JSON. | Yes |
 | `.github/agents/test-run-file-builder.agent.md` | Defines how the PR-ready Java test run file is generated from a canonical template. | Yes |
 | `.github/agents/pr-submission.agent.md` | Defines how converted output becomes a PR draft and GitHub update. | Yes |
@@ -126,6 +133,7 @@ These files read or depend on `.github/orchestration/config.json` at runtime:
 - `.github/agents/approval-recorder.agent.md`
 - `.github/agents/ticket-status-reset.agent.md`
 - `.github/agents/conversion.agent.md`
+- `.github/agents/semantic-check.agent.md`
 - `.github/agents/api-artifact-builder.agent.md`
 - `.github/agents/test-run-file-builder.agent.md`
 - `.github/agents/pr-submission.agent.md`

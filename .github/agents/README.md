@@ -16,8 +16,10 @@ Primary agents:
 - `cqlFlowOrchestrator`: End-to-end stage coordination with approval gate.
 - `ticketDescriptionIntakeAgent`: Ticket normalization and PR/source resolution.
 - `cql-extractor`: Structured extraction and plan output.
-- `approvalRecorder`: Explicit approval capture before PR submission.
 - `conversion`: DRL generation and clause-to-rule mapping.
+- `semanticCheck`: Post-conversion semantic drift review that writes a semantic check report before downstream artifact generation.
+- `approvalRecorder`: Explicit approval capture before PR submission.
+- `Measure Concept Keeper`: Post-approval concept capture into `MEASURE_CONCEPTS.md` for future developer reuse.
 - `apiArtifactBuilder`: local-python MCP auth+data API retrieval into canonical measure JSON artifact.
 - `testRunFileBuilder`: Java test file generation following existing year-specific test patterns.
 - `pr-submission`: PR draft generation and final stage update.

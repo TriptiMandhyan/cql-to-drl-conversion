@@ -19,6 +19,7 @@ This stage is the only valid path to mark approval true for the current run.
 - `state/tickets/<ticket-id>/pipeline-status.json`
 - `state/tickets/<ticket-id>/approval-status.json`
 - `artifacts/conversion/<ticket-id>-mapping.md`
+- `artifacts/review/<ticket-id>-semantic-check.md` (required only when semantic-check gate is enabled)
 - `artifacts/pr-assets/<ticket-id>/<measure-slug>.json`
 - `artifacts/pr-assets/<ticket-id>/Year<measureYear><measureFamilyPascal><measureNumber>Rate<rateNumber>Test.java`
 - approver name (prompt user if not provided)
@@ -37,19 +38,21 @@ This stage is the only valid path to mark approval true for the current run.
 1. Resolve `ticketId` from `state/run-input.json` and read `state/tickets/<ticket-id>/pipeline-status.json`; confirm stage is `awaiting-approval`.
 2. Read `state/tickets/<ticket-id>/approval-status.json` and verify `approved` is currently `false`.
 3. Confirm conversion mapping and both PR supplemental artifacts exist for approval context.
-4. Confirm mapping/checklist coverage includes:
+4. If `governance.guardrails.semanticCheckRequiredBeforeApiArtifact` is `true`, require semantic check report to exist for approval context.
+5. If semantic check report exists, review outcome/findings; if the report says `FAIL`, stop and do not record approval when semantic check is required by config.
+6. Confirm mapping/checklist coverage includes:
    - status-derived GAP logic (not EMR-marker-gated),
    - group/provider marker id-field modeling,
    - attribution-scoped cross-rate exclusion,
    - status-vs-EMR predicate parity.
-5. Require explicit approver identity from the current `/approvalRecorder` command; never infer or reuse approver identity from prior runs, prior ticket state, chat history, or placeholder defaults.
-6. Write updated approval state via MCP tool `local-python.state_write_approval(approved=true, approved_by=..., notes=...)`:
+7. Require explicit approver identity from the current `/approvalRecorder` command; never infer or reuse approver identity from prior runs, prior ticket state, chat history, or placeholder defaults.
+8. Write updated approval state via MCP tool `local-python.state_write_approval(approved=true, approved_by=..., notes=...)`:
    - `ticketId`: from pipeline
    - `approved`: true
    - `approvedBy`: provided approver
    - `approvedAt`: current ISO timestamp
    - `notes`: provided note or default
-7. Update pipeline stage via MCP tool `local-python.state_write_pipeline(stage="pr-ready", details=...)`.
+9. Update pipeline stage via MCP tool `local-python.state_write_pipeline(stage="pr-ready", details=...)`.
 
 ## Outputs
 

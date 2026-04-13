@@ -2,6 +2,45 @@
 
 This guide captures practical conversion patterns for year-over-year MIPS measure updates, with emphasis on EMRv2, attribution loops, and fire-once dedup guards.
 
+## Common Concepts First (Apply To All Measures)
+
+Use this checklist before branching into encounter-based or patient-based conversion logic.
+
+1. Classify measure family and subject type from source CQL/extraction artifacts.
+2. Preserve source semantics exactly for comparators, temporal windows, and OR/AND shape.
+3. Preserve null/empty logic; do not rewrite into stricter predicates.
+4. Keep deterministic rule/marker naming aligned to guide contracts.
+5. Split status and EMR responsibilities clearly and add fire-once guards for EMR rules.
+6. Preserve attribution behavior (org/group/provider) based on source/reference DRL.
+7. Treat `option_id = all` as fan-out to concrete option ids, never literal `all` in EMR output.
+8. Document any intentional deviation in mapping notes.
+
+## Conversion Tracks By Subject Type
+
+After common concepts, follow exactly one primary track based on subject type.
+
+### Track A: Encounter-Based Measures
+
+Use encounter-centric carry-forward and attribution patterns.
+
+1. Use encounter-centered denominator carry-forward (`EncounterDenominator`) and encounter window predicates.
+2. Prefer encounter-subject status modeling (including encounter status layering where applicable).
+3. For EMR output, preserve encounter evidence semantics and attribution fan-out behavior required by source/reference.
+4. Apply encounter-specific guidance in sections 3, 3.1, and 6.
+
+### Track B: Patient-Based Measures
+
+Use patient-centric carry-forward and patient-level status/output patterns.
+
+1. Use patient-centered denominator and predicate scope.
+2. Use patient-level status APIs and avoid encounter-only assumptions.
+3. Keep EMR evidence and option fan-out behavior patient-scoped unless source semantics require otherwise.
+4. Apply shared guidance in sections 1, 2, 4, 5, and 7-14 with patient scope.
+
+### Track Selection Rule
+
+If subject type is ambiguous, stop and document `TODO: needs domain confirmation` in mapping notes before conversion finalization.
+
 ## 0. Family and Subject Classification First (Additive)
 
 Before applying any section below, classify the work in two steps.
@@ -145,6 +184,34 @@ end
 ```
 
 If a production/reference DRL already uses split org and group/provider rules, preserve that structure unless the mapping notes explain why a different shape is equivalent.
+
+### 3.1 Encounter Status Layering Concept
+
+For encounter-subject measures, treat status emission as two layers.
+
+Layer 1: Rule authoring layer
+
+1. You may write only base encounter status with `addEncounterMeasureStatus(...)`.
+2. You may also write explicit scoped rows with `addGroupEncounterMeasureStatus(...)` and `addProviderEncounterMeasureStatus(...)`.
+
+Layer 2: Result mapping layer
+
+1. Before output, the engine can auto-split a base encounter status into:
+  - org row
+  - one row per group external id
+  - one provider row
+2. Auto-split is expected only when the measure is not panel-only and not listed in mapper excluded rules.
+
+Practical guideline
+
+1. If the measure is in the normal auto-split path, base `addEncounterMeasureStatus(...)` is usually enough.
+2. In that path, explicit group/provider writes are often redundant unless custom scoped behavior is required.
+3. If the measure is panel-only or mapper-excluded from split, explicit scoped writes may be required to emit group/provider rows.
+4. When mixing base and explicit scoped writes, verify dedupe and precedence behavior to avoid duplicate or conflicting statuses.
+
+Quick check
+
+If an encounter measure is not panel-only and not in mapper excluded rules, `addEncounterMeasureStatus(...)` should be auto-split to org + group + provider rows by mapping. In that normal path, separate `addGroupEncounterMeasureStatus(...)` and `addProviderEncounterMeasureStatus(...)` calls are typically optional.
 
 ## 4. Numerator With Multiple Source Definitions
 

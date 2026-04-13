@@ -1,0 +1,35 @@
+{
+  "ticketId": "1024325",
+  "transitions": [
+    {
+      "stage": "intake-start",
+      "timestamp": "2026-04-13T13:19:05.436055",
+      "actor": "system"
+    },
+    {
+      "stage": "intake-complete",
+      "timestamp": "2026-04-13T13:25:52.681679",
+      "actor": "system"
+    },
+    {
+      "stage": "conversion-ready",
+      "timestamp": "2026-04-13T13:28:19.931716",
+      "actor": "system"
+    },
+    {
+      "stage": "conversion-ready",
+      "timestamp": "2026-04-13T13:36:30.468092",
+      "actor": "system"
+    },
+    {
+      "stage": "conversion-complete",
+      "timestamp": "2026-04-13T13:43:28.477320",
+      "actor": "system"
+    },
+    {
+      "stage": "conversion-complete",
+      "timestamp": "2026-04-13T17:31:11.752810",
+      "actor": "system"
+    }
+  ]
+}

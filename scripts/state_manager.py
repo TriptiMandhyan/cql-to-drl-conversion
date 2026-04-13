@@ -23,6 +23,7 @@ class PipelineStage(str, Enum):
     AWAITING_APPROVAL = "awaiting-approval"
     CONVERSION_READY = "conversion-ready"
     CONVERSION_COMPLETE = "conversion-complete"
+    SEMANTIC_CHECK_COMPLETE = "semantic-check-complete"
     API_ARTIFACT_READY = "api-artifact-ready"
     TEST_ARTIFACT_READY = "test-artifact-ready"
     PR_READY = "pr-ready"

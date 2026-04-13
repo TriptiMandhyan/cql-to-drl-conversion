@@ -125,10 +125,11 @@ Run stages from Copilot chat using slash agents:
 1. `/ticketDescriptionIntakeAgent`
 2. `/cql-extractor`
 3. `/conversion`
-4. `/apiArtifactBuilder`
-5. `/testRunFileBuilder`
-6. `/approvalRecorder` (single call with approver identity and optional note)
-7. `/pr-submission`
+4. `/semanticCheck`
+5. `/apiArtifactBuilder`
+6. `/testRunFileBuilder`
+7. `/approvalRecorder` (single call with approver identity and optional note)
+8. `/pr-submission`
 
 ## 5.1) Local MCP helper tools
 
@@ -241,6 +242,7 @@ Check for generated files:
 
 - `artifacts/conversion/<measure-slug>.drl`
 - `artifacts/conversion/<ticket-id>-mapping.md`
+- `artifacts/review/<ticket-id>-semantic-check.md`
 
 
 Run conversion artifact validation via MCP tool (if available):

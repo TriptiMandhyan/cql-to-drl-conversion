@@ -6,9 +6,10 @@ This project scaffolds a local, VS Code based multi-agent pipeline to automate t
 2. Pull and inspect CQL source from ADO repo
 3. Extract structured information
 4. Draft implementation plan
-5. Pause for explicit human approval
-6. Convert CQL to DRL using project skill guidance
+5. Convert CQL to DRL using project skill guidance
+6. Run semantic drift review on generated DRL and mapping artifacts
 7. Prepare pull request payload for review
+8. Pause for explicit human approval before PR submission
 
 ## Goals
 
@@ -55,10 +56,11 @@ This ensures each ticket's per-ticket state folder (`state/tickets/<ticket-id>/`
 1. `/ticketDescriptionIntakeAgent`
 2. `/cql-extractor`
 3. `/conversion`
-4. `/apiArtifactBuilder`
-5. `/testRunFileBuilder`
-6. `/approvalRecorder` (single call with approver details)
-7. `/pr-submission`
+4. `/semanticCheck`
+5. `/apiArtifactBuilder`
+6. `/testRunFileBuilder`
+7. `/approvalRecorder` (single call with approver details)
+8. `/pr-submission`
 
 ## Utility Command
 
@@ -80,7 +82,7 @@ This ensures each ticket's per-ticket state folder (`state/tickets/<ticket-id>/`
 - `docs/`: Architecture and runbooks
 - `examples/tickets/`: Sample input tickets for dry runs
 - `examples/drl-reference/year2026/`: Example DRLs used as style references for naming and coding patterns
-- `templates/`: Plan, mapping, and PR templates
+- `templates/`: Plan, mapping, semantic-check, and PR templates
 - `state/`: Local state and approval artifacts
 
 ## Security Notes

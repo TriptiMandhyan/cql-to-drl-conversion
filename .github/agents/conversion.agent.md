@@ -51,12 +51,14 @@ Apply these rules to every generated DRL before writing conversion outputs:
 	- clinically meaningful rule naming and option-id preservation
 	- option-all fan-out behavior (concrete option-code rows versus literal `all`)
 5. For each changed CQL source file in extraction output, generate exactly one corresponding DRL file using measure-family naming from runtime config (`measureSlug` contract). Do not emit duplicate aliases for the same source CQL file.
-6. Use example DRLs from `examples/drl-reference/year2026/` for rule naming style, shared-file handling, coding patterns, and parity checks when available.
-7. Enforce reference-style fact modeling from `.github/skills/cql-to-drl/SKILL.md`; reject synthetic wrapper facts when domain facts are available.
-8. Enforce rule naming and marker naming contracts from `.github/skills/cql-to-drl/SKILL.md`; reject ticket-id or sequence-based rule names.
-9. Before validation, manually check the generated DRL for the following semantic-preservation requirements:
+6. In generated DRL files, include source CQL comment blocks immediately above each related rule group (for example denominator, exclusions, numerator met/not-met, gap, and EMR rule sets), following committed reference style used in `examples/drl-reference/year2026/*.drl`.
+7. Use example DRLs from `examples/drl-reference/year2026/` for rule naming style, shared-file handling, coding patterns, and parity checks when available.
+8. Enforce reference-style fact modeling from `.github/skills/cql-to-drl/SKILL.md`; reject synthetic wrapper facts when domain facts are available.
+9. Enforce rule naming and marker naming contracts from `.github/skills/cql-to-drl/SKILL.md`; reject ticket-id or sequence-based rule names.
+10. Before validation, manually check the generated DRL for the following semantic-preservation requirements:
 	- EMR rules preserve org/group/provider attribution when the reference DRL does.
 	- Status rules preserve org/group/provider coverage and keep split org versus group/provider structure when the reference DRL does.
+	- Source CQL comment blocks are present above each related rule group and preserve clause wording/intent for reviewer traceability.
 	- GAP rules are derived from status truth, not EMR evidence side effects.
 	- Group/provider marker declarations and inserts carry attribution ids (`groupId`, `providerId`) when those ids are used in constraints.
 	- Cross-rate exclusions for group/provider are scoped to matching attribution ids unless an approved patient-global design is documented.
@@ -65,11 +67,11 @@ Apply these rules to every generated DRL before writing conversion outputs:
 	- Earliest versus latest accumulation matches source intent or documented reference parity.
 	- Shared-library queries/facts are reused exactly or documented as unresolved.
 	- Each CQL `option_id = all` clause is expanded to concrete option-code EMR rows and does not output literal `all` as option id.
-10. Document clause-to-rule mapping and include explicit `Guide Reference` for each mapped rule.
-11. In mapping notes, record any intentional deviation from the reference DRL structure, including attribution strategy, shared dependencies, salience, accumulate direction, or naming.
-12. Call MCP tool `local-python.validate_conversion_artifacts(ticket_id)` and resolve all errors before finalizing outputs.
-13. Save DRL and mapping outputs.
-14. Update pipeline stage via MCP tool `local-python.state_write_pipeline(stage="conversion-complete", details=...)`.
+11. Document clause-to-rule mapping and include explicit `Guide Reference` for each mapped rule.
+12. In mapping notes, record any intentional deviation from the reference DRL structure, including attribution strategy, shared dependencies, salience, accumulate direction, or naming.
+13. Call MCP tool `local-python.validate_conversion_artifacts(ticket_id)` and resolve all errors before finalizing outputs.
+14. Save DRL and mapping outputs.
+15. Update pipeline stage via MCP tool `local-python.state_write_pipeline(stage="conversion-complete", details=...)`.
 
 ## Outputs
 
@@ -82,6 +84,7 @@ Apply these rules to every generated DRL before writing conversion outputs:
 - Do not invent unresolved business rules; mark them as `TODO: needs domain confirmation`.
 - Do not output placeholder-only rules such as `eval(true)` unless explicitly marked as blocked with rationale.
 - Every generated rule must cite at least one guide section in mapping notes.
+- Every generated rule group must include a source CQL comment block directly above it for reviewer traceability.
 - File naming must use canonical `<measure-slug>.drl` and emit only one DRL per changed CQL source.
 - MIPS-specific naming/rule conventions apply only when `measureFamily == mips`; for non-MIPS families, use family-specific conventions defined by config and source semantics.
 - Pipeline state writes must use MCP state tools (`local-python.state_write_pipeline`), not direct file edits.
