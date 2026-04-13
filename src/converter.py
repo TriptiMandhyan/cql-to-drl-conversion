@@ -29,7 +29,7 @@ class CQLToDRLConverter:
 
     def __init__(self, package: str = "") -> None:
         """
-        Initialise the converter.
+        Initialize the converter.
 
         Args:
             package: Java package name for the generated DRL file.
